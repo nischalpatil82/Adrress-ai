@@ -19,8 +19,9 @@ RUN pip install --no-cache-dir gunicorn
 # Copy project files
 COPY . .
 
-# Disable SQL — use static index only
+# Disable SQL and T5 (tokenizer compatibility issue) — use static index + dictionary speller only
 ENV V2_USE_SQL_DB=0
+ENV V2_USE_T5=0
 
 # HF Spaces uses port 7860
 EXPOSE 7860
