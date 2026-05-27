@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Address AI | Learn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root { --bg:#eff3f8; --panel:#fff; --line:#d8dfeb; --ink:#12213b; --muted:#61728f; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Manrope,sans-serif; color:var(--ink); background:var(--bg); }
+  .wrap { width:min(1200px, calc(100vw - 30px)); margin:14px auto; background:#fff; border:1px solid #e6ecf5; border-radius:22px; overflow:hidden; box-shadow:0 16px 44px rgba(16,24,40,.12); }
+  .top { min-height:66px; padding:0 18px; border-bottom:1px solid #ecf1f8; display:flex; align-items:center; justify-content:space-between; gap:14px; }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:800; }
+  .mark { width:34px; height:34px; border-radius:11px; color:#fff; display:grid; place-items:center; background:linear-gradient(135deg,#3064db,#00ad9f); }
+  .tabs { display:flex; gap:8px; }
+  .tab { min-height:36px; border:1px solid var(--line); border-radius:999px; padding:0 14px; text-decoration:none; color:#576681; display:inline-flex; align-items:center; font-size:13px; font-weight:800; }
+  .tab.active { background:#172a4b; border-color:#172a4b; color:#fff; }
+  .content { padding:20px; display:grid; gap:12px; }
+  .hero { border:1px solid #dde5f1; border-radius:18px; background:linear-gradient(140deg,#f8fbff,#f2f7fd); padding:22px; }
+  h1 { margin:0; font-size:34px; line-height:1.05; }
+  .hero p { margin:10px 0 0; color:var(--muted); font-size:15px; line-height:1.6; max-width:700px; font-weight:600; }
+  .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+  .card { border:1px solid #dde5f0; border-radius:14px; background:#fff; padding:14px; }
+  .card b { display:block; font-size:16px; }
+  .card p { margin:8px 0 0; color:var(--muted); font-size:13px; line-height:1.5; font-weight:600; }
+  @media (max-width: 860px) {
+    .top { padding:10px 14px; align-items:flex-start; flex-direction:column; }
+    .tabs { width:100%; } .tab { flex:1; justify-content:center; }
+    .grid { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div class="brand"><div class="mark"><i data-lucide="map-pinned"></i></div>Address AI</div>
+      <nav class="tabs">
+        <a class="tab" href="/v2">Correct</a>
+        <a class="tab" href="/v2/validate">Validate</a>
+        <a class="tab active" href="/v2/learn">Learn</a>
+      </nav>
+    </header>
+    <main class="content">
+      <section class="hero">
+        <h1>Learn how the pipeline decides each address.</h1>
+        <p>This page is now active. Next step can be adding examples from your own logs and a feedback audit table so your team can review correction quality by category.</p>
+      </section>
+      <section class="grid">
+        <article class="card"><b>1. Spell stage</b><p>Tokens get normalized and misspellings are repaired.</p></article>
+        <article class="card"><b>2. Candidate stage</b><p>Database and semantic candidates are ranked.</p></article>
+        <article class="card"><b>3. Validation stage</b><p>Geocode and pincode checks produce final confidence.</p></article>
+      </section>
+    </main>
+  </div>
+<script>if (window.lucide && window.lucide.createIcons) window.lucide.createIcons();</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+.env
+*.env
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment — never upload
+.venv/
+venv/
+env/
+
+# Large data files not needed at runtime
+data/*.jsonl
+data/*.csv
+data/*.pkl
+data/*.backup
+data/*.backup2
+data/*.backup3
+data/active_learning_feedback.jsonl
+
+# Backup model files
+models/*.bak
+models/*.backup
+
+# DB / local storage
+*.sqlite
+*.db

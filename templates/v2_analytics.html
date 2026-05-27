@@ -1,0 +1,465 @@
+{% extends "_base.html" %}
+{% set active_page = "analytics" %}
+{% block title %}Analytics · AddressAI{% endblock %}
+
+{% block extra_css %}
+  .analytics-grid {
+    padding: 18px 22px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .stat {
+    background: var(--glass);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: inset 0 1px 0 var(--glass-edge), 0 14px 36px -18px rgba(0,0,0,0.55);
+  }
+  .stat::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent 60%, var(--red-soft) 100%);
+    pointer-events: none;
+    opacity: 0.5;
+  }
+  .stat-k {
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-3);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .stat-k svg { width: 12px; height: 12px; color: var(--text-2); }
+  .stat-v {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text);
+    line-height: 1.1;
+    margin-bottom: 4px;
+  }
+  .stat-v.red { color: var(--red); }
+  .stat-d {
+    font-size: 11px;
+    color: var(--text-2);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .stat-d.up { color: var(--text); }
+  .stat-d.down { color: var(--red); }
+  .stat-d svg { width: 11px; height: 11px; }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 14px;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+
+  /* Bar chart */
+  .bars {
+    padding: 14px;
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 200px;
+  }
+  .bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 5px;
+    height: 100%;
+    cursor: pointer;
+  }
+  .bar-fill {
+    width: 100%;
+    background: linear-gradient(180deg, var(--red) 0%, var(--red-3) 100%);
+    border-radius: 2px 2px 0 0;
+    min-height: 2px;
+    position: relative;
+    transition: opacity 0.15s;
+  }
+  .bar-col:hover .bar-fill { opacity: 0.85; }
+  .bar-col:hover .bar-fill::after {
+    content: attr(data-val);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface-3);
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+    margin-bottom: 4px;
+  }
+  .bar-lbl {
+    font-size: 9.5px;
+    color: var(--text-3);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* Distribution */
+  .donut-wrap {
+    padding: 14px;
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 16px;
+    align-items: center;
+  }
+  .donut { width: 130px; height: 130px; position: relative; }
+  .donut svg { transform: rotate(-90deg); }
+  .donut-c { fill: none; stroke-width: 16; }
+  .donut-bg { stroke: var(--surface-3); }
+  .donut-label {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    text-align: center;
+  }
+  .donut-label .n {
+    font-size: 22px;
+    font-weight: 600;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text);
+  }
+  .donut-label .l { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.8px; }
+
+  .legend { display: flex; flex-direction: column; gap: 8px; }
+  .leg {
+    display: grid;
+    grid-template-columns: 12px 1fr auto;
+    gap: 8px;
+    align-items: center;
+    font-size: 12px;
+  }
+  .leg-sw { width: 10px; height: 10px; border-radius: 2px; }
+  .leg-l { color: var(--text-1); text-transform: capitalize; }
+  .leg-v { font-family: 'IBM Plex Mono', monospace; color: var(--text); font-size: 11.5px; }
+
+  /* Top queries */
+  .qlist {
+    list-style: none;
+    padding: 6px 0;
+  }
+  .qrow {
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    gap: 10px;
+    padding: 8px 14px;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    font-size: 12.5px;
+  }
+  .qrow:last-child { border-bottom: none; }
+  .qrow:hover { background: var(--surface-2); }
+  .qrow .qi { font-family: 'IBM Plex Mono', monospace; color: var(--text-3); font-size: 11px; }
+  .qrow .qq { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .qrow .qc { font-family: 'IBM Plex Mono', monospace; color: var(--text-2); font-size: 11px; }
+
+  .timeline {
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+  .tl-row {
+    display: grid;
+    grid-template-columns: 70px 1fr auto;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--border);
+    font-size: 12px;
+    align-items: center;
+  }
+  .tl-row:last-child { border-bottom: none; }
+  .tl-time { font-family: 'IBM Plex Mono', monospace; color: var(--text-3); font-size: 11px; }
+  .tl-q { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tl-c { font-family: 'IBM Plex Mono', monospace; color: var(--text-2); font-size: 11px; }
+
+  @media (max-width: 1100px) {
+    .stat-row { grid-template-columns: repeat(2, 1fr); }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+{% endblock %}
+
+{% block breadcrumb %}
+<span>Workspace</span>
+<i data-lucide="chevron-right"></i>
+<strong>Analytics</strong>
+{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn btn-ghost" id="refreshBtn">
+  <i data-lucide="refresh-cw"></i> Refresh
+</button>
+<button class="btn btn-ghost" id="clearBtn">
+  <i data-lucide="trash-2"></i> Clear data
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-head-row">
+    <div>
+      <div class="page-title">Analytics</div>
+      <div class="page-sub">Aggregated stats from your local search history. All numbers are computed client-side from <code class="mono" style="color:var(--red);">localStorage</code>.</div>
+    </div>
+  </div>
+</div>
+
+<div class="analytics-grid" id="grid">
+  <div class="stat-row">
+    <div class="stat">
+      <div class="stat-k"><i data-lucide="search"></i> Total searches</div>
+      <div class="stat-v" id="s-total">0</div>
+      <div class="stat-d" id="s-total-d">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-k"><i data-lucide="check-circle-2"></i> Geocoded</div>
+      <div class="stat-v red" id="s-geo">0</div>
+      <div class="stat-d" id="s-geo-d">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-k"><i data-lucide="gauge"></i> Avg confidence</div>
+      <div class="stat-v" id="s-avg">—</div>
+      <div class="stat-d" id="s-avg-d">over all runs</div>
+    </div>
+    <div class="stat">
+      <div class="stat-k"><i data-lucide="zap"></i> Avg latency</div>
+      <div class="stat-v" id="s-lat">—</div>
+      <div class="stat-d" id="s-lat-d">end-to-end</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><i data-lucide="bar-chart-2"></i> Searches · last 14 days</div>
+        <div class="card-meta" id="bars-meta">—</div>
+      </div>
+      <div class="bars" id="bars"></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><i data-lucide="pie-chart"></i> Status distribution</div>
+      </div>
+      <div class="donut-wrap">
+        <div class="donut">
+          <svg width="130" height="130">
+            <circle class="donut-c donut-bg" cx="65" cy="65" r="52"></circle>
+            <g id="donutSegs"></g>
+          </svg>
+          <div class="donut-label">
+            <div>
+              <div class="n" id="donutTotal">0</div>
+              <div class="l">Total</div>
+            </div>
+          </div>
+        </div>
+        <div class="legend" id="legend"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><i data-lucide="trending-up"></i> Top queries</div>
+        <div class="card-meta">most searched</div>
+      </div>
+      <ul class="qlist" id="topQueries"></ul>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><i data-lucide="history"></i> Recent activity</div>
+        <a href="/v2/history" class="card-meta" style="color:var(--red);">View all →</a>
+      </div>
+      <div class="timeline" id="timeline"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const STATUS_COLORS = {
+  "verified": "#f4f4f4",
+  "high confidence": "#ef4444",
+  "medium confidence": "#fbbf24",
+  "low confidence": "#7f1d1d",
+  "found in database": "#c8c8c8",
+  "no match": "#3f3f3f",
+  "generated": "#a3a3a3",
+  "existing": "#dc2626",
+  "unknown": "#5a5a5a",
+};
+
+function statusColor(s) {
+  s = String(s || "unknown").toLowerCase();
+  return STATUS_COLORS[s] || "#5a5a5a";
+}
+
+function render() {
+  const data = AAI.loadHistory();
+  document.getElementById("s-total").textContent = data.length;
+  document.getElementById("s-total-d").innerHTML = data.length
+    ? `<i data-lucide="trending-up"></i> ${data.filter(d => withinDays(d.ts, 1)).length} today`
+    : "no searches yet";
+
+  const geo = data.filter(d => d.geocoded);
+  document.getElementById("s-geo").textContent = geo.length;
+  document.getElementById("s-geo-d").textContent = data.length
+    ? `${Math.round(100 * geo.length / data.length)}% of total`
+    : "—";
+
+  if (data.length) {
+    const avg = data.reduce((a, x) => a + (x.confidence || 0), 0) / data.length;
+    document.getElementById("s-avg").textContent = Math.round(avg) + "%";
+    const lat = data.filter(x => x.latency_ms).reduce((a, x) => a + x.latency_ms, 0) / Math.max(1, data.filter(x => x.latency_ms).length);
+    document.getElementById("s-lat").textContent = Math.round(lat) + "ms";
+  } else {
+    document.getElementById("s-avg").textContent = "—";
+    document.getElementById("s-lat").textContent = "—";
+  }
+
+  renderBars(data);
+  renderDonut(data);
+  renderTopQueries(data);
+  renderTimeline(data);
+
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function withinDays(ts, n) {
+  try {
+    const d = new Date(ts);
+    return (Date.now() - d.getTime()) <= n * 86400 * 1000;
+  } catch (_) { return false; }
+}
+
+function renderBars(data) {
+  const days = 14;
+  const buckets = Array.from({ length: days }, (_, i) => ({ d: new Date(Date.now() - (days - 1 - i) * 86400 * 1000), n: 0 }));
+  for (const item of data) {
+    try {
+      const d = new Date(item.ts);
+      for (const b of buckets) {
+        if (b.d.toDateString() === d.toDateString()) { b.n++; break; }
+      }
+    } catch (_) {}
+  }
+  const max = Math.max(1, ...buckets.map(b => b.n));
+  document.getElementById("bars-meta").textContent = `total ${buckets.reduce((a, b) => a + b.n, 0)}`;
+  document.getElementById("bars").innerHTML = buckets.map(b => `
+    <div class="bar-col" title="${b.d.toDateString()}: ${b.n}">
+      <div class="bar-fill" data-val="${b.d.toLocaleDateString([], {month:'short', day:'numeric'})} · ${b.n}" style="height: ${(b.n / max) * 88 + 2}%;"></div>
+      <div class="bar-lbl">${b.d.getDate()}</div>
+    </div>
+  `).join("");
+}
+
+function renderDonut(data) {
+  const counts = {};
+  for (const x of data) {
+    const s = (x.status || "unknown").toLowerCase();
+    counts[s] = (counts[s] || 0) + 1;
+  }
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  document.getElementById("donutTotal").textContent = data.length;
+
+  const C = 2 * Math.PI * 52;
+  let acc = 0;
+  const segs = entries.map(([s, n]) => {
+    const frac = n / Math.max(1, data.length);
+    const len = frac * C;
+    const seg = `<circle class="donut-c" cx="65" cy="65" r="52" stroke="${statusColor(s)}" stroke-dasharray="${len} ${C}" stroke-dashoffset="${-acc}"></circle>`;
+    acc += len;
+    return seg;
+  }).join("");
+  document.getElementById("donutSegs").innerHTML = segs || `<circle class="donut-c" cx="65" cy="65" r="52" stroke="#3f3f3f" stroke-dasharray="${C} 0"></circle>`;
+
+  document.getElementById("legend").innerHTML = entries.map(([s, n]) => `
+    <div class="leg">
+      <div class="leg-sw" style="background:${statusColor(s)}"></div>
+      <div class="leg-l">${AAI.esc(s)}</div>
+      <div class="leg-v">${n}</div>
+    </div>
+  `).join("") || '<div style="font-size:12px;color:var(--text-3);">no data yet</div>';
+}
+
+function renderTopQueries(data) {
+  const counts = {};
+  for (const x of data) {
+    const k = (x.query || "").trim();
+    if (!k) continue;
+    counts[k] = (counts[k] || 0) + 1;
+  }
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  document.getElementById("topQueries").innerHTML = top.length
+    ? top.map(([q, n], i) => `
+        <li class="qrow">
+          <div class="qi">${String(i + 1).padStart(2, "0")}</div>
+          <a class="qq" href="/v2?q=${encodeURIComponent(q)}">${AAI.esc(q)}</a>
+          <div class="qc">${n}×</div>
+        </li>
+      `).join("")
+    : '<li style="padding:24px;text-align:center;color:var(--text-3);font-size:12px;">no queries yet</li>';
+}
+
+function renderTimeline(data) {
+  const items = data.slice(0, 10);
+  document.getElementById("timeline").innerHTML = items.length
+    ? items.map(x => `
+        <div class="tl-row">
+          <div class="tl-time">${AAI.fmtTs(x.ts)}</div>
+          <a class="tl-q" href="/v2?q=${encodeURIComponent(x.query || '')}">${AAI.esc(x.query || '')}</a>
+          <div class="tl-c">${AAI.pct(x.confidence)}%</div>
+        </div>
+      `).join("")
+    : '<div style="padding:20px;text-align:center;color:var(--text-3);font-size:12px;">no activity</div>';
+}
+
+document.getElementById("refreshBtn").addEventListener("click", () => { render(); AAI.toast("Refreshed"); });
+document.getElementById("clearBtn").addEventListener("click", () => {
+  if (!confirm("Clear all local search history?")) return;
+  AAI.saveHistory([]);
+  AAI.refreshHistCount();
+  render();
+  AAI.toast("History cleared");
+});
+
+render();
+</script>
+{% endblock %}

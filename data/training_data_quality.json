@@ -1,0 +1,10 @@
+{
+  "rows_total": 108460,
+  "source_breakdown": {
+    "jsonl_clean_target": 108460
+  },
+  "rows_with_no_usable_text": 0,
+  "rows_too_short_after_normalize": 0,
+  "valid_rows_after_filter": 108460,
+  "duplicate_clean_addresses": 81
+}

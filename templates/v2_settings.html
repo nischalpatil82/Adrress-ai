@@ -1,0 +1,417 @@
+{% extends "_base.html" %}
+{% set active_page = "settings" %}
+{% block title %}Settings · AddressAI{% endblock %}
+
+{% block extra_css %}
+  .settings-wrap {
+    padding: 18px 22px 22px;
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 18px;
+    align-items: start;
+  }
+  .set-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    position: sticky;
+    top: 0;
+  }
+  .set-nav a {
+    padding: 7px 12px;
+    border-radius: 4px;
+    color: var(--text-2);
+    font-size: 12.5px;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+  }
+  .set-nav a:hover { background: var(--surface-1); color: var(--text); }
+  .set-nav a.active { background: var(--surface-1); color: var(--text); border-left-color: var(--red); }
+
+  .set-main { display: flex; flex-direction: column; gap: 16px; }
+  .sect {
+    background: var(--glass);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    box-shadow: inset 0 1px 0 var(--glass-edge), 0 14px 40px -18px rgba(0,0,0,0.55);
+  }
+  .sect-head { padding: 14px 18px; border-bottom: 1px solid var(--border); }
+  .sect-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .sect-sub { font-size: 12px; color: var(--text-2); }
+  .sect-body { padding: 4px 0; }
+
+  .opt {
+    display: grid;
+    grid-template-columns: 1fr 200px;
+    gap: 16px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+  }
+  .opt:last-child { border-bottom: none; }
+  .opt-meta { font-size: 13px; color: var(--text); }
+  .opt-meta .l { font-weight: 500; margin-bottom: 3px; }
+  .opt-meta .d { font-size: 11.5px; color: var(--text-2); line-height: 1.5; }
+  .opt-ctrl { display: flex; justify-content: flex-end; }
+
+  /* Toggle switch */
+  .switch {
+    position: relative;
+    width: 38px; height: 22px;
+    background: var(--surface-3);
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .switch::after {
+    content: "";
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--text-2);
+    transition: all 0.18s;
+  }
+  .switch.on { background: var(--red); border-color: var(--red); }
+  .switch.on::after { left: 18px; background: #0a0a0a; }
+  .switch.locked { opacity: 0.55; cursor: not-allowed; }
+
+  .kv {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 12px;
+    padding: 10px 18px;
+    font-size: 12.5px;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+  }
+  .kv:last-child { border-bottom: none; }
+  .kv .k { color: var(--text-2); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 500; }
+  .kv .v { color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 12px; word-break: break-all; }
+  .kv .v.dim { color: var(--text-3); }
+
+  .danger-zone {
+    border-color: var(--red-soft-2);
+  }
+  .danger-zone .sect-head { background: var(--red-soft); border-bottom-color: var(--red-soft-2); }
+
+  @media (max-width: 900px) {
+    .settings-wrap { grid-template-columns: 1fr; }
+    .set-nav { flex-direction: row; flex-wrap: wrap; position: static; }
+    .opt { grid-template-columns: 1fr; }
+    .opt-ctrl { justify-content: flex-start; }
+  }
+{% endblock %}
+
+{% block breadcrumb %}
+<span>System</span>
+<i data-lucide="chevron-right"></i>
+<strong>Settings</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-head-row">
+    <div>
+      <div class="page-title">Settings</div>
+      <div class="page-sub">UI preferences live in your browser. Pipeline config is read from the running server (env vars + .env).</div>
+    </div>
+  </div>
+</div>
+
+<div class="settings-wrap">
+  <nav class="set-nav">
+    <a class="active" href="#interface">Interface</a>
+    <a href="#search">Search</a>
+    <a href="#pipeline">Pipeline (server)</a>
+    <a href="#shortcuts">Shortcuts</a>
+    <a href="#about">About</a>
+    <a href="#danger" style="color:var(--red);">Danger zone</a>
+  </nav>
+
+  <div class="set-main">
+    <!-- Interface -->
+    <section class="sect" id="interface">
+      <div class="sect-head">
+        <div class="sect-title">Interface</div>
+        <div class="sect-sub">Local UI preferences saved to <code class="mono" style="color:var(--red);">localStorage</code>.</div>
+      </div>
+      <div class="sect-body">
+        <div class="opt">
+          <div class="opt-meta">
+            <div class="l">Live suggestions</div>
+            <div class="d">Show inline corrected addresses while typing on the lookup page. Uses the local database only.</div>
+          </div>
+          <div class="opt-ctrl">
+            <div class="switch on" data-pref="liveSuggest"></div>
+          </div>
+        </div>
+        <div class="opt">
+          <div class="opt-meta">
+            <div class="l">
+              Google Places autocomplete
+              <span class="tag" style="margin-left:6px; background:var(--red-soft); border-color:var(--red-soft-2); color:var(--red);">
+                <i data-lucide="alert-triangle" style="width:10px;height:10px;"></i> billed
+              </span>
+            </div>
+            <div class="d">
+              When ON, typing in the search box will also show suggestions from Google Places (shops, landmarks, business names).
+            </div>
+          </div>
+          <div class="opt-ctrl">
+            <div class="switch" data-pref="googleAutoSuggest"></div>
+          </div>
+        </div>
+        <div class="opt">
+          <div class="opt-meta">
+            <div class="l">Auto-zoom map to result</div>
+            <div class="d">Re-center the map on the verified coordinates after each search.</div>
+          </div>
+          <div class="opt-ctrl">
+            <div class="switch on" data-pref="autoZoom"></div>
+          </div>
+        </div>
+        <div class="opt">
+          <div class="opt-meta">
+            <div class="l">Save searches to history</div>
+            <div class="d">Required for the <a href="/v2/history" style="color:var(--red);">History</a> and <a href="/v2/analytics" style="color:var(--red);">Analytics</a> pages.</div>
+          </div>
+          <div class="opt-ctrl">
+            <div class="switch on" data-pref="saveHistory"></div>
+          </div>
+        </div>
+        <div class="opt">
+          <div class="opt-meta">
+            <div class="l">Compact density</div>
+            <div class="d">Tightens row heights across tables. Restores after refresh.</div>
+          </div>
+          <div class="opt-ctrl">
+            <div class="switch" data-pref="compact"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Search -->
+    <section class="sect" id="search">
+      <div class="sect-head">
+        <div class="sect-title">Search defaults</div>
+        <div class="sect-sub">Applied to single-lookup and batch runs.</div>
+      </div>
+      <div class="sect-body">
+        <div class="opt">
+          <div class="opt-meta">
+            <div class="l">Top-N candidates</div>
+            <div class="d">How many database matches to return per query (1–10).</div>
+          </div>
+          <div class="opt-ctrl">
+            <input type="number" class="input" id="topN" min="1" max="10" value="6" style="width: 100px;">
+          </div>
+        </div>
+        <div class="opt">
+          <div class="opt-meta">
+            <div class="l">Batch concurrency</div>
+            <div class="d">Parallel API calls when running batches. Higher = faster but more load.</div>
+          </div>
+          <div class="opt-ctrl">
+            <input type="number" class="input" id="conc" min="1" max="8" value="3" style="width: 100px;">
+          </div>
+        </div>
+        <div class="opt">
+          <div class="opt-meta">
+            <div class="l">Live suggest debounce</div>
+            <div class="d">Milliseconds to wait between keystrokes before fetching live suggestions.</div>
+          </div>
+          <div class="opt-ctrl">
+            <input type="number" class="input" id="debounce" min="100" max="1500" step="50" value="350" style="width: 100px;">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pipeline -->
+    <section class="sect" id="pipeline">
+      <div class="sect-head">
+        <div class="sect-title">Pipeline (server)</div>
+        <div class="sect-sub">Read-only snapshot from <code class="mono" style="color:var(--red);">/health</code>. Restart the server with new env vars to change.</div>
+      </div>
+      <div class="sect-body" id="pipelineBody">
+        <div class="kv"><div class="k">Engine mode</div><div class="v dim" id="hv-mode">loading…</div></div>
+        <div class="kv"><div class="k">v2 loaded</div><div class="v dim" id="hv-v2">loading…</div></div>
+        <div class="kv"><div class="k">Total addresses</div><div class="v dim" id="hv-total">loading…</div></div>
+        <div class="kv"><div class="k">Reranker</div><div class="v dim" id="hv-rerank">loading…</div></div>
+        <div class="kv"><div class="k">Vector search</div><div class="v dim" id="hv-sem">loading…</div></div>
+        <div class="kv"><div class="k">Startup error</div><div class="v dim" id="hv-err">loading…</div></div>
+      </div>
+    </section>
+
+    <!-- Shortcuts -->
+    <section class="sect" id="shortcuts">
+      <div class="sect-head">
+        <div class="sect-title">Keyboard shortcuts</div>
+        <div class="sect-sub">Available globally on every page.</div>
+      </div>
+      <div class="sect-body">
+        <div class="kv"><div class="k">⌘ / Ctrl + K</div><div class="v">Focus the sidebar quick lookup</div></div>
+        <div class="kv"><div class="k">⏎ Enter (in lookup)</div><div class="v">Run analyze on current input</div></div>
+        <div class="kv"><div class="k">Esc</div><div class="v">Dismiss the live suggestions dropdown</div></div>
+      </div>
+    </section>
+
+    <!-- About -->
+    <section class="sect" id="about">
+      <div class="sect-head">
+        <div class="sect-title">About</div>
+      </div>
+      <div class="sect-body">
+        <div class="kv"><div class="k">Build</div><div class="v">v2.6 · self-hosted</div></div>
+        <div class="kv"><div class="k">Pipeline</div><div class="v">normalize → spell → retrieve → rerank → verify</div></div>
+        <div class="kv"><div class="k">Geocoders</div><div class="v">Google Places + Geocoding · OSM Nominatim · MapBox (fallback chain)</div></div>
+        <div class="kv"><div class="k">Health endpoint</div><div class="v"><a href="/health" target="_blank" style="color:var(--red);">/health →</a></div></div>
+      </div>
+    </section>
+
+    <!-- Danger -->
+    <section class="sect danger-zone" id="danger">
+      <div class="sect-head">
+        <div class="sect-title" style="color:var(--red);">Danger zone</div>
+        <div class="sect-sub">Operations that affect locally-stored data only.</div>
+      </div>
+      <div class="sect-body">
+        <div class="opt">
+          <div class="opt-meta">
+            <div class="l">Reset UI preferences</div>
+            <div class="d">Restores defaults for switches and inputs above.</div>
+          </div>
+          <div class="opt-ctrl">
+            <button class="btn" id="resetPrefsBtn"><i data-lucide="rotate-ccw"></i> Reset</button>
+          </div>
+        </div>
+        <div class="opt">
+          <div class="opt-meta">
+            <div class="l">Wipe search history</div>
+            <div class="d">Permanently deletes all entries used by Analytics and History pages.</div>
+          </div>
+          <div class="opt-ctrl">
+            <button class="btn" id="wipeBtn" style="border-color:var(--red-soft-2); color:var(--red);"><i data-lucide="trash-2"></i> Wipe</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PREF_KEY = "aai_prefs_v1";
+const DEFAULTS = {
+  liveSuggest: true,
+  googleAutoSuggest: false,   // off by default — Places API is billed per request
+  autoZoom: true,
+  saveHistory: true,
+  compact: false,
+  topN: 6,
+  conc: 3,
+  debounce: 350,
+};
+
+function loadPrefs() {
+  try { return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(PREF_KEY) || "{}")); }
+  catch (_) { return { ...DEFAULTS }; }
+}
+function savePrefs(p) {
+  localStorage.setItem(PREF_KEY, JSON.stringify(p));
+}
+
+let prefs = loadPrefs();
+
+function syncUI() {
+  document.querySelectorAll(".switch[data-pref]").forEach(sw => {
+    sw.classList.toggle("on", !!prefs[sw.dataset.pref]);
+  });
+  document.getElementById("topN").value = prefs.topN;
+  document.getElementById("conc").value = prefs.conc;
+  document.getElementById("debounce").value = prefs.debounce;
+  document.body.classList.toggle("compact", !!prefs.compact);
+}
+
+// Switch handlers
+document.querySelectorAll(".switch[data-pref]").forEach(sw => {
+  sw.addEventListener("click", () => {
+    const key = sw.dataset.pref;
+    prefs[key] = !prefs[key];
+    savePrefs(prefs);
+    syncUI();
+    AAI.toast(`${key} ${prefs[key] ? "enabled" : "disabled"}`);
+  });
+});
+
+// Input handlers
+["topN", "conc", "debounce"].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener("change", () => {
+    const v = Number(el.value);
+    if (!Number.isFinite(v)) return;
+    prefs[id] = v;
+    savePrefs(prefs);
+    AAI.toast("Saved");
+  });
+});
+
+// Reset / wipe
+document.getElementById("resetPrefsBtn").addEventListener("click", () => {
+  if (!confirm("Reset all UI preferences to defaults?")) return;
+  prefs = { ...DEFAULTS };
+  savePrefs(prefs); syncUI();
+  AAI.toast("Preferences reset");
+});
+document.getElementById("wipeBtn").addEventListener("click", () => {
+  if (!confirm("Permanently delete all local search history? This cannot be undone.")) return;
+  AAI.saveHistory([]);
+  AAI.refreshHistCount();
+  AAI.toast("History wiped");
+});
+
+// Side nav scroll
+document.querySelectorAll(".set-nav a").forEach(a => {
+  a.addEventListener("click", e => {
+    e.preventDefault();
+    const tgt = document.querySelector(a.getAttribute("href"));
+    if (tgt) tgt.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.querySelectorAll(".set-nav a").forEach(x => x.classList.remove("active"));
+    a.classList.add("active");
+  });
+});
+
+// Load /health for pipeline pane
+async function loadHealth() {
+  try {
+    const r = await fetch("/health");
+    const j = await r.json();
+    const s = j.stats || {};
+    const set = (id, v, dim) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = (v == null || v === "") ? "—" : String(v);
+      el.classList.toggle("dim", !!dim);
+    };
+    set("hv-mode", s.mode || "—");
+    set("hv-v2", s.v2_loaded ? "yes" : "no");
+    set("hv-total", s.total_addresses ?? "—", s.total_addresses == null);
+    set("hv-rerank", s.reranker_loaded == null ? "—" : (s.reranker_loaded ? "loaded" : "not loaded"), s.reranker_loaded == null);
+    set("hv-sem", s.semantic_loaded == null ? "—" : (s.semantic_loaded ? "loaded" : "not loaded"), s.semantic_loaded == null);
+    set("hv-err", s.startup_error || "none", !s.startup_error);
+  } catch (e) {
+    document.getElementById("pipelineBody").innerHTML =
+      `<div class="kv"><div class="k">Status</div><div class="v" style="color:var(--red);">/health unreachable: ${AAI.esc(e.message)}</div></div>`;
+  }
+}
+
+syncUI();
+loadHealth();
+</script>
+{% endblock %}

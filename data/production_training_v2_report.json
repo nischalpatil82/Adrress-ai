@@ -1,0 +1,231 @@
+{
+  "input": "data\\production_training_v2.jsonl",
+  "output": "data\\production_training_v2_clean.jsonl",
+  "rows_written": 49738,
+  "parse_errors": 0,
+  "missing_required": 0,
+  "too_short": 0,
+  "duplicate_clean_dropped": 149214,
+  "raw_address_target_used": 0,
+  "target_source_counts": {
+    "clean_target": 49738
+  },
+  "rows_with_clean_repairs": 78,
+  "remaining_bad_clean_patterns": 0,
+  "top_repairs": [
+    [
+      "ernakulam->kochi",
+      61
+    ],
+    [
+      "omr->old mahabalipuram road",
+      12
+    ],
+    [
+      "santacruz->santa cruz",
+      5
+    ]
+  ],
+  "examples": [
+    {
+      "line": 9293,
+      "before": "door no 800 sri balaji residency ernakulam kochi kerala 682035",
+      "after": "door no 800 sri balaji residency kochi kochi kerala 682035",
+      "changes": [
+        "ernakulam->kochi"
+      ]
+    },
+    {
+      "line": 12689,
+      "before": "no 8 purva fountain square bannerghatta road omr road chennai tamil nadu 600033",
+      "after": "no 8 purva fountain square bannerghatta road old mahabalipuram road road chennai tamil nadu 600033",
+      "changes": [
+        "omr->old mahabalipuram road"
+      ]
+    },
+    {
+      "line": 13313,
+      "before": "472 4 shiva heights ernakulam kochi kerala 682001",
+      "after": "472 4 shiva heights kochi kochi kerala 682001",
+      "changes": [
+        "ernakulam->kochi"
+      ]
+    },
+    {
+      "line": 13473,
+      "before": "flat 260 purva fountain square market road ernakulam kochi kerala 682014",
+      "after": "flat 260 purva fountain square market road kochi kochi kerala 682014",
+      "changes": [
+        "ernakulam->kochi"
+      ]
+    },
+    {
+      "line": 13841,
+      "before": "plot 17 adarsh palm retreat lake road near district court ernakulam kochi kerala 682007",
+      "after": "plot 17 adarsh palm retreat lake road near district court kochi kochi kerala 682007",
+      "changes": [
+        "ernakulam->kochi"
+      ]
+    },
+    {
+      "line": 18013,
+      "before": "no 564 golden palm subhash road opp petrol bunk ernakulam kochi kerala 682013",
+      "after": "no 564 golden palm subhash road opp petrol bunk kochi kochi kerala 682013",
+      "changes": [
+        "ernakulam->kochi"
+      ]
+    },
+    {
+      "line": 18829,
+      "before": "flat 2 block d supertech capetown gandhi road opp bmtc bus stop ernakulam kochi kerala 682001",
+      "after": "flat 2 block d supertech capetown gandhi road opp bmtc bus stop kochi kochi kerala 682001",
+      "changes": [
+        "ernakulam->kochi"
+      ]
+    },
+    {
+      "line": 21785,
+      "before": "flat no 753 raghavendra residency mount road omr road chennai tamil nadu 600018",
+      "after": "flat no 753 raghavendra residency mount road old mahabalipuram road road chennai tamil nadu 600018",
+      "changes": [
+        "omr->old mahabalipuram road"
+      ]
+    },
+    {
+      "line": 22085,
+      "before": "flat no 552 supertech capetown bypass road behind big bazaar ernakulam kochi kerala 682023",
+      "after": "flat no 552 supertech capetown bypass road behind big bazaar kochi kochi kerala 682023",
+      "changes": [
+        "ernakulam->kochi"
+      ]
+    },
+    {
+      "line": 26321,
+      "before": "anna salai omr road chennai tamil nadu 600078",
+      "after": "anna salai old mahabalipuram road road chennai tamil nadu 600078",
+      "changes": [
+        "omr->old mahabalipuram road"
+      ]
+    },
+    {
+      "line": 26809,
+      "before": "flat 537 hosur road near telephone exchange ernakulam kochi kerala 682004",
+      "after": "flat 537 hosur road near telephone exchange kochi kochi kerala 682004",
+      "changes": [
+        "ernakulam->kochi"
+      ]
+    },
+    {
+      "line": 34249,
+      "before": "house no 505 church road ernakulam kochi kerala 682035",
+      "after": "house no 505 church road kochi kochi kerala 682035",
+      "changes": [
+        "ernakulam->kochi"
+      ]
+    },
+    {
+      "line": 39625,
+      "before": "door no 3 beach road near district court ernakulam kochi kerala 682009",
+      "after": "door no 3 beach road near district court kochi kochi kerala 682009",
+      "changes": [
+        "ernakulam->kochi"
+      ]
+    },
+    {
+      "line": 43377,
+      "before": "860 9 golden palm main road behind police station omr road chennai tamil nadu 600067",
+      "after": "860 9 golden palm main road behind police station old mahabalipuram road road chennai tamil nadu 600067",
+      "changes": [
+        "omr->old mahabalipuram road"
+      ]
+    },
+    {
+      "line": 49877,
+      "before": "793 lily mansion nehru road near reliance fresh ernakulam kochi kerala 682010",
+      "after": "793 lily mansion nehru road near reliance fresh kochi kochi kerala 682010",
+      "changes": [
+        "ernakulam->kochi"
+      ]
+    },
+    {
+      "line": 58545,
+      "before": "station road ernakulam kochi kerala 682029",
+      "after": "station road kochi kochi kerala 682029",
+      "changes": [
+        "ernakulam->kochi"
+      ]
+    },
+    {
+      "line": 59385,
+      "before": "no 971 aparna sarovar gandhi road behind big bazaar ernakulam kochi kerala 682006",
+      "after": "no 971 aparna sarovar gandhi road behind big bazaar kochi kochi kerala 682006",
+      "changes": [
+        "ernakulam->kochi"
+      ]
+    },
+    {
+      "line": 62493,
+      "before": "flat no 981 sapphire homes ernakulam kochi kerala 682020",
+      "after": "flat no 981 sapphire homes kochi kochi kerala 682020",
+      "changes": [
+        "ernakulam->kochi"
+      ]
+    },
+    {
+      "line": 63165,
+      "before": "343 1st floor ernakulam kochi kerala 682029",
+      "after": "343 1st floor kochi kochi kerala 682029",
+      "changes": [
+        "ernakulam->kochi"
+      ]
+    },
+    {
+      "line": 63449,
+      "before": "no 14 lakshmi nilaya bannerghatta road behind police station ernakulam kochi kerala 682035",
+      "after": "no 14 lakshmi nilaya bannerghatta road behind police station kochi kochi kerala 682035",
+      "changes": [
+        "ernakulam->kochi"
+      ]
+    },
+    {
+      "line": 64481,
+      "before": "no 670 omr road chennai tamil nadu 600020",
+      "after": "no 670 old mahabalipuram road road chennai tamil nadu 600020",
+      "changes": [
+        "omr->old mahabalipuram road"
+      ]
+    },
+    {
+      "line": 65241,
+      "before": "992 4th floor behind playground santacruz mumbai maharashtra 400068",
+      "after": "992 4th floor behind playground santa cruz mumbai maharashtra 400068",
+      "changes": [
+        "santacruz->santa cruz"
+      ]
+    },
+    {
+      "line": 65785,
+      "before": "house no 449 omr road chennai tamil nadu 600113",
+      "after": "house no 449 old mahabalipuram road road chennai tamil nadu 600113",
+      "changes": [
+        "omr->old mahabalipuram road"
+      ]
+    },
+    {
+      "line": 67669,
+      "before": "flat no 179 golden palm near district court omr road chennai tamil nadu 600107",
+      "after": "flat no 179 golden palm near district court old mahabalipuram road road chennai tamil nadu 600107",
+      "changes": [
+        "omr->old mahabalipuram road"
+      ]
+    },
+    {
+      "line": 70705,
+      "before": "276 1st floor sai residency ernakulam kochi kerala 682026",
+      "after": "276 1st floor sai residency kochi kochi kerala 682026",
+      "changes": [
+        "ernakulam->kochi"
+      ]
+    }
+  ]
+}

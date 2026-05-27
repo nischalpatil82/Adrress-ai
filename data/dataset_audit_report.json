@@ -1,0 +1,44 @@
+{
+  "strict_jsonl": {
+    "total_rows": 123507,
+    "missing_noisy": 0,
+    "missing_clean": 0,
+    "identical_pairs": 7838,
+    "typo_in_clean": 574,
+    "conflicts": 2,
+    "unique_clean": 123507
+  },
+  "cleaned_strict_jsonl": {
+    "total_rows": 108462,
+    "missing_noisy": 0,
+    "missing_clean": 0,
+    "identical_pairs": 1859,
+    "typo_in_clean": 31,
+    "conflicts": 2,
+    "unique_clean": 108462
+  },
+  "full_jsonl": {
+    "total_rows": 157034,
+    "missing_noisy": 0,
+    "missing_clean": 0,
+    "identical_pairs": 4407,
+    "typo_in_clean": 954,
+    "conflicts": 1,
+    "unique_clean": 157034
+  },
+  "realistic_csv": {
+    "total": 49738,
+    "non_empty": 49738,
+    "unique": 49738
+  },
+  "raw_csv": {
+    "total": 49738,
+    "non_empty": 49738,
+    "unique": 49738
+  },
+  "learned_misspellings": {
+    "total": 2467,
+    "circular": 0,
+    "corrupted": 0
+  }
+}

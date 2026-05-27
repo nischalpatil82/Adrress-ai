@@ -1,0 +1,323 @@
+{
+  "summary": {
+    "seed": 42,
+    "n_eval": 100,
+    "exact_hit_at_1": 0.72,
+    "exact_hit_at_5": 0.75,
+    "fuzzy_hit_at_1": 1.0,
+    "fuzzy_hit_at_5": 1.0,
+    "verified_db_match_wrong_cases": 1,
+    "generated_only_cases": 8,
+    "total_failures": 28
+  },
+  "failures": [
+    {
+      "input": "th cross th main road lakkappa garden banashankari rd phase bangalore karataka india bangalore karnaaka 560085",
+      "expected": "th cross th main road lakkappa garden banashankari rd phase bangalore karnataka india bangalore karnataka 560085",
+      "predicted": "th block th main road banashankari rd phase rd stage bangalore bangalore karnataka india bangalore karnataka 560085",
+      "status": "candidate_db_match",
+      "scoring": "fuzzy_candidate_preferred",
+      "confidence": 0.0001,
+      "verification_score": 0.0,
+      "similarity_score": 91.78,
+      "sql_block_strategy": "pin_city_state"
+    },
+    {
+      "input": "rd main g cross b g road bimillah nagar bangalore karnataka india bnagalore karnataka 56029",
+      "expected": "rd main g cross b g road bismillah nagar bangalore karnataka india bangalore karnataka 560029",
+      "predicted": "f cross rd main road b g road bismill nagar bangalore karnataka india bangalore karnataka 560029",
+      "status": "candidate_db_match",
+      "scoring": "fuzzy_candidate_rescue",
+      "confidence": 0.0004,
+      "verification_score": 0.0,
+      "similarity_score": 91.39,
+      "sql_block_strategy": "global_rescue"
+    },
+    {
+      "input": "rd main rd jaibheemanagar btm st stage bangalore bangalore karnataka india bangalore karnataka 560086",
+      "expected": "rd main road jaibheemanagar btm st stage bangalore bangalore karnataka india bangalore karnataka 560068",
+      "predicted": "rd main jaibheemanagar venkateswara layout btm st stage madiwala bangalore karnataka india bangalore karnataka 560068",
+      "status": "candidate_db_match",
+      "scoring": "fuzzy_candidate_rescue",
+      "confidence": 0.0001,
+      "verification_score": 0.0,
+      "similarity_score": 94.57,
+      "sql_block_strategy": "global_rescue"
+    },
+    {
+      "input": "rd main road sheshhadripuram bangalore bangalore karnattaka nidia bangalore karnatkaa 560020",
+      "expected": "rd main road sheshadripuram bangalore bangalore karnataka india bangalore karnataka 560020",
+      "predicted": "nd main road sheshadripuram bangalore karnataka india bangalore karnataka 560020",
+      "status": "candidate_db_match",
+      "scoring": "fuzzy_candidate_rescue",
+      "confidence": 0.0001,
+      "verification_score": 0.0,
+      "similarity_score": 91.89,
+      "sql_block_strategy": "global_rescue"
+    },
+    {
+      "input": "st cross widia layout vijayanagar bangalroe bangalore karnataka india bangalore karnataka 560040",
+      "expected": "st cross widia layout vijayanagar bangalore bangalore karnataka india bangalore karnataka 560040",
+      "predicted": "a th cross rpc layout vijayanagar bangalore bangalore karnataka india bangalore karnataka 560040",
+      "status": "candidate_db_match",
+      "scoring": "fuzzy_candidate_preferred",
+      "confidence": 0.0001,
+      "verification_score": 0.0,
+      "similarity_score": 92.68,
+      "sql_block_strategy": "pin_city_state"
+    },
+    {
+      "input": "th cross brundavan nagar mattikere banglaore bangalore karnataka indiia banaglore karnataka 560054",
+      "expected": "th cross brundavan nagar mattikere bangalore bangalore karnataka india bangalore karnataka 560054",
+      "predicted": "th main rd cross mattikere bangalore karnataka india bangalore karnataka 560054",
+      "status": "candidate_db_match",
+      "scoring": "fuzzy_candidate_preferred",
+      "confidence": 0.0001,
+      "verification_score": 0.0,
+      "similarity_score": 92.73,
+      "sql_block_strategy": "pin_city_state"
+    },
+    {
+      "input": "rd b main th block koramangala bangalore karnataka idia bangalore karnataka 560095",
+      "expected": "rd b main th block koramangala bangalore karnataka india bangalore karnataka 560095",
+      "predicted": "b st a main rd cross th block koramangala bangalore karnataka india bangalore karnataka 560095",
+      "status": "candidate_db_match",
+      "scoring": "fuzzy_candidate_preferred",
+      "confidence": 0.0001,
+      "verification_score": 0.0,
+      "similarity_score": 91.97,
+      "sql_block_strategy": "pin_city_state"
+    },
+    {
+      "input": "st main th x ivnayaka nagar adugodi post bangalore karnnataka india bangalore karnataka 56000",
+      "expected": "st main th cross vinayaka nagar adugodi post bangalore karnataka india bangalore karnataka 560030",
+      "predicted": "st main vinayaka nagar adugodi post bangalore karnataka india bangalore karnataka 560030",
+      "status": "candidate_db_match",
+      "scoring": "fuzzy_candidate_rescue",
+      "confidence": 0.0005,
+      "verification_score": 0.0,
+      "similarity_score": 94.29,
+      "sql_block_strategy": "global_rescue"
+    },
+    {
+      "input": "btm st stage th a main bangalore karnnataka inndia bangalore karnataka 5600029",
+      "expected": "btm st stage th a main bangalore karnataka india bangalore karnataka 560029",
+      "predicted": "no th main btm st stage bangalore karnataka india bangalore karnataka 560029",
+      "status": "candidate_db_match",
+      "scoring": "fuzzy_candidate_preferred",
+      "confidence": 0.0001,
+      "verification_score": 0.0,
+      "similarity_score": 91.26,
+      "sql_block_strategy": "pin_city_state"
+    },
+    {
+      "input": "nd cross dollors layout j p nagar th phase bangalore karntaaka inddia bangalore karnatakka 5600078",
+      "expected": "nd cross dollors layout j p nagar th phase bangalore karnataka india bangalore karnataka 560078",
+      "predicted": "nd cross c r layout j p nagar st phase bangalore bangalore karnataka india bangalore karnataka 560078",
+      "status": "candidate_db_match",
+      "scoring": "fuzzy_candidate_preferred",
+      "confidence": 0.0001,
+      "verification_score": 0.0,
+      "similarity_score": 94.81,
+      "sql_block_strategy": "pin_city_state"
+    },
+    {
+      "input": "st floor nd cross ashokka nagar bsk st stage bagnalore bengaluru karnataka india bangalore karnataka 50050",
+      "expected": "st floor nd cross ashoka nagar bsk st stage bangalore bangalore karnataka india bangalore karnataka 560050",
+      "predicted": "nd cross ashoka nagar bsk st stage bangalore bangalore karnataka india bangalore karnataka 560050",
+      "status": "candidate_db_match",
+      "scoring": "fuzzy_candidate_preferred",
+      "confidence": 0.0001,
+      "verification_score": 0.0,
+      "similarity_score": 94.49,
+      "sql_block_strategy": "city_state"
+    },
+    {
+      "input": "th mn rd keb layout btm st stage bangalore bangalore karnataka india bangalore karnataka 560076",
+      "expected": "th main road keb layout btm st stage bangalore bangalore karnataka india bangalore karnataka 560076",
+      "predicted": "th main keb layout btm st stage bangalore bangalore karnataka india bangalore karnataka 560076",
+      "status": "verified_db_match",
+      "scoring": "strict_verifier",
+      "confidence": 1.0,
+      "verification_score": 100.0,
+      "similarity_score": 100.0,
+      "sql_block_strategy": "pin_city_state"
+    },
+    {
+      "input": "nd x udayaangar uttarahalli mn bangalore karnataka indiia bangalore karnataka 5600661",
+      "expected": "nd cross udayanagar uttarahalli main bangalore karnataka india bangalore karnataka 560061",
+      "predicted": "Nd X Udayanagar Uttarahalli Mn Bangalore Karnataka India Bangalore Karnataka 5600661",
+      "status": "generated_only",
+      "scoring": "fallback_generated",
+      "confidence": 0.0001,
+      "verification_score": 0.0,
+      "similarity_score": 0.0001,
+      "sql_block_strategy": "pin_city_state"
+    },
+    {
+      "input": "rd cross mthurayaswamy layout sunkadakatte bengaluru karnataka india bengaluru karnataka 5600091",
+      "expected": "rd cross muthurayaswamy layout sunkadakatte bangalore karnataka india bangalore karnataka 560091",
+      "predicted": "rd cross muthuraya swamy layout sunkadakatte bangalore karnataka india bangalore karnataka 560091",
+      "status": "candidate_db_match",
+      "scoring": "fuzzy_candidate_rescue",
+      "confidence": 0.0005,
+      "verification_score": 0.0,
+      "similarity_score": 98.7,
+      "sql_block_strategy": "global_rescue"
+    },
+    {
+      "input": "no ajnaneya tempe road hosur road adugoddi bengaluru bangalore karnataka india bangalore karnataka 5600030",
+      "expected": "no anjaneya temple road hosur road adugodi bangalore bangalore karnataka india bangalore karnataka 560030",
+      "predicted": "No Ajnaneya Tempe Road Hosur Road Adugodi Bangalore Bangalore Karnataka India Bangalore Karnataka 5600030",
+      "status": "generated_only",
+      "scoring": "fallback_generated",
+      "confidence": 0.0001,
+      "verification_score": 0.0,
+      "similarity_score": 0.0001,
+      "sql_block_strategy": "city_state"
+    },
+    {
+      "input": "f f rd cross btm nd staage bangalore karnataka inndia bengaluru karnataka 560029",
+      "expected": "f f rd cross btm nd stage bangalore karnataka india bangalore karnataka 560029",
+      "predicted": "F F Rd Cross BTM Nd Staage Bangalore Karnataka India Bangalore Karnataka 560029",
+      "status": "generated_only",
+      "scoring": "fallback_generated",
+      "confidence": 0.0001,
+      "verification_score": 0.0,
+      "similarity_score": 0.0001,
+      "sql_block_strategy": "pin_city_state"
+    },
+    {
+      "input": "ombr lyt banaswadi bengaluru bangalore karataka india bengaluru karnataka 560043",
+      "expected": "ombr layout banaswadi bangalore bangalore karnataka india bangalore karnataka 560043",
+      "predicted": "Ombr Lyt Banaswadi Bangalore Bangalore Karnataka India Bangalore Karnataka 560043",
+      "status": "generated_only",
+      "scoring": "fallback_generated",
+      "confidence": 0.0001,
+      "verification_score": 0.0,
+      "similarity_score": 0.0001,
+      "sql_block_strategy": "pin_city_state"
+    },
+    {
+      "input": "th main th cross btm lyt bangalore karnataka india bangalore karnataka 5660078",
+      "expected": "th main th cross btm layout bangalore karnataka india bangalore karnataka 560078",
+      "predicted": "rd b main th b cross isro layout bangalore karnataka india bangalore karnataka 560078",
+      "status": "candidate_db_match",
+      "scoring": "fuzzy_candidate_preferred",
+      "confidence": 0.0001,
+      "verification_score": 0.0,
+      "similarity_score": 91.38,
+      "sql_block_strategy": "pin_city_state"
+    },
+    {
+      "input": "c o lobofelix muniraju layout near gubbbi x kottanuru bengaluru karnataka india bangalore karnataka 560077",
+      "expected": "c o lobofelix muniraju layout near gubbi cross kottanuru bangalore karnataka india bangalore karnataka 560077",
+      "predicted": "C O Lobofelix Muniraju Layout Near Gubbi X Kottanuru Bangalore Karnataka India Bangalore Karnataka 560077",
+      "status": "generated_only",
+      "scoring": "fallback_generated",
+      "confidence": 0.0001,
+      "verification_score": 0.0,
+      "similarity_score": 0.0001,
+      "sql_block_strategy": "pin_city_state"
+    },
+    {
+      "input": "sobha arena the park flat kanakapura rd thalaghattpaura bangalore karnataka india bangalore karnataka 560109",
+      "expected": "sobha arena the park flat kanakapura road thalaghattapura bangalore karnataka india bangalore karnataka 560109",
+      "predicted": "Sobha Arena The Park Flat Kanakapura Rd Thalaghattpura Bangalore Karnataka India Bangalore Karnataka 560109",
+      "status": "generated_only",
+      "scoring": "fallback_generated",
+      "confidence": 0.0001,
+      "verification_score": 0.0,
+      "similarity_score": 0.0001,
+      "sql_block_strategy": "pin_city_state"
+    },
+    {
+      "input": "st main b cross viajya bank layout bilkahalli bangalore karnataka india bengaluru karnataka 560076",
+      "expected": "st main b cross vijaya bank layout bilekahalli bangalore karnataka india bangalore karnataka 560076",
+      "predicted": "th cross rd main vijaya bank layout bilekali bangalore karnataka india bangalore karnataka 560076",
+      "status": "candidate_db_match",
+      "scoring": "fuzzy_candidate_rescue",
+      "confidence": 0.0002,
+      "verification_score": 0.0,
+      "similarity_score": 93.33,
+      "sql_block_strategy": "global_rescue"
+    },
+    {
+      "input": "prasanna talkies road nd cross behind uclistan maneil chitradurga karntaka india chitradurga karnataaka 577501",
+      "expected": "prasanna talkies road nd cross behind culistan maneil chitradurga karnataka india chitradurga karnataka 577501",
+      "predicted": "prasanna talkies road horapete chitradurga chitradurga karnataka india chitradurga karnataka 577501",
+      "status": "candidate_db_match",
+      "scoring": "fuzzy_candidate_preferred",
+      "confidence": 0.0001,
+      "verification_score": 0.0,
+      "similarity_score": 92.56,
+      "sql_block_strategy": "pincode"
+    },
+    {
+      "input": "hegganahalli near markanndeshwar temple bangalore karnaataka india bangalore karnaatka 560091",
+      "expected": "hegganahalli near markandeshwar temple bangalore karnataka india bangalore karnataka 560091",
+      "predicted": "hegganahalli bangalore karnataka india bangalore karnataka 560091",
+      "status": "candidate_db_match",
+      "scoring": "fuzzy_candidate_preferred",
+      "confidence": 0.0001,
+      "verification_score": 0.0,
+      "similarity_score": 100.0,
+      "sql_block_strategy": "pin_city_state"
+    },
+    {
+      "input": "th x kbuer singh lane nd floor jabbr buuilding dodda mvalli bengaluru karnataka indai bengaluru karnataka 560004",
+      "expected": "th cross kuber singh lane nd floor jabbar building dodda mavalli bangalore karnataka india bangalore karnataka 560004",
+      "predicted": "Th X Kbuer Singh Lane Nd Floor Jabber Buuilding Dodda Mavalli Bangalore Karnataka Indai Bangalore Karnataka 560004",
+      "status": "generated_only",
+      "scoring": "fallback_generated",
+      "confidence": 0.0001,
+      "verification_score": 0.0,
+      "similarity_score": 0.0001,
+      "sql_block_strategy": "pin_city_state"
+    },
+    {
+      "input": "nd block swwamy vivekanada road t r ngr bengaluru karnataka india bangalore karnataaka 560028",
+      "expected": "nd block swamy vivekanada road t r nagar bangalore karnataka india bangalore karnataka 560028",
+      "predicted": "st block t r nagar bangalore karnataka india bangalore karnataka 560028",
+      "status": "candidate_db_match",
+      "scoring": "fuzzy_candidate_preferred",
+      "confidence": 0.0001,
+      "verification_score": 0.0,
+      "similarity_score": 96.97,
+      "sql_block_strategy": "pin_city_state"
+    },
+    {
+      "input": "pioneer paradise s th main st cross briigade miillenium rd j p nagar th phase bangalore karnataka india bangalore kanrataka 560078",
+      "expected": "pioneer paradise s th main st cross brigade millenium road j p nagar th phase bangalore karnataka india bangalore karnataka 560078",
+      "predicted": "g paradise th main bob colony j p nagar th phase bangalore karnataka india bangalore karnataka 560078",
+      "status": "candidate_db_match",
+      "scoring": "fuzzy_candidate_preferred",
+      "confidence": 0.0001,
+      "verification_score": 0.0,
+      "similarity_score": 90.91,
+      "sql_block_strategy": "pin_city_state"
+    },
+    {
+      "input": "th x sarrjapura anekkal tq bangalore kanataka india bengaluru karnataaka 562125",
+      "expected": "th cross sarjapura anekal tq bangalore karnataka india bangalore karnataka 562125",
+      "predicted": "a sajapur anekal taluk bangalore karnataka india bangalore karnataka 562125",
+      "status": "candidate_db_match",
+      "scoring": "fuzzy_candidate_rescue",
+      "confidence": 0.003,
+      "verification_score": 0.0,
+      "similarity_score": 90.2,
+      "sql_block_strategy": "global_rescue"
+    },
+    {
+      "input": "nd main thy x basaveshvara lyt vijaynagar bangalore karnataka india bangalore karnataka 560004",
+      "expected": "nd main thy cross basaveshvara layout vijaynagar bangalore karnataka india bangalore karnataka 560040",
+      "predicted": "Nd Main Thy X Basaveshvara Lyt Vijaynagar Bangalore Karnataka India Bangalore Karnataka 560004",
+      "status": "generated_only",
+      "scoring": "fallback_generated",
+      "confidence": 0.0001,
+      "verification_score": 0.0,
+      "similarity_score": 0.0001,
+      "sql_block_strategy": "pin_city_state"
+    }
+  ]
+}
