@@ -63,8 +63,10 @@ def _maybe_load_v2() -> None:
         )
         print("  [+] v2 pipeline loaded.")
     except Exception as exc:  # noqa: BLE001
+        import traceback
         v2_error = str(exc)
         print(f"  [!] v2 pipeline failed to load: {exc}")
+        traceback.print_exc()
 
 
 def _load_pipeline_module():
