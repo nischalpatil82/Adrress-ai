@@ -32,3 +32,4 @@ cryptography>=42.0.0
 # v2 stack
 requests>=2.31.0
 indic-transliteration>=2.3.0  # optional, transliteration for Devanagari/regional
+protobuf>=3.20.0  # required by tokenizers/transformers on Linux
