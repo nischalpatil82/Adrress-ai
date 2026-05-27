@@ -163,11 +163,11 @@ class T5Speller:
             log.info("T5 model not present at %s; T5 speller disabled.", self.model_path)
             return self
         try:
-            from transformers import T5ForConditionalGeneration, T5Tokenizer
+            from transformers import T5ForConditionalGeneration, AutoTokenizer
         except Exception as exc:  # noqa: BLE001
             log.warning("transformers not installed; T5 disabled: %s", exc)
             return self
-        self._tok = T5Tokenizer.from_pretrained(str(self.model_path))
+        self._tok = AutoTokenizer.from_pretrained(str(self.model_path))
         self._model = T5ForConditionalGeneration.from_pretrained(str(self.model_path))
         self._model.eval()
         return self
