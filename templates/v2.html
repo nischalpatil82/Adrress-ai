@@ -1,0 +1,1239 @@
+{% extends "_base.html" %}
+{% set active_page = "lookup" %}
+{% block title %}Lookup · AddressAI{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+{% endblock %}
+
+{% block extra_css %}
+  /* ===== Lookup-specific ===== */
+  .lookup-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 16px;
+    padding: 18px 22px 22px;
+    align-items: start;
+  }
+  /* When the right rail has nothing visible to render (no map + no struct
+     fields), collapse the second grid track entirely so the main column
+     spans the full width on every laptop size. */
+  .lookup-grid.no-right { grid-template-columns: minmax(0, 1fr); }
+  .lookup-grid.no-right .right-col { display: none; }
+
+  /* Search bar */
+  .qrow {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    position: relative;
+  }
+  .qfield {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    background: var(--glass);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 7px;
+    padding: 0 10px 0 12px;
+    box-shadow: inset 0 1px 0 var(--glass-edge);
+  }
+  .qfield:focus-within { border-color: var(--red); box-shadow: 0 0 0 3px var(--red-soft), inset 0 1px 0 var(--glass-edge); }
+  .qfield svg { color: var(--text-2); width: 14px; height: 14px; flex-shrink: 0; }
+  .qfield input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-size: 13.5px;
+    padding: 9px 8px;
+    font-family: inherit;
+  }
+  .qfield input::placeholder { color: var(--text-3); }
+  .qfield .clear {
+    color: var(--text-3); cursor: pointer; padding: 4px;
+  }
+  .qfield .clear:hover { color: var(--text-1); }
+
+  /* Live dropdown */
+  .live {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 92px;
+    background: var(--glass-strong);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 7px;
+    z-index: 20;
+    max-height: 320px;
+    overflow-y: auto;
+    box-shadow: inset 0 1px 0 var(--glass-edge), 0 18px 50px rgba(0,0,0,0.65);
+  }
+  .live-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+    transition: background var(--t-fast) var(--ease-out), padding-left var(--t-fast) var(--ease-out);
+  }
+  .live-item:last-child { border-bottom: none; }
+  .live-item:hover { background: var(--surface-2); padding-left: 16px; }
+  .live-text { font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .live-src {
+    font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px;
+    padding: 2px 6px; border-radius: 3px;
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2);
+    flex-shrink: 0;
+  }
+  .live-src.corrected { background: var(--red-soft); border-color: var(--red-soft-2); color: var(--red); }
+  .live-src.verified { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.16); color: var(--text); }
+  .live-src.database { background: var(--surface-2); border-color: var(--border-strong); color: var(--text-1); }
+
+  /* Recent search chips */
+  .samples-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .samples-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--text-3);
+    flex-shrink: 0;
+  }
+  .samples-label svg { width: 11px; height: 11px; }
+  .samples { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+  .sample {
+    padding: 4px 10px;
+    font-size: 11.5px;
+    color: var(--text-2);
+    background: linear-gradient(180deg, var(--surface-1) 0%, var(--surface-2) 100%);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace;
+    transition:
+      transform var(--t-fast) var(--ease-out),
+      border-color var(--t-base) var(--ease-out),
+      color var(--t-base) var(--ease-out),
+      background var(--t-base) var(--ease-out),
+      box-shadow var(--t-base) var(--ease-out);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.10);
+  }
+  .sample:hover {
+    border-color: var(--red);
+    color: var(--text);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px -4px var(--red-glow);
+  }
+  .sample:active { transform: translateY(0); }
+
+  /* Metrics strip */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    background: var(--glass);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 14px;
+    box-shadow: inset 0 1px 0 var(--glass-edge), 0 12px 30px -16px rgba(0,0,0,0.55);
+  }
+  .metric {
+    padding: 10px 14px;
+    border-right: 1px solid var(--border);
+  }
+  .metric:last-child { border-right: none; }
+  .metric .k {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--text-3); font-weight: 600; margin-bottom: 4px;
+  }
+  .metric .v {
+    font-size: 17px; font-weight: 600; color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: -0.3px;
+  }
+  .metric .v.red { color: var(--red); }
+  .metric .v.muted { color: var(--text-2); }
+  .metric .sub { font-size: 10.5px; color: var(--text-3); margin-top: 2px; }
+
+  /* Layered cards */
+  .layers { display: flex; flex-direction: column; gap: 12px; perspective: 1200px; }
+  .layer {
+    background: var(--glass);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow:
+      inset 0 1px 0 var(--glass-edge),
+      var(--glass-shadow);
+    opacity: 0;
+    transform: translateY(14px) rotateX(2deg);
+    transform-origin: center top;
+    animation: rise 0.55s var(--ease-out) forwards;
+    transition:
+      transform var(--t-base) var(--ease-out),
+      box-shadow var(--t-base) var(--ease-out),
+      border-color var(--t-base) var(--ease-out);
+    will-change: transform;
+  }
+  .layer:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      inset 0 1px 0 var(--glass-edge),
+      0 22px 48px -18px rgba(0,0,0,0.55),
+      0 8px 22px -10px var(--red-glow);
+    border-color: var(--glass-border);
+  }
+  .layer.l1 { animation-delay: 0.05s; }
+  .layer.l2 { animation-delay: 0.16s; }
+  .layer.l3 { animation-delay: 0.27s; }
+  @keyframes rise {
+    to { opacity: 1; transform: translateY(0) rotateX(0); }
+  }
+
+  .layer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--glass-border);
+    background: linear-gradient(0deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.03) 100%);
+  }
+  .l-num {
+    width: 18px; height: 18px;
+    display: grid; place-items: center;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    background: var(--surface-3);
+    border: 1px solid var(--border-strong);
+    color: var(--text-2);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .layer.active .l-num { background: var(--red); color: #0a0a0a; border-color: var(--red); }
+  .l-title {
+    display: flex; align-items: center; gap: 9px;
+    font-size: 11.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-1);
+  }
+  .l-meta {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 11px; color: var(--text-2);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .layer-body { padding: 14px; }
+  .l-addr {
+    font-size: 14.5px;
+    color: var(--text);
+    line-height: 1.55;
+    font-weight: 500;
+    word-break: break-word;
+  }
+  .l-addr.muted { color: var(--text-3); font-weight: 400; font-style: italic; font-size: 13px; }
+  .diff .add {
+    background: var(--red-soft);
+    color: var(--red);
+    padding: 0 4px;
+    border-radius: 3px;
+    font-weight: 600;
+    border-bottom: 1px dashed var(--red-soft-2);
+  }
+  .layer-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 14px;
+    border-top: 1px solid var(--glass-border);
+    background: rgba(0,0,0,0.22);
+    gap: 10px;
+  }
+  .l-foot-meta {
+    display: flex; gap: 14px;
+    font-size: 11px; color: var(--text-2);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .l-foot-meta span { display: inline-flex; align-items: center; gap: 4px; }
+  .l-foot-meta svg { width: 11px; height: 11px; color: var(--text-3); }
+
+  /* Right column */
+  .right-col { display: flex; flex-direction: column; gap: 14px; }
+  #map { width: 100%; height: 240px; background: #0a0a0a; }
+  .leaflet-container { background: #0a0a0a; }
+  .leaflet-tile {
+    filter: brightness(0.55) invert(1) contrast(0.95) hue-rotate(180deg) saturate(0.3) brightness(0.92);
+  }
+  .leaflet-control-zoom a {
+    background: var(--surface-1) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border) !important;
+  }
+  .leaflet-control-attribution {
+    background: rgba(0,0,0,0.7) !important;
+    color: var(--text-3) !important;
+    font-size: 9px !important;
+  }
+
+  /* Structured fields */
+  .struct {
+    padding: 6px 0;
+  }
+  .struct-row {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    padding: 7px 14px;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+    align-items: baseline;
+  }
+  .struct-row:last-child { border-bottom: none; }
+  .sk {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-3);
+    font-weight: 600;
+  }
+  .sv {
+    font-size: 12.5px;
+    color: var(--text);
+    word-break: break-word;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* Verification list */
+  .vlist { padding: 4px 0; }
+  .vrow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12.5px;
+  }
+  .vrow:last-child { border-bottom: none; }
+  .vlbl { color: var(--text-1); display: flex; align-items: center; gap: 8px; }
+  .vlbl svg { width: 13px; height: 13px; color: var(--text-3); }
+  .vval {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-2);
+  }
+  .vval.ok { background: rgba(255,255,255,0.05); color: var(--text); border-color: var(--border-strong); }
+  .vval.bad { background: var(--red-soft); color: var(--red); border-color: var(--red-soft-2); }
+
+  .vinfo {
+    padding: 10px 14px;
+    background: #0d0d0d;
+    border-top: 1px solid var(--border);
+    font-size: 11.5px;
+    color: var(--text-2);
+    line-height: 1.5;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .vinfo b { color: var(--text-1); font-weight: 600; }
+
+  /* Bottom tabs */
+  .bottom {
+    margin-top: 16px;
+    background: var(--glass);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 0 var(--glass-edge), 0 14px 40px -18px rgba(0,0,0,0.55);
+  }
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--glass-border);
+    background: rgba(0,0,0,0.25);
+  }
+  .tab {
+    padding: 10px 18px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-2);
+    cursor: pointer;
+    border-right: 1px solid var(--border);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active {
+    color: var(--text);
+    background: var(--surface-1);
+    border-bottom-color: var(--red);
+  }
+  .tab-count {
+    margin-left: 6px;
+    font-size: 10px;
+    color: var(--text-3);
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .tab-panel { padding: 0; display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Candidates table */
+  .ctable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+  }
+  .ctable th {
+    text-align: left;
+    padding: 9px 14px;
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-3);
+    border-bottom: 1px solid var(--border);
+    background: #0d0d0d;
+  }
+  .ctable td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-1);
+    vertical-align: middle;
+  }
+  .ctable tr:last-child td { border-bottom: none; }
+  .ctable tr:hover td { background: var(--surface-2); }
+  .ctable .c-rank {
+    width: 40px; color: var(--text-3); font-family: 'IBM Plex Mono', monospace;
+  }
+  .ctable .c-score {
+    width: 70px; text-align: right; font-family: 'IBM Plex Mono', monospace;
+    color: var(--text);
+  }
+  .ctable .c-id { width: 80px; color: var(--text-2); font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+
+  /* Trace pipeline */
+  .trace { padding: 14px; }
+  .step {
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--border);
+    align-items: start;
+  }
+  .step:last-child { border-bottom: none; }
+  .step-n {
+    width: 24px; height: 24px;
+    border-radius: 4px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    color: var(--text-2);
+    font-size: 11px;
+    font-weight: 600;
+    display: grid; place-items: center;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .step.done .step-n { background: var(--red); color: #0a0a0a; border-color: var(--red); }
+  .step-name { font-size: 13px; color: var(--text); font-weight: 500; }
+  .step-desc { font-size: 11.5px; color: var(--text-2); margin-top: 2px; line-height: 1.5; }
+  .step-time {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-3);
+  }
+
+  /* JSON */
+  .json-pre {
+    margin: 0;
+    padding: 14px 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--text-1);
+    background: #0a0a0a;
+    overflow-x: auto;
+    max-height: 360px;
+    overflow-y: auto;
+    line-height: 1.6;
+    white-space: pre;
+  }
+
+  /* Mid-size laptops: shrink the right rail so the main cards keep a
+     comfortable reading width. Metrics always stay 4-column on landscape
+     viewports — collapsing them to 2x2 only happens on very narrow
+     screens (tablets / phones) below. */
+  @media (max-width: 1500px) {
+    .lookup-grid { grid-template-columns: minmax(0, 1fr) 320px; }
+  }
+  @media (max-width: 1366px) {
+    .lookup-grid { grid-template-columns: minmax(0, 1fr) 290px; }
+  }
+  @media (max-width: 1180px) {
+    /* Right rail can no longer fit comfortably side-by-side — move it
+       below the main column instead of squeezing the cards. */
+    .lookup-grid,
+    .lookup-grid.no-right { grid-template-columns: minmax(0, 1fr); }
+    .right-col { order: 2; }
+  }
+  /* Tablets / phones — finally collapse metrics to 2x2. */
+  @media (max-width: 720px) {
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .metric:nth-child(2) { border-right: none; }
+  }
+{% endblock %}
+
+{% block breadcrumb %}
+<span>Workspace</span>
+<i data-lucide="chevron-right"></i>
+<strong>Address Lookup</strong>
+{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn btn-ghost" id="exportBtn" disabled>
+  <i data-lucide="download"></i> Export
+</button>
+<div class="pill" id="latencyPill" style="display:none;">
+  <span class="dot" style="background:var(--text-2); box-shadow:none;"></span>
+  <span class="mono" id="latencyVal">--</span> ms
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-head-row">
+    <div>
+      <div class="page-title">Address Lookup</div>
+      <div class="page-sub">Spell-correct, match, and verify a single address through the v2 pipeline.</div>
+    </div>
+  </div>
+</div>
+
+<div class="lookup-grid no-right">
+  <!-- LEFT: search + layers + bottom tabs -->
+  <div>
+    <div class="qrow">
+      <div class="qfield">
+        <i data-lucide="search"></i>
+        <input id="q" type="text" autocomplete="off"
+               placeholder="rpnc systems bannerghatta road bangalore 560061" />
+        <span class="clear" id="qClear" style="display:none;"><i data-lucide="x" style="width:13px;height:13px;"></i></span>
+      </div>
+      <button class="btn btn-primary" id="go">
+        <i data-lucide="zap"></i> Analyze
+      </button>
+      <div id="liveList" class="live" style="display:none;"></div>
+    </div>
+
+    <div class="samples-row" id="samplesRow" style="display:none;">
+      <div class="samples-label"><i data-lucide="clock"></i> Recent</div>
+      <div class="samples" id="samples"></div>
+    </div>
+
+    <!-- Metric strip (filled after a search) -->
+    <div class="metrics" id="metrics">
+      <div class="metric">
+        <div class="k">Status</div>
+        <div class="v muted" id="m-status">—</div>
+        <div class="sub" id="m-status-sub">awaiting input</div>
+      </div>
+      <div class="metric">
+        <div class="k">Confidence</div>
+        <div class="v muted" id="m-conf">—</div>
+        <div class="sub" id="m-conf-sub">0–100 calibrated</div>
+      </div>
+      <div class="metric">
+        <div class="k">Candidates</div>
+        <div class="v muted" id="m-cand">—</div>
+        <div class="sub">retrieved & reranked</div>
+      </div>
+      <div class="metric">
+        <div class="k">Latency</div>
+        <div class="v muted" id="m-lat">—</div>
+        <div class="sub">end-to-end</div>
+      </div>
+    </div>
+
+    <!-- Layered cards -->
+    <div id="layers" class="layers">
+      <div class="empty card" style="padding:60px 20px;">
+        <i data-lucide="search"></i>
+        <div class="et">Nothing analyzed yet</div>
+        <div class="es">Enter an address above. We'll spell-correct it, match against the database, and verify with a geocoder.</div>
+      </div>
+    </div>
+
+    <!-- Bottom tabs: candidates, trace, raw -->
+    <div class="bottom" id="bottomBox" style="display:none;">
+      <div class="tabs">
+        <div class="tab active" data-tab="cand">
+          Candidates <span class="tab-count" id="t-cand">0</span>
+        </div>
+        <div class="tab" data-tab="trace">Pipeline trace</div>
+        <div class="tab" data-tab="raw">Raw JSON</div>
+        <div style="flex:1;"></div>
+        <button class="btn btn-ghost" id="copyJsonBtn" style="margin: 4px 8px;">
+          <i data-lucide="copy"></i> Copy JSON
+        </button>
+      </div>
+      <div class="tab-panel active" id="tp-cand">
+        <table class="ctable">
+          <thead>
+            <tr>
+              <th class="c-rank">#</th>
+              <th>Address</th>
+              <th class="c-id">DB ID</th>
+              <th class="c-score">Score</th>
+            </tr>
+          </thead>
+          <tbody id="candBody"></tbody>
+        </table>
+      </div>
+      <div class="tab-panel" id="tp-trace">
+        <div class="trace" id="traceBox"></div>
+      </div>
+      <div class="tab-panel" id="tp-raw">
+        <pre class="json-pre" id="jsonContent">{}</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: map + structured + verification -->
+  <div class="right-col">
+    <div class="card" id="mapCard" style="display:none;">
+      <div class="card-head">
+        <div class="card-title"><i data-lucide="map"></i> Geo Preview</div>
+        <div class="card-meta" id="mapCoords">—</div>
+      </div>
+      <div id="map"></div>
+    </div>
+
+    <div class="card" id="structCard" style="display:none;">
+      <div class="card-head">
+        <div class="card-title"><i data-lucide="list-tree"></i> Structured Fields</div>
+        <div class="card-meta" id="structSrc">—</div>
+      </div>
+      <div class="struct" id="structList"></div>
+    </div>
+
+    <div class="card" id="verifyCard" style="display:none;">
+      <div class="card-head">
+        <div class="card-title"><i data-lucide="shield-check"></i> Verification</div>
+      </div>
+      <div class="vlist" id="vlist"></div>
+      <div class="vinfo" id="vinfo" style="display:none;"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ===== Refs =====
+const q = document.getElementById("q");
+const go = document.getElementById("go");
+const live = document.getElementById("liveList");
+const layersBox = document.getElementById("layers");
+const qClear = document.getElementById("qClear");
+const exportBtn = document.getElementById("exportBtn");
+
+let latest = null;
+let map = null;
+let markers = [];
+let liveTimer = null;
+
+// ===== Map =====
+function initMap() {
+  if (map) return;
+  map = L.map("map", { zoomControl: true, attributionControl: true })
+         .setView([20.5937, 78.9629], 4);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: "OSM",
+    maxZoom: 19
+  }).addTo(map);
+}
+function clearMarkers() { markers.forEach(m => map.removeLayer(m)); markers = []; }
+function dotIcon(color) {
+  return L.divIcon({
+    className: "addr-dot",
+    html: `<div style="background:${color}; width:12px; height:12px; border-radius:50%; border:2px solid #f4f4f4; box-shadow:0 0 0 3px ${color}30, 0 4px 8px rgba(0,0,0,0.6);"></div>`,
+    iconSize: [12, 12],
+    iconAnchor: [6, 6]
+  });
+}
+function shortPopup(text) {
+  if (!text) return "";
+  // Trim to one neat line so the popup never blankets the map.
+  let t = String(text).replace(/\s+/g, " ").trim();
+  if (t.length > 80) t = t.slice(0, 78).replace(/[,\s]+$/, "") + "…";
+  return `<div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#0a0a0a;max-width:260px;line-height:1.45;">${t.replace(/[<>]/g, "")}</div>`;
+}
+
+function addPin(lat, lon, popup, color = "#ef4444", center = false) {
+  const a = Number(lat), b = Number(lon);
+  if (!Number.isFinite(a) || !Number.isFinite(b) || (a === 0 && b === 0)) return null;
+  const m = L.marker([a, b], { icon: dotIcon(color) }).addTo(map);
+  if (popup) m.bindPopup(shortPopup(popup), { closeButton: false, maxWidth: 280 });
+  markers.push(m);
+  // No auto-open on render — the marker stays visible, popup opens on click.
+  if (center) {
+    const prefs = AAI.loadPrefs();
+    if (prefs.autoZoom !== false) map.setView([a, b], 16);
+  }
+  return m;
+}
+
+// ===== Data extractors =====
+function getSpell(d) { const sp = d.spell || {}; return sp.corrected || d.corrected || d.corrected_input || d.query || ""; }
+function getDb(d) {
+  const sugs = d.suggestions || [];
+  // Prefer the suggestion that matches best_addr_id — that's the row the
+  // pipeline actually picked as the final DB answer. Falling back to
+  // suggestions[0] can show a worse stub when the reranker ties produced
+  // a generic candidate at position 0.
+  const best = d.best_addr_id;
+  if (best != null) {
+    for (const s of sugs) {
+      if (s && s.addr_id === best && (s.address || s.full_address)) return s;
+    }
+  }
+  for (const s of sugs) if (s && (s.address || s.full_address)) return s;
+  return null;
+}
+function getGoogle(d) {
+  // The "Verified · Final" card must only show addresses that actually
+  // came from an external geocoding API (Google / Nominatim). When the
+  // API didn't geocode the input, return "" so the card displays
+  // "geocoding unavailable" instead of echoing the spell-corrected text
+  // back as a fake "verified" answer.
+  const v = d.verification || {};
+  const g = v.geocode;
+  if (v.geocoded && g && g.formatted_address) return g.formatted_address;
+  return "";
+}
+function changesArr(d) {
+  const sp = d.spell || {};
+  const arr = d.changes || d.spell_changes || sp.changes || [];
+  return arr.map(x => Array.isArray(x) ? [x[0], x[1]] : String(x).split("->").map(s => s.trim()))
+            .filter(p => p && p.length === 2 && p[0] !== p[1]);
+}
+function highlightDiff(orig, corrected) {
+  if (!orig || !corrected) return AAI.esc(corrected || "");
+  const o = orig.toLowerCase().split(/\s+/);
+  const c = corrected.split(/\s+/);
+  return c.map((tok, i) => {
+    const oo = o[i] || "";
+    if (oo && oo !== tok.toLowerCase()) return `<span class="add">${AAI.esc(tok)}</span>`;
+    return AAI.esc(tok);
+  }).join(" ");
+}
+
+// ===== Render =====
+function setMetric(id, val, sub) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = val;
+  el.classList.remove("muted");
+  if (sub != null) {
+    const subEl = document.getElementById(id + "-sub");
+    if (subEl) subEl.textContent = sub;
+  }
+}
+
+function render(d) {
+  latest = d;
+  exportBtn.disabled = false;
+
+  // Metric strip
+  const conf = AAI.pct(d.confidence);
+  const status = (d.status || "unknown").replace(/_/g, " ");
+  const sugs = (d.suggestions || []).filter(s => s && (s.address || s.full_address));
+  const v = d.verification || {};
+  const geocoded = v.geocoded === true;
+
+  const mStatus = document.getElementById("m-status");
+  mStatus.textContent = status.toUpperCase();
+  mStatus.classList.remove("muted");
+  mStatus.classList.toggle("red", ["verified", "high confidence", "found in database", "existing"].includes(status));
+  document.getElementById("m-status-sub").textContent = geocoded ? "geocoded · validated" : "no geocode";
+
+  const mConf = document.getElementById("m-conf");
+  mConf.textContent = conf + "%";
+  mConf.classList.remove("muted");
+  mConf.classList.toggle("red", conf >= 70);
+  document.getElementById("m-conf-sub").textContent = conf >= 70 ? "high · production" : conf >= 40 ? "medium · review" : "low · verify";
+
+  setMetric("m-cand", String(sugs.length));
+  setMetric("m-lat", (d.latency_ms ?? "--") + "ms");
+
+  document.getElementById("latencyPill").style.display = "inline-flex";
+  document.getElementById("latencyVal").textContent = d.latency_ms ?? "--";
+
+  // Layers
+  const orig = d.query || q.value.trim();
+  const spell = getSpell(d);
+  const dbBest = getDb(d);
+  const dbAddr = dbBest ? (dbBest.address || dbBest.full_address) : "";
+  const dbScore = dbBest ? AAI.pct(dbBest.probability ?? dbBest.score) : 0;
+  const googleAddr = getGoogle(d);
+  const changes = changesArr(d);
+  const sp = d.spell || {};
+
+  const lay1 = `
+    <div class="layer l1 ${spell ? 'active' : ''}">
+      <div class="layer-head">
+        <div class="l-title"><span class="l-num">01</span> Spell Corrected</div>
+        <div class="l-meta">
+          <span>${changes.length} change${changes.length === 1 ? "" : "s"}</span>
+          <span class="tag ${sp.used_t5 ? 'red' : ''}">${sp.used_t5 ? "T5+DICT" : "DICT"}</span>
+        </div>
+      </div>
+      <div class="layer-body">
+        <div class="l-addr ${!spell ? 'muted' : ''} diff">
+          ${spell ? highlightDiff(orig, spell) : "no spelling changes detected"}
+        </div>
+      </div>
+      <div class="layer-foot">
+        <div class="l-foot-meta">
+          ${changes.length ? `<span><i data-lucide="arrow-right"></i> ${changes.slice(0,2).map(([a,b]) => `${AAI.esc(a)} → ${AAI.esc(b)}`).join(" · ")}${changes.length > 2 ? " +" + (changes.length - 2) : ""}</span>` : '<span><i data-lucide="check"></i> input was clean</span>'}
+        </div>
+        <button class="btn" data-copy="${AAI.esc(spell)}" ${!spell ? 'disabled' : ''}>
+          <i data-lucide="copy"></i> Use this
+        </button>
+      </div>
+    </div>
+  `;
+
+  // Position numbers are decided after we know the display order below.
+  const dbWasPicked = !!(d.best_addr_id || d.status === "found_in_database");
+  const dbNum  = dbWasPicked ? "02" : "03";
+  const verNum = dbWasPicked ? "03" : "02";
+
+  const lay2 = `
+    <div class="layer l2 ${dbAddr ? 'active' : ''}">
+      <div class="layer-head">
+        <div class="l-title"><span class="l-num">${dbNum}</span> Nearest Database Match</div>
+        <div class="l-meta">
+          <span>${dbScore}% match</span>
+          ${dbBest && dbBest.addr_id ? `<span class="tag">#${AAI.esc(dbBest.addr_id)}</span>` : ''}
+        </div>
+      </div>
+      <div class="layer-body">
+        <div class="l-addr ${!dbAddr ? 'muted' : ''}">
+          ${dbAddr ? AAI.esc(dbAddr) : "no close match in database"}
+        </div>
+      </div>
+      <div class="layer-foot">
+        <div class="l-foot-meta">
+          <span><i data-lucide="database"></i> ${sugs.length} candidates considered</span>
+        </div>
+        <button class="btn" data-copy="${AAI.esc(dbAddr)}" ${!dbAddr ? 'disabled' : ''}>
+          <i data-lucide="copy"></i> Use this
+        </button>
+      </div>
+    </div>
+  `;
+
+  const s = d.structured || {};
+  const lay3 = `
+    <div class="layer l3 ${googleAddr ? 'active' : ''}">
+      <div class="layer-head">
+        <div class="l-title"><span class="l-num">${verNum}</span> Verified · Final</div>
+        <div class="l-meta">
+          ${geocoded ? '<span class="tag red">GEOCODED</span>' : '<span class="tag">UNVERIFIED</span>'}
+          ${s.source ? `<span class="tag">${AAI.esc(s.source)}</span>` : ''}
+        </div>
+      </div>
+      <div class="layer-body">
+        <div class="l-addr ${!googleAddr ? 'muted' : ''}">
+          ${googleAddr ? AAI.esc(googleAddr) : "geocoding unavailable"}
+        </div>
+      </div>
+      <div class="layer-foot">
+        <div class="l-foot-meta">
+          <span><i data-lucide="map-pin"></i> ${s.lat ? `${Number(s.lat).toFixed(4)}, ${Number(s.lon).toFixed(4)}` : "no coordinates"}</span>
+          <span><i data-lucide="zap"></i> ${AAI.esc(d.latency_ms ?? "--")}ms</span>
+        </div>
+        <button class="btn btn-primary" data-copy="${AAI.esc(googleAddr)}" ${!googleAddr ? 'disabled' : ''}>
+          <i data-lucide="copy"></i> Use this
+        </button>
+      </div>
+    </div>
+  `;
+
+  // Order cards based on what the pipeline actually decided:
+  //   - DB row was picked  → [Spell, Database (2nd), Verified (3rd)]
+  //   - No DB pick         → [Spell, Verified (2nd), Database+nearby (3rd)]
+  // dbWasPicked is declared earlier (drives the position numbers).
+  const order = dbWasPicked ? (lay1 + lay2 + lay3) : (lay1 + lay3 + lay2);
+  layersBox.innerHTML = order;
+
+  layersBox.querySelectorAll("[data-copy]").forEach(b => {
+    b.addEventListener("click", () => {
+      const t = b.getAttribute("data-copy");
+      if (t) AAI.copy(t, b);
+    });
+  });
+
+  // Right side
+  renderMap(d);
+  renderStructured(d);
+  renderVerification(d);
+
+  // Collapse the right rail entirely when nothing in it is visible — this
+  // keeps the main column width consistent across queries (e.g. a result
+  // with geocoded lat/lon vs one without).
+  const grid = document.querySelector(".lookup-grid");
+  if (grid) {
+    const anyRightVisible = ["mapCard", "structCard", "verifyCard"].some(id => {
+      const el = document.getElementById(id);
+      return el && el.style.display !== "none";
+    });
+    grid.classList.toggle("no-right", !anyRightVisible);
+  }
+
+  // Bottom box
+  document.getElementById("bottomBox").style.display = "block";
+  renderCandidates(d);
+  renderTrace(d);
+  document.getElementById("jsonContent").textContent = JSON.stringify(d, null, 2);
+  document.getElementById("t-cand").textContent = sugs.length;
+
+  // History
+  AAI.addHistory({
+    query: orig,
+    corrected: spell,
+    best: googleAddr || dbAddr || spell,
+    confidence: conf,
+    status: status,
+    ts: new Date().toISOString(),
+    latency_ms: d.latency_ms,
+    geocoded: geocoded,
+  });
+  AAI.refreshHistCount();
+  if (typeof renderRecentChips === "function") renderRecentChips();
+
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function renderMap(d) {
+  const card = document.getElementById("mapCard");
+  const s = d.structured || {};
+  const v = d.verification || {};
+  const g = v.geocode || {};
+  const lat = s.lat || g.lat;
+  const lon = s.lon || g.lon;
+  if (!lat || !lon) { card.style.display = "none"; return; }
+  card.style.display = "block";
+  document.getElementById("mapCoords").textContent =
+    `${Number(lat).toFixed(5)}, ${Number(lon).toFixed(5)}`;
+  setTimeout(() => map && map.invalidateSize(), 60);
+  clearMarkers();
+  addPin(lat, lon, getGoogle(d) || d.best_address || "", "#ef4444", true);
+  (d.suggestions || []).slice(0, 4).forEach(s2 => {
+    const sLat = (s2.structured && s2.structured.lat) || s2.lat;
+    const sLon = (s2.structured && s2.structured.lon) || s2.lon;
+    if (sLat && sLon && (Number(sLat) !== Number(lat) || Number(sLon) !== Number(lon))) {
+      addPin(sLat, sLon, s2.address || s2.full_address, "#a3a3a3");
+    }
+  });
+}
+
+function renderStructured(d) {
+  const s = d.structured || {};
+  const card = document.getElementById("structCard");
+  const fields = [
+    ["House #", s.house_number],
+    ["Street", s.street],
+    ["Sublocality", s.sublocality],
+    ["Locality", s.locality],
+    ["City", s.city],
+    ["State", s.state],
+    ["Pincode", s.pincode],
+    ["Country", s.country],
+    ["Lat / Lon", s.lat && s.lon ? `${Number(s.lat).toFixed(5)}, ${Number(s.lon).toFixed(5)}` : null],
+  ].filter(([_, v]) => v != null && v !== "");
+  if (!fields.length) { card.style.display = "none"; return; }
+  card.style.display = "block";
+  document.getElementById("structSrc").textContent = s.source || "—";
+  document.getElementById("structList").innerHTML = fields.map(([k, v]) =>
+    `<div class="struct-row"><div class="sk">${AAI.esc(k)}</div><div class="sv">${AAI.esc(v)}</div></div>`
+  ).join("");
+}
+
+function renderVerification(d) {
+  const v = d.verification || {};
+  const card = document.getElementById("verifyCard");
+  if (Object.keys(v).length === 0) { card.style.display = "none"; return; }
+  card.style.display = "block";
+
+  const checks = [
+    { lbl: "Geocoded", icon: "globe", val: v.geocoded },
+    { lbl: "Pincode valid", icon: "mail", val: v.pincode_valid },
+    { lbl: "Pincode consistent", icon: "check-check", val: v.pincode_consistent },
+  ];
+  document.getElementById("vlist").innerHTML = checks.map(c => {
+    let cls = "", txt = "—";
+    if (c.val === true) { cls = "ok"; txt = "Pass"; }
+    else if (c.val === false) { cls = "bad"; txt = "Fail"; }
+    return `
+      <div class="vrow">
+        <div class="vlbl"><i data-lucide="${c.icon}"></i> ${c.lbl}</div>
+        <div class="vval ${cls}">${txt}</div>
+      </div>
+    `;
+  }).join("");
+
+  const vinfo = document.getElementById("vinfo");
+  if (v.pincode_info && (v.pincode_info.office || v.pincode_info.district)) {
+    const i = v.pincode_info;
+    vinfo.style.display = "block";
+    vinfo.innerHTML = `<b>India Post:</b> ${AAI.esc(i.office || "")}${i.district ? ", " + AAI.esc(i.district) : ""}${i.state ? ", " + AAI.esc(i.state) : ""}`;
+  } else {
+    vinfo.style.display = "none";
+  }
+
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function renderCandidates(d) {
+  const sugs = (d.suggestions || []).filter(s => s && (s.address || s.full_address));
+  const tb = document.getElementById("candBody");
+  if (!sugs.length) { tb.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-3);padding:24px;">no candidates returned</td></tr>'; return; }
+  tb.innerHTML = sugs.slice(0, 10).map((s, i) => `
+    <tr data-lat="${(s.structured && s.structured.lat) || s.lat || ""}" data-lon="${(s.structured && s.structured.lon) || s.lon || ""}">
+      <td class="c-rank">${String(i + 1).padStart(2, "0")}</td>
+      <td>${AAI.esc(s.address || s.full_address)}</td>
+      <td class="c-id">${s.addr_id ? "#" + AAI.esc(s.addr_id) : "—"}</td>
+      <td class="c-score">${AAI.pct(s.probability ?? s.score)}%</td>
+    </tr>
+  `).join("");
+  tb.querySelectorAll("tr").forEach(tr => {
+    tr.addEventListener("click", () => {
+      const lat = tr.dataset.lat, lon = tr.dataset.lon;
+      if (lat && lon && map) map.setView([Number(lat), Number(lon)], 16);
+    });
+  });
+}
+
+function renderTrace(d) {
+  const v = d.verification || {};
+  const sp = d.spell || {};
+  const sugs = (d.suggestions || []).length;
+  const steps = [
+    { name: "Layer 1 · Normalize", desc: "Punctuation, transliteration, ordinal repair", done: true, time: "<10ms" },
+    { name: "Layer 2 · Spell correction", desc: `Dictionary speller${sp.used_t5 ? ", T5 fallback engaged" : ""}, ${changesArr(d).length} change(s)`, done: !!getSpell(d), time: "20-80ms" },
+    { name: "Layer 3 · Hybrid retrieval", desc: `BM25 + FAISS dense + prefix trie · ${sugs} candidates returned`, done: sugs > 0, time: "30-120ms" },
+    { name: "Layer 4 · Reranker", desc: `LightGBM scoring · top-1 confidence ${AAI.pct(d.confidence)}%`, done: true, time: "5-20ms" },
+    { name: "Layer 5 · Verify", desc: `Geocoder ${v.geocoded ? "matched" : "skipped"}, pincode ${v.pincode_valid ? "validated" : "unchecked"}`, done: v.geocoded === true, time: "100-2000ms" },
+  ];
+  document.getElementById("traceBox").innerHTML = steps.map((s, i) => `
+    <div class="step ${s.done ? "done" : ""}">
+      <div class="step-n">${String(i + 1).padStart(2, "0")}</div>
+      <div>
+        <div class="step-name">${AAI.esc(s.name)}</div>
+        <div class="step-desc">${AAI.esc(s.desc)}</div>
+      </div>
+      <div class="step-time">${AAI.esc(s.time)}</div>
+    </div>
+  `).join("");
+}
+
+// ===== Search ops =====
+async function runCorrect() {
+  const raw = q.value.trim();
+  if (!raw) return;
+  // Keep URL in sync so reloads / shares always reflect what's on screen.
+  try {
+    const u = new URL(location.href);
+    if (u.searchParams.get("q") !== raw) {
+      u.searchParams.set("q", raw);
+      history.replaceState(null, "", u.toString());
+    }
+  } catch (_) {}
+  go.disabled = true;
+  hideLive();
+  const orig = go.innerHTML;
+  go.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Analyzing';
+  if (window.lucide) window.lucide.createIcons();
+
+  layersBox.innerHTML = `
+    <div class="card empty" style="padding:32px 20px;">
+      <i data-lucide="loader-2" class="spin"></i>
+      <div class="et">Running pipeline</div>
+      <div class="es">normalize → spell → retrieve → rerank → verify</div>
+    </div>
+  `;
+  if (window.lucide) window.lucide.createIcons();
+
+  try {
+    const prefs = AAI.loadPrefs();
+    const r = await fetch("/v2/correct", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ q: raw, n: prefs.topN })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.statusText);
+    render(d);
+  } catch (e) {
+    layersBox.innerHTML = `
+      <div class="card empty" style="padding:32px 20px;">
+        <i data-lucide="alert-triangle" style="color:var(--red);"></i>
+        <div class="et" style="color:var(--red);">Pipeline failed</div>
+        <div class="es">${AAI.esc(e.message)}</div>
+      </div>
+    `;
+    if (window.lucide) window.lucide.createIcons();
+  } finally {
+    go.disabled = false;
+    go.innerHTML = orig;
+    if (window.lucide) window.lucide.createIcons();
+  }
+}
+
+// Map backend source enum -> user-facing label.
+//   prefix / hybrid / db / bm25 / faiss / trie  -> DATABASE
+//   google / places                             -> VERIFIED
+//   corrected (synthetic spell-correction row)  -> CORRECTED
+function uiSourceLabel(s) {
+  s = String(s || "").toLowerCase();
+  if (s === "corrected") return "corrected";
+  if (s === "google" || s === "places") return "verified";
+  return "database";
+}
+
+async function fetchLive(prefix) {
+  if (!prefix || prefix.length < 2) { hideLive(); return; }
+  const prefs = AAI.loadPrefs();
+  if (prefs.liveSuggest === false) { hideLive(); return; }
+  const useGoogle = prefs.googleAutoSuggest ? 1 : 0;
+  try {
+    const r = await fetch(`/v2/livesuggest?q=${encodeURIComponent(prefix)}&n=8&google=${useGoogle}`);
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.statusText);
+    const rows = [];
+    if (d.corrected && d.corrected.toLowerCase() !== prefix.toLowerCase()) {
+      rows.push({ address: d.corrected, source: "corrected" });
+    }
+    (d.suggestions || []).forEach(x => {
+      rows.push({ address: x.address || "", source: uiSourceLabel(x.source) });
+    });
+    if (!rows.length) { hideLive(); return; }
+    live.innerHTML = rows.slice(0, 8).map(x => `
+      <div class="live-item" data-pick="${AAI.esc(x.address)}">
+        <span class="live-text">${AAI.esc(x.address)}</span>
+        <span class="live-src ${AAI.esc(x.source)}">${AAI.esc(x.source)}</span>
+      </div>
+    `).join("");
+    live.style.display = "block";
+    live.querySelectorAll(".live-item").forEach(el => {
+      el.addEventListener("click", () => {
+        q.value = el.dataset.pick || "";
+        hideLive(); runCorrect();
+      });
+    });
+  } catch (_) { hideLive(); }
+}
+function hideLive() { live.style.display = "none"; live.innerHTML = ""; }
+
+// ===== Wire events =====
+q.addEventListener("input", () => {
+  qClear.style.display = q.value ? "inline-flex" : "none";
+  clearTimeout(liveTimer);
+  const v = q.value.trim();
+  if (v.length < 2) hideLive();
+  else liveTimer = setTimeout(() => fetchLive(v), 350);
+});
+q.addEventListener("keydown", e => {
+  if (e.key === "Enter") { e.preventDefault(); hideLive(); runCorrect(); }
+  if (e.key === "Escape") hideLive();
+});
+qClear.addEventListener("click", () => { q.value = ""; qClear.style.display = "none"; q.focus(); hideLive(); });
+go.addEventListener("click", runCorrect);
+document.addEventListener("click", e => { if (!live.contains(e.target) && e.target !== q) hideLive(); });
+
+function renderRecentChips() {
+  const row = document.getElementById("samplesRow");
+  const box = document.getElementById("samples");
+  if (!row || !box) return;
+  const hist = (AAI.loadHistory ? AAI.loadHistory() : []).slice(0, 4);
+  if (!hist.length) { row.style.display = "none"; return; }
+  row.style.display = "flex";
+  box.innerHTML = hist.map(h => {
+    const full = h.query || "";
+    const short = full.length > 32 ? full.slice(0, 30) + "…" : full;
+    return `<div class="sample" data-q="${AAI.esc(full)}" title="${AAI.esc(full)}">${AAI.esc(short)}</div>`;
+  }).join("");
+  box.querySelectorAll(".sample").forEach(c => {
+    c.addEventListener("click", () => {
+      q.value = c.dataset.q;
+      qClear.style.display = "inline-flex";
+      runCorrect();
+    });
+  });
+  if (window.lucide) window.lucide.createIcons();
+}
+renderRecentChips();
+
+// Tabs
+document.querySelectorAll(".tabs .tab").forEach(t => {
+  t.addEventListener("click", () => {
+    document.querySelectorAll(".tabs .tab").forEach(x => x.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach(x => x.classList.remove("active"));
+    t.classList.add("active");
+    document.getElementById("tp-" + t.dataset.tab).classList.add("active");
+  });
+});
+
+document.getElementById("copyJsonBtn").addEventListener("click", (e) => {
+  if (latest) AAI.copy(JSON.stringify(latest, null, 2), e.currentTarget);
+});
+
+exportBtn.addEventListener("click", () => {
+  if (!latest) return;
+  const blob = new Blob([JSON.stringify(latest, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `address-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  AAI.toast("Exported");
+});
+
+// Auto-run if ?q= in URL (deep link from history / sidebar search)
+initMap();
+const u = new URL(location.href);
+const initial = u.searchParams.get("q");
+if (initial) { q.value = initial; runCorrect(); }
+</script>
+{% endblock %}

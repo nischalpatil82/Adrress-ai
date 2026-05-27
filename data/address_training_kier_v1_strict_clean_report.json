@@ -1,0 +1,422 @@
+{
+  "input": "data\\address_training_merged.jsonl",
+  "output": "data\\address_training_kier_v1_strict_clean.jsonl",
+  "rows_written": 73717,
+  "parse_errors": 0,
+  "missing_required": 49738,
+  "too_short": 0,
+  "duplicate_clean_dropped": 52,
+  "raw_address_target_used": 123506,
+  "target_source_counts": {
+    "raw_core_preserve_numbers": 59168,
+    "raw_core_verified": 14548,
+    "clean_target": 1
+  },
+  "rows_with_clean_repairs": 5095,
+  "remaining_bad_clean_patterns": 0,
+  "top_repairs": [
+    [
+      "btm->btm layout",
+      1110
+    ],
+    [
+      "dist->district",
+      1034
+    ],
+    [
+      "raod->road",
+      306
+    ],
+    [
+      "hosakote->hoskote",
+      231
+    ],
+    [
+      "jayanagara->jayanagar",
+      196
+    ],
+    [
+      "banglaore->bangalore",
+      157
+    ],
+    [
+      "extention->extension",
+      153
+    ],
+    [
+      "bnagalore->bangalore",
+      133
+    ],
+    [
+      "mian->main",
+      131
+    ],
+    [
+      "bulding->building",
+      97
+    ],
+    [
+      "tilaknagar->tilak nagar",
+      95
+    ],
+    [
+      "marathalli->marathahalli",
+      75
+    ],
+    [
+      "appartment->apartment",
+      69
+    ],
+    [
+      "cros->cross",
+      63
+    ],
+    [
+      "bannergatta->bannerghatta",
+      61
+    ],
+    [
+      "kormangala->koramangala",
+      60
+    ],
+    [
+      "corss->cross",
+      57
+    ],
+    [
+      "banglore->bangalore",
+      55
+    ],
+    [
+      "vijaynagar->vijayanagar",
+      50
+    ],
+    [
+      "naagr->nagar",
+      47
+    ],
+    [
+      "nilya->nilaya",
+      41
+    ],
+    [
+      "nagr->nagar",
+      40
+    ],
+    [
+      "marathhalli->marathahalli",
+      39
+    ],
+    [
+      "basavangudi->basavanagudi",
+      37
+    ],
+    [
+      "satge->stage",
+      37
+    ],
+    [
+      "malleswaram->malleshwaram",
+      36
+    ],
+    [
+      "tamilnadu->tamil nadu",
+      35
+    ],
+    [
+      "quatress->quarters",
+      33
+    ],
+    [
+      "quatres->quarters",
+      30
+    ],
+    [
+      "satelite->satellite",
+      28
+    ],
+    [
+      "indranagar->indiranagar",
+      26
+    ],
+    [
+      "appartments->apartment",
+      24
+    ],
+    [
+      "layour->layout",
+      23
+    ],
+    [
+      "banshankari->banashankari",
+      22
+    ],
+    [
+      "shantiniketan->shanti niketan",
+      21
+    ],
+    [
+      "jaynagar->jayanagar",
+      21
+    ],
+    [
+      "lyout->layout",
+      20
+    ],
+    [
+      "bengalore->bangalore",
+      19
+    ],
+    [
+      "bannerugatta->bannerghatta",
+      17
+    ],
+    [
+      "croos->cross",
+      17
+    ],
+    [
+      "kolkatta->kolkata",
+      16
+    ],
+    [
+      "bangalroe->bangalore",
+      16
+    ],
+    [
+      "nilay->nilaya",
+      15
+    ],
+    [
+      "marthahalli->marathahalli",
+      15
+    ],
+    [
+      "bangalor->bangalore",
+      13
+    ],
+    [
+      "yelhanka->yelahanka",
+      13
+    ],
+    [
+      "steet->street",
+      12
+    ],
+    [
+      "thyagaraj->t nagar",
+      12
+    ],
+    [
+      "baroda->vadodara",
+      11
+    ],
+    [
+      "flor->floor",
+      10
+    ]
+  ],
+  "examples": [
+    {
+      "line": 3,
+      "before": "divyashree tower bannergatta road btm layout bangalore karnataka 560029",
+      "after": "divyashree tower bannerghatta road btm layout bangalore karnataka 560029",
+      "changes": [
+        "bannergatta->bannerghatta"
+      ]
+    },
+    {
+      "line": 5,
+      "before": "rd a main th a cross rpc layout nd stage vijaynagar bangalore karnataka 560040",
+      "after": "193rd a main 8th a cross rpc layout 2nd stage vijayanagar bangalore karnataka 560040",
+      "changes": [
+        "vijaynagar->vijayanagar"
+      ]
+    },
+    {
+      "line": 8,
+      "before": "th main btm nd stage bangalore karnataka 560076",
+      "after": "1239 15th main btm layout 2nd stage bangalore karnataka 560076",
+      "changes": [
+        "btm->btm layout"
+      ]
+    },
+    {
+      "line": 12,
+      "before": "j c circle hosakote bangalore karnataka 560014",
+      "after": "1452 j c circle hoskote bangalore karnataka 560014",
+      "changes": [
+        "hosakote->hoskote"
+      ]
+    },
+    {
+      "line": 13,
+      "before": "teachers colony th avenu koramangala bangalore karnataka 560034",
+      "after": "359 teachers colony 4th avenue bangalore karnataka 560034",
+      "changes": [
+        "avenu->avenue"
+      ]
+    },
+    {
+      "line": 14,
+      "before": "th main kumaraswamy layout nd stag kumaraswamy bangalore karnataka 560078",
+      "after": "2769 7th main kumaraswamy layout 2nd stage bangalore karnataka 560078",
+      "changes": [
+        "stag->stage"
+      ]
+    },
+    {
+      "line": 17,
+      "before": "btm stage keb layout bangalore karnataka 560074",
+      "after": "13 btm layout 1 stage bangalore karnataka 560074",
+      "changes": [
+        "btm->btm layout"
+      ]
+    },
+    {
+      "line": 35,
+      "before": "ashini nilaya rajakumar road th cross btm layout arekere bannerugatta road bts layout bangalore karnataka 560007",
+      "after": "376 ashini nilaya rajakumar road 5th cross btm layout arekere bannerghatta road bangalore karnataka 560007",
+      "changes": [
+        "bannerugatta->bannerghatta"
+      ]
+    },
+    {
+      "line": 36,
+      "before": "corporation quatres persli street cross shanthinagar bangalore karnataka 560057",
+      "after": "2 corporation quarters persli street cross bangalore karnataka 560057",
+      "changes": [
+        "quatres->quarters"
+      ]
+    },
+    {
+      "line": 37,
+      "before": "corporation quatres perli street cross shanthinagar bangalore karnataka 560027",
+      "after": "2 corporation quarters perli street cross bangalore karnataka 560027",
+      "changes": [
+        "quatres->quarters"
+      ]
+    },
+    {
+      "line": 40,
+      "before": "sumuka vinayaka nagar gubbalalu main raod subramanipura post bangalore karnataka 560061",
+      "after": "84 sumuka vinayaka nagar gubbalalu main road subramanipura post bangalore karnataka 560061",
+      "changes": [
+        "raod->road"
+      ]
+    },
+    {
+      "line": 51,
+      "before": "st cross jayanagara bangalore karnataka 577101",
+      "after": "1144 1st cross jayanagar bangalore karnataka 577101",
+      "changes": [
+        "jayanagara->jayanagar"
+      ]
+    },
+    {
+      "line": 54,
+      "before": "lakshmi nilaya st a cross ex service men colony dinnur main raod rt nagar bangalore karnataka 560032",
+      "after": "7 lakshmi nilaya 1st a cross ex service men colony dinnur main road rt nagar bangalore karnataka 560032",
+      "changes": [
+        "raod->road"
+      ]
+    },
+    {
+      "line": 55,
+      "before": "shanta btm nd stage bangalore karnataka 560068",
+      "after": "14 shanta btm layout 2nd stage bangalore karnataka 560068",
+      "changes": [
+        "btm->btm layout"
+      ]
+    },
+    {
+      "line": 59,
+      "before": "th main road thanganagar extention bangalore karnataka 560032",
+      "after": "26 5th main road thanganagar extension bangalore karnataka 560032",
+      "changes": [
+        "extention->extension"
+      ]
+    },
+    {
+      "line": 79,
+      "before": "akkirampura kortagere taluk tumukur dist bangalore karnataka 572121",
+      "after": "akkirampura kortagere taluk tumukur district bangalore karnataka 572121",
+      "changes": [
+        "dist->district"
+      ]
+    },
+    {
+      "line": 80,
+      "before": "st main th corss vijaya nanda nagara nandini layout bangalore karnataka 560096",
+      "after": "946 st main 6th cross vijaya nanda nagara nandini layout bangalore karnataka 560096",
+      "changes": [
+        "corss->cross"
+      ]
+    },
+    {
+      "line": 81,
+      "before": "th cross bellekahlli layout bg main road bangalore karnataka 560076",
+      "after": "106 7th cross bellekahalli layout bg main road bangalore karnataka 560076",
+      "changes": [
+        "bellekahlli->bellekahalli"
+      ]
+    },
+    {
+      "line": 86,
+      "before": "km laine sp raod corss bangalore karnataka 560002",
+      "after": "17 2 km laine sp road cross bangalore karnataka 560002",
+      "changes": [
+        "raod->road",
+        "corss->cross"
+      ]
+    },
+    {
+      "line": 90,
+      "before": "t narsipura taluk mysore dist kodukottanahalli mysore karnataka 571101",
+      "after": "t narsipura taluk mysore district kodukottanahalli mysore karnataka 571101",
+      "changes": [
+        "dist->district"
+      ]
+    },
+    {
+      "line": 92,
+      "before": "muniveerappa building bellekahalli devrachikkanahalli mian road b g road bangalore karnataka 560076",
+      "after": "189 muniveerappa building bellekahalli devrachikkanahalli main road b g road bangalore karnataka 560076",
+      "changes": [
+        "mian->main"
+      ]
+    },
+    {
+      "line": 98,
+      "before": "ujjani road kottut kudliji taluk ballari dist bellary karnataka 583134",
+      "after": "ujjani road kottut kudliji taluk ballari district bellary karnataka 583134",
+      "changes": [
+        "dist->district"
+      ]
+    },
+    {
+      "line": 107,
+      "before": "takkanapalya handanakere hobli tumkur dist tumkur karnataka 572119",
+      "after": "takkanapalya handanakere hobli tumkur district tumkur karnataka 572119",
+      "changes": [
+        "dist->district"
+      ]
+    },
+    {
+      "line": 114,
+      "before": "th main n s palya btm nd stage bangalore karnataka 560076",
+      "after": "1 71 8th main n s palya btm layout 2nd stage bangalore karnataka 560076",
+      "changes": [
+        "btm->btm layout"
+      ]
+    },
+    {
+      "line": 115,
+      "before": "sunshine appartments th block jayanagar bangalore karnataka 560069",
+      "after": "201 sunshine apartment 9th block jayanagar bangalore karnataka 560069",
+      "changes": [
+        "appartments->apartment"
+      ]
+    }
+  ]
+}

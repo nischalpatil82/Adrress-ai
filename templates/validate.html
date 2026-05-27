@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Address AI v2</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        crossorigin=""></script>
+<style>
+  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #ac-list mark { background: #fef08a; padding: 0 2px; border-radius: 2px; }
+  .badge { padding: 2px 10px; border-radius: 999px; font-weight: 600; font-size: 11px; letter-spacing: 0.5px; }
+</style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+<div class="max-w-5xl mx-auto p-6">
+  <header class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-800">Address AI <span class="text-blue-600">v2</span></h1>
+      <p class="text-sm text-slate-500">Type a messy Indian address &mdash; we'll spell-fix it, anchor it on pincode, and either find it in the database or generate a clean version.</p>
+    </div>
+    <a href="/" class="text-xs text-slate-500 underline">v1 page &rarr;</a>
+  </header>
+
+  <!-- Live-search box (top): Google-style word + address suggestions -->
+  <div class="relative">
+    <div class="bg-white shadow-sm rounded-lg border border-slate-200 flex items-center px-4 py-3">
+      <svg class="w-5 h-5 text-emerald-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      <input id="q2" type="text" autocomplete="off" autofocus
+             class="w-full outline-none text-slate-800 placeholder-slate-400"
+             placeholder="Live search &mdash; word fixes & address suggestions as you type" />
+      <span id="q2-status" class="ml-3 text-xs text-slate-400 font-mono"></span>
+    </div>
+    <div id="live-list" class="absolute z-20 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-md shadow-lg overflow-hidden hidden"></div>
+  </div>
+
+  <!-- Full correction box (below): runs the heavy pipeline -->
+  <div class="relative mt-3">
+    <div class="bg-white shadow-sm rounded-lg border border-slate-200 flex items-center px-4 py-3">
+      <svg class="w-5 h-5 text-slate-400 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m21 21-4.3-4.3M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z"/></svg>
+      <input id="q" type="text" autocomplete="off"
+             class="w-full outline-none text-slate-800 placeholder-slate-400"
+             placeholder="Full correction &mdash; e.g. divyashree tower bannergatta road btm bangalore 560029" />
+      <button id="go" class="ml-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-1.5 rounded-md">Correct</button>
+    </div>
+    <ul id="ac-list" class="absolute z-20 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-md shadow-lg overflow-hidden hidden"></ul>
+  </div>
+
+  <p id="status-line" class="text-sm text-slate-500 mt-3 hidden"></p>
+
+  <!-- Result panel -->
+  <section id="result" class="mt-6 hidden">
+    <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-5">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <span id="status-badge" class="badge"></span>
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-slate-500">Confidence</span>
+          <div class="w-32 h-2 bg-slate-100 rounded">
+            <div id="conf-bar" class="h-2 rounded" style="width:0%"></div>
+          </div>
+          <span id="conf-num" class="text-xs font-mono text-slate-600 w-10 text-right">0%</span>
+          <span id="latency" class="ml-3 text-xs text-slate-400 font-mono"></span>
+        </div>
+      </div>
+      <h2 class="mt-4 text-lg font-semibold text-slate-800" id="best-address"></h2>
+
+      <!-- Corrected query (raw spell-fixed text) + diff chips -->
+      <div id="corrected-block" class="mt-2 hidden">
+        <p class="text-xs uppercase tracking-wide text-slate-400 mb-0.5">Corrected query</p>
+        <p class="text-sm text-slate-700 font-medium" id="corrected-text"></p>
+        <p class="text-xs text-slate-500 mt-1" id="spell-line"></p>
+      </div>
+
+      <!-- Alternative match (DB if generated, Generated if DB-found) -->
+      <div id="alt-match" class="mt-3 p-3 bg-slate-50 border border-slate-200 rounded hidden">
+        <p class="text-xs font-bold uppercase tracking-wide text-slate-500 mb-1" id="alt-label"></p>
+        <p class="text-sm text-slate-700" id="alt-address"></p>
+        <p class="text-xs text-slate-500 mt-1" id="alt-meta"></p>
+      </div>
+
+      <div class="mt-4 grid md:grid-cols-2 gap-4">
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">Structured</h3>
+          <dl id="structured" class="text-sm grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1"></dl>
+        </div>
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">Verification</h3>
+          <ul id="verify" class="text-sm space-y-1"></ul>
+        </div>
+      </div>
+
+      <div id="map" class="mt-4 h-56 rounded border border-slate-200 hidden"></div>
+
+      <div id="feedback-box" class="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2 flex-wrap text-sm">
+        <span class="text-slate-500">Was this correct?</span>
+        <button id="fb-yes" class="px-3 py-1 rounded border border-slate-200 hover:bg-emerald-50 hover:border-emerald-400 text-emerald-700">&#128077; Yes</button>
+        <button id="fb-no" class="px-3 py-1 rounded border border-slate-200 hover:bg-rose-50 hover:border-rose-400 text-rose-700">&#128078; No</button>
+        <input id="fb-correction" type="text" placeholder="(optional) actual correct address"
+               class="flex-1 min-w-[200px] px-2 py-1 border border-slate-200 rounded text-slate-700" />
+        <span id="fb-status" class="text-xs text-slate-500"></span>
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <h3 class="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2">Other suggestions</h3>
+      <ol id="suggestions" class="space-y-2"></ol>
+    </div>
+
+    <details class="mt-4">
+      <summary class="text-xs text-slate-500 cursor-pointer">Raw JSON</summary>
+      <pre id="raw" class="mt-2 text-xs bg-slate-900 text-slate-100 p-3 rounded overflow-auto"></pre>
+    </details>
+  </section>
+</div>
+
+<script>
+const STATUS_STYLE = {
+  verified:           {label:"VERIFIED",          bg:"bg-emerald-100", text:"text-emerald-700", bar:"bg-emerald-500"},
+  found_in_database:  {label:"FOUND IN DATABASE", bg:"bg-emerald-100", text:"text-emerald-700", bar:"bg-emerald-500"},
+  high_confidence:    {label:"HIGH CONFIDENCE",   bg:"bg-emerald-100", text:"text-emerald-700", bar:"bg-emerald-500"},
+  generated:          {label:"GENERATED",         bg:"bg-amber-100",   text:"text-amber-700",   bar:"bg-amber-500"},
+  medium_confidence:  {label:"MEDIUM CONFIDENCE", bg:"bg-amber-100",   text:"text-amber-700",   bar:"bg-amber-500"},
+  low_confidence:     {label:"LOW CONFIDENCE",    bg:"bg-rose-100",    text:"text-rose-700",    bar:"bg-rose-500"},
+  no_match:           {label:"NO MATCH",          bg:"bg-rose-100",    text:"text-rose-700",    bar:"bg-rose-500"},
+};
+
+const $q = document.getElementById("q");
+const $go = document.getElementById("go");
+const $ac = document.getElementById("ac-list");
+const $statusLine = document.getElementById("status-line");
+const $result = document.getElementById("result");
+const $badge = document.getElementById("status-badge");
+const $confBar = document.getElementById("conf-bar");
+const $confNum = document.getElementById("conf-num");
+const $latency = document.getElementById("latency");
+const $best = document.getElementById("best-address");
+const $spell = document.getElementById("spell-line");
+const $structured = document.getElementById("structured");
+const $verify = document.getElementById("verify");
+const $map = document.getElementById("map");
+const $suggestions = document.getElementById("suggestions");
+const $raw = document.getElementById("raw");
+
+let map = null;
+let mapMarker = null;
+let acTimer = null;
+
+// ---- Autocomplete (debounced) -------------------------------------------
+$q.addEventListener("input", () => {
+  clearTimeout(acTimer);
+  const v = $q.value.trim();
+  if (v.length < 2) { hideAC(); return; }
+  acTimer = setTimeout(() => fetchAC(v), 150);
+});
+
+$q.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); hideAC(); runCorrect(); }
+  if (e.key === "Escape") hideAC();
+});
+$go.addEventListener("click", runCorrect);
+
+function hideAC() { $ac.classList.add("hidden"); $ac.innerHTML = ""; }
+function showAC() { $ac.classList.remove("hidden"); }
+
+async function fetchAC(prefix) {
+  try {
+    const res = await fetch(`/v2/autocomplete?q=${encodeURIComponent(prefix)}&n=8`);
+    const data = await res.json();
+    const items = (data.suggestions || []).slice(0, 8);
+    if (!items.length) { hideAC(); return; }
+    $ac.innerHTML = items.map(s => {
+      const a = s.address.replace(/</g, "&lt;");
+      const re = new RegExp("(" + prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "i");
+      return `<li class="px-4 py-2 hover:bg-slate-50 cursor-pointer text-sm text-slate-700"
+                 data-addr="${a}">${a.replace(re, "<mark>$1</mark>")}</li>`;
+    }).join("");
+    [...$ac.querySelectorAll("li")].forEach(li => {
+      li.addEventListener("click", () => {
+        $q.value = li.dataset.addr;
+        hideAC();
+        runCorrect();
+      });
+    });
+    showAC();
+  } catch (err) { /* silent */ }
+}
+
+document.addEventListener("click", (e) => {
+  if (!$ac.contains(e.target) && e.target !== $q) hideAC();
+});
+
+// ---- Secondary live-suggest box (Google-style) --------------------------
+const $q2 = document.getElementById("q2");
+const $live = document.getElementById("live-list");
+const $q2Status = document.getElementById("q2-status");
+let liveTimer = null;
+
+function hideLive() { $live.classList.add("hidden"); $live.innerHTML = ""; }
+function showLive() { $live.classList.remove("hidden"); }
+
+$q2.addEventListener("input", () => {
+  clearTimeout(liveTimer);
+  const v = $q2.value.trim();
+  if (v.length < 3) { hideLive(); $q2Status.textContent = ""; return; }
+  // 350 ms debounce so a burst of typing collapses to a single request.
+  liveTimer = setTimeout(() => fetchLive(v), 350);
+});
+
+$q2.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    hideLive();
+    // Promote the live query to the main box and run the full pipeline.
+    if ($q2.value.trim()) {
+      $q.value = $q2.value.trim();
+      runCorrect();
+    }
+  }
+  if (e.key === "Escape") hideLive();
+});
+
+document.addEventListener("click", (e) => {
+  if (!$live.contains(e.target) && e.target !== $q2) hideLive();
+});
+
+async function fetchLive(prefix) {
+  try {
+    const res = await fetch(`/v2/livesuggest?q=${encodeURIComponent(prefix)}&n=8`);
+    const data = await res.json();
+    $q2Status.textContent = data.latency_ms != null ? `${data.latency_ms} ms` : "";
+    renderLive(prefix, data);
+  } catch (err) { /* silent */ }
+}
+
+function renderLive(prefix, data) {
+  const changes = data.changes || [];
+  const suggestions = data.suggestions || [];
+  const corrected = data.corrected || "";
+  let html = "";
+
+  // Section 1: "Did you mean" — word-correction chip + clickable corrected phrase
+  if (changes.length && corrected && corrected.toLowerCase() !== prefix.toLowerCase()) {
+    const chips = changes.map(([a, b]) =>
+      `<span class="inline-block px-1.5 py-0.5 mx-0.5 bg-amber-50 border border-amber-200 rounded text-amber-800 font-mono text-[11px]"><s class="text-rose-500 no-underline opacity-70">${escape(a)}</s><span class="mx-1 text-slate-400">&rarr;</span><strong>${escape(b)}</strong></span>`
+    ).join("");
+    html += `
+      <div class="px-4 py-2 bg-emerald-50 border-b border-emerald-100">
+        <div class="text-[11px] uppercase tracking-wide text-emerald-700 font-semibold mb-1">Did you mean</div>
+        <div class="text-sm text-slate-800 cursor-pointer hover:underline" data-live-pick="${escape(corrected)}">
+          ${escape(corrected)}
+        </div>
+        <div class="mt-1">${chips}</div>
+      </div>`;
+  }
+
+  // Section 2: Address suggestions
+  if (suggestions.length) {
+    html += `<div class="px-4 py-1.5 text-[11px] uppercase tracking-wide text-slate-500 font-semibold bg-slate-50 border-b border-slate-100">Addresses</div>`;
+    const re = new RegExp("(" + prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "i");
+    html += suggestions.map(s => {
+      const a = escape(s.address);
+      const isGoogle = s.source === "google";
+      const tag = isGoogle
+        ? `<span class="ml-2 shrink-0 text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">Google</span>`
+        : `<span class="ml-2 shrink-0 text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">DB</span>`;
+      return `<div class="px-4 py-2 hover:bg-slate-50 cursor-pointer text-sm text-slate-700 border-b border-slate-50 last:border-b-0 flex items-start justify-between gap-2"
+                   data-live-pick="${a}">
+                <span class="flex-1">${a.replace(re, "<mark>$1</mark>")}</span>
+                ${tag}
+              </div>`;
+    }).join("");
+  }
+
+  if (!html) {
+    html = `<div class="px-4 py-3 text-sm text-slate-400 italic">No suggestions</div>`;
+  }
+  $live.innerHTML = html;
+  [...$live.querySelectorAll("[data-live-pick]")].forEach(el => {
+    el.addEventListener("click", () => {
+      const pick = el.getAttribute("data-live-pick");
+      $q2.value = pick;
+      $q.value = pick;
+      hideLive();
+      runCorrect();
+    });
+  });
+  showLive();
+}
+
+// ---- Correction ---------------------------------------------------------
+async function runCorrect() {
+  const q = $q.value.trim();
+  if (!q) return;
+  $statusLine.textContent = "Working...";
+  $statusLine.classList.remove("hidden");
+  $result.classList.add("hidden");
+  try {
+    const res = await fetch("/v2/correct", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({q, n: 5}),
+    });
+    const data = await res.json();
+    $statusLine.classList.add("hidden");
+    renderResult(data);
+  } catch (err) {
+    $statusLine.textContent = "Error: " + err.message;
+  }
+}
+
+function renderResult(d) {
+  $raw.textContent = JSON.stringify(d, null, 2);
+
+  const style = STATUS_STYLE[d.status] || STATUS_STYLE.low_confidence;
+  $badge.textContent = style.label;
+  $badge.className = `badge ${style.bg} ${style.text}`;
+  $confBar.className = `h-2 rounded ${style.bar}`;
+  $confBar.style.width = `${Math.round((d.confidence || 0) * 100)}%`;
+  $confNum.textContent = `${Math.round((d.confidence || 0) * 100)}%`;
+  $latency.textContent = d.latency_ms != null ? `${d.latency_ms} ms` : "";
+
+  $best.textContent = d.best_address || "(no answer)";
+
+  // "Corrected query" block: show the spell-fixed text with the changed
+  // tokens highlighted inline, then the change chips below it.
+  const $correctedBlock = document.getElementById("corrected-block");
+  const $correctedText = document.getElementById("corrected-text");
+  if (d.spell && d.spell.applied && d.spell.corrected) {
+    const changes = (d.spell.changes || []);
+    const newTokens = new Set(changes.map(c => (c[1] || "").toLowerCase()));
+    // Highlight tokens that were produced by a correction
+    const highlighted = d.spell.corrected.split(/\s+/).map(tok => {
+      const clean = tok.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (newTokens.has(clean)) {
+        return `<span class="bg-emerald-100 text-emerald-800 px-1 rounded">${tok}</span>`;
+      }
+      return tok;
+    }).join(" ");
+    $correctedText.innerHTML = highlighted;
+
+    if (changes.length) {
+      $spell.innerHTML = "Spell-fixed: " + changes.map(([a,b]) =>
+        `<span class="inline-block px-1.5 py-0.5 mx-0.5 my-0.5 bg-amber-50 border border-amber-200 rounded text-amber-800 font-mono text-[11px]"><s class="text-rose-500 no-underline opacity-70">${a}</s><span class="mx-1 text-slate-400">→</span><strong>${b}</strong></span>`
+      ).join("");
+    } else {
+      $spell.textContent = "";
+    }
+    $correctedBlock.classList.remove("hidden");
+  } else {
+    $correctedBlock.classList.add("hidden");
+    $spell.textContent = "";
+  }
+
+  // Show alternative match: DB top-pick when generated, vice versa
+  const $alt = document.getElementById("alt-match");
+  const $altLabel = document.getElementById("alt-label");
+  const $altAddr = document.getElementById("alt-address");
+  const $altMeta = document.getElementById("alt-meta");
+  const topSugg = (d.suggestions || []).find(x => x.address && x.address !== d.best_address);
+  if (d.status === "generated" && topSugg) {
+    $altLabel.textContent = "Closest match in database";
+    $altAddr.textContent = topSugg.address;
+    $altMeta.textContent = `score ${(topSugg.probability * 100).toFixed(1)}%`;
+    $alt.classList.remove("hidden");
+  } else if ((d.status === "found_in_database" || d.status === "verified")
+             && d.structured && d.structured.formatted
+             && d.structured.formatted !== d.best_address) {
+    $altLabel.textContent = "Generated from API";
+    $altAddr.textContent = d.structured.formatted;
+    $altMeta.textContent = "via Google APIs";
+    $alt.classList.remove("hidden");
+  } else {
+    $alt.classList.add("hidden");
+  }
+
+  // Structured table
+  const s = d.structured || {};
+  const rows = [
+    ["House #", s.house_number],
+    ["Street", s.street],
+    ["Sublocality", s.sublocality],
+    ["City", s.city],
+    ["State", s.state],
+    ["Pincode", s.pincode],
+    ["Country", s.country],
+    ["Lat / Lon", (s.lat != null && s.lon != null) ? `${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}` : null],
+    ["Source", s.source],
+  ].filter(([,v]) => v !== null && v !== undefined && v !== "");
+  $structured.innerHTML = rows.map(([k,v]) =>
+    `<dt class="text-slate-500 text-xs uppercase tracking-wide">${k}</dt>
+     <dd class="text-slate-800">${escape(v)}</dd>`
+  ).join("");
+
+  // Verification
+  const v = d.verification || {};
+  const flags = [
+    ["Geocoded", v.geocoded],
+    ["Pincode valid", v.pincode_valid],
+    ["Pincode consistent", v.pincode_consistent],
+  ];
+  $verify.innerHTML = flags.map(([k,val]) =>
+    `<li class="flex items-center gap-2">
+       <span class="${val === true ? 'bg-emerald-500' : (val === false ? 'bg-rose-500' : 'bg-slate-300')} w-2 h-2 rounded-full"></span>
+       <span class="text-slate-700">${k}:</span>
+       <span class="text-slate-500">${val === null ? '?' : String(val)}</span>
+     </li>`
+  ).join("");
+  if (v.pincode_info) {
+    $verify.innerHTML += `<li class="text-xs text-slate-500 mt-1">India Post: ${escape(v.pincode_info.office)}, ${escape(v.pincode_info.district)}, ${escape(v.pincode_info.state)}</li>`;
+  }
+  if ((v.notes || []).length) {
+    $verify.innerHTML += `<li class="text-xs text-slate-500">Notes: ${(v.notes || []).join(", ")}</li>`;
+  }
+
+  // Map
+  if (s.lat != null && s.lon != null) {
+    $map.classList.remove("hidden");
+    if (!map) {
+      map = L.map("map").setView([s.lat, s.lon], 16);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap"
+      }).addTo(map);
+    } else {
+      map.setView([s.lat, s.lon], 16);
+    }
+    if (mapMarker) map.removeLayer(mapMarker);
+    mapMarker = L.marker([s.lat, s.lon]).addTo(map).bindPopup(d.best_address || "").openPopup();
+    setTimeout(() => map.invalidateSize(), 50);
+  } else {
+    $map.classList.add("hidden");
+  }
+
+  // Suggestions
+  const suggestions = (d.suggestions || []).filter(x => x.address !== d.best_address);
+  $suggestions.innerHTML = suggestions.slice(0, 5).map((sg, i) => `
+    <li class="bg-white border border-slate-200 rounded p-3 flex items-start justify-between gap-3 hover:bg-slate-50 cursor-pointer"
+        data-addr="${escape(sg.address)}">
+      <div class="text-sm text-slate-700">${escape(sg.address)}</div>
+      <span class="text-xs font-mono text-slate-500 shrink-0">${Math.round((sg.probability || 0) * 100)}%</span>
+    </li>
+  `).join("");
+  [...$suggestions.querySelectorAll("li")].forEach(li => {
+    li.addEventListener("click", () => { $q.value = li.dataset.addr; runCorrect(); });
+  });
+
+  $result.classList.remove("hidden");
+}
+
+function escape(v) {
+  if (v === null || v === undefined) return "";
+  return String(v).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+
+// ---- Feedback (active learning) -----------------------------------------
+let lastQuery = null;
+let lastPrediction = null;
+
+const $fbYes = document.getElementById("fb-yes");
+const $fbNo = document.getElementById("fb-no");
+const $fbCorrection = document.getElementById("fb-correction");
+const $fbStatus = document.getElementById("fb-status");
+
+async function sendFeedback(label) {
+  if (!lastQuery) return;
+  $fbStatus.textContent = "Saving...";
+  try {
+    const res = await fetch("/v2/feedback", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        query: lastQuery,
+        predicted: lastPrediction,
+        corrected: $fbCorrection.value.trim(),
+        label: label,
+      }),
+    });
+    if (res.ok) {
+      $fbStatus.textContent = "Thanks! Saved.";
+      $fbStatus.className = "text-xs text-emerald-600";
+    } else {
+      const j = await res.json().catch(() => ({}));
+      $fbStatus.textContent = "Error: " + (j.error || res.status);
+      $fbStatus.className = "text-xs text-rose-600";
+    }
+  } catch (err) {
+    $fbStatus.textContent = "Network error";
+    $fbStatus.className = "text-xs text-rose-600";
+  }
+}
+
+$fbYes.addEventListener("click", () => sendFeedback(1));
+$fbNo.addEventListener("click", () => sendFeedback(0));
+
+// Hook into renderResult to remember last query/prediction.
+const _origRender = renderResult;
+renderResult = function(d) {
+  _origRender(d);
+  lastQuery = d.query || $q.value.trim();
+  lastPrediction = d.best_address || "";
+  $fbCorrection.value = "";
+  $fbStatus.textContent = "";
+  $fbStatus.className = "text-xs text-slate-500";
+};
+</script>
+</body>
+</html>

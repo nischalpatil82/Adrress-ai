@@ -1,0 +1,12 @@
+{
+  "input_rows": 176937,
+  "output_rows": 157034,
+  "strict_rows": 73590,
+  "skipped_empty_or_short": 0,
+  "skipped_missing_city_or_state": 105,
+  "deduplicated": 19798,
+  "jsonl": "data\\address_training_kier_v1.jsonl",
+  "csv": "data\\address_training_kier_v1.csv",
+  "strict_jsonl": "data\\address_training_kier_v1_strict.jsonl",
+  "strict_csv": "data\\address_training_kier_v1_strict.csv"
+}

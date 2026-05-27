@@ -1,0 +1,479 @@
+{% extends "_base.html" %}
+{% set active_page = "batch" %}
+{% block title %}Batch · AddressAI{% endblock %}
+
+{% block extra_css %}
+  .batch-grid {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 16px;
+    padding: 18px 22px 22px;
+    align-items: start;
+  }
+
+  .input-card { display: flex; flex-direction: column; }
+  .input-card .card-body { display: flex; flex-direction: column; gap: 10px; }
+
+  .drop {
+    border: 1px dashed var(--border-strong);
+    border-radius: 5px;
+    padding: 24px 14px;
+    text-align: center;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .drop:hover, .drop.over { border-color: var(--red); background: var(--red-soft); color: var(--text); }
+  .drop svg { width: 22px; height: 22px; color: var(--text-3); margin-bottom: 8px; }
+  .drop strong { color: var(--text); display: block; font-size: 13px; margin-bottom: 4px; }
+  .drop span { font-size: 11.5px; color: var(--text-3); }
+
+  .batch-textarea {
+    min-height: 180px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+  }
+
+  .batch-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .batch-stats {
+    font-size: 11px;
+    color: var(--text-3);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  .results-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    background: #0d0d0d;
+  }
+  .toolbar-l { display: flex; align-items: center; gap: 14px; font-size: 12px; color: var(--text-2); }
+  .toolbar-l strong { color: var(--text); font-family: 'IBM Plex Mono', monospace; }
+  .toolbar-r { display: flex; align-items: center; gap: 6px; }
+
+  .btable { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .btable th {
+    text-align: left; padding: 9px 14px;
+    font-size: 10.5px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.7px;
+    color: var(--text-3);
+    border-bottom: 1px solid var(--border);
+    background: #0d0d0d;
+    position: sticky; top: 0;
+    z-index: 1;
+  }
+  .btable td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-1);
+    vertical-align: top;
+  }
+  .btable tr:last-child td { border-bottom: none; }
+  .btable tr:hover td { background: var(--surface-2); }
+  .btable .tn { width: 38px; color: var(--text-3); font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+  .btable .raw { color: var(--text-2); max-width: 280px; }
+  .btable .out { font-weight: 500; color: var(--text); max-width: 360px; }
+  .btable .conf { width: 70px; text-align: right; font-family: 'IBM Plex Mono', monospace; }
+  .btable .stat { width: 100px; }
+  .btable td.actions { width: 70px; text-align: right; }
+
+  .batch-progress {
+    height: 3px;
+    background: var(--surface-2);
+    overflow: hidden;
+    margin: 0;
+    display: none;
+  }
+  .batch-progress.show { display: block; }
+  .batch-progress .bar {
+    height: 100%;
+    background: var(--red);
+    transition: width 0.3s;
+  }
+
+  .row-status {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-2);
+  }
+  .row-status.ok { background: rgba(255,255,255,0.05); color: var(--text); border-color: var(--border-strong); }
+  .row-status.err { background: var(--red-soft); color: var(--red); border-color: var(--red-soft-2); }
+  .row-status.run { background: var(--red-soft); color: var(--red); border-color: var(--red-soft-2); }
+  .row-status .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+  .empty-results {
+    padding: 60px 24px;
+    text-align: center;
+    color: var(--text-2);
+  }
+
+  @media (max-width: 1100px) {
+    .batch-grid { grid-template-columns: 1fr; }
+  }
+{% endblock %}
+
+{% block breadcrumb %}
+<span>Workspace</span>
+<i data-lucide="chevron-right"></i>
+<strong>Batch Process</strong>
+{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn btn-ghost" id="exportCsvBtn" disabled>
+  <i data-lucide="file-down"></i> Export CSV
+</button>
+<button class="btn btn-ghost" id="exportJsonBtn" disabled>
+  <i data-lucide="braces"></i> Export JSON
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-head-row">
+    <div>
+      <div class="page-title">Batch Process</div>
+      <div class="page-sub">Paste up to 200 addresses or drop a CSV/TXT file. Each row runs through the full v2 pipeline.</div>
+    </div>
+  </div>
+</div>
+
+<div class="batch-grid">
+  <!-- LEFT: input -->
+  <div class="card input-card">
+    <div class="card-head">
+      <div class="card-title"><i data-lucide="upload"></i> Input</div>
+      <div class="card-meta" id="inputStats">0 lines</div>
+    </div>
+    <div class="card-body">
+      <div class="drop" id="dropZone">
+        <i data-lucide="file-up"></i>
+        <strong>Drop CSV or TXT here</strong>
+        <span>or click to browse · one address per line</span>
+        <input type="file" id="fileInput" accept=".csv,.txt" style="display:none;" />
+      </div>
+
+      <textarea
+        id="batchInput"
+        class="input batch-textarea"
+        placeholder="rpnc systems bannerghatta road bangalore 560061
+prestige apartment btm layout bangalore
+vega city mall bengaluru
+house no 81 jakkasandra koramangala"></textarea>
+
+      <div class="batch-controls">
+        <div class="batch-stats" id="batchHint">limit · 200 rows per run</div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn" id="clearBtn"><i data-lucide="trash-2"></i> Clear</button>
+          <button class="btn btn-primary" id="runBtn"><i data-lucide="play"></i> Run batch</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: results -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><i data-lucide="table-2"></i> Results</div>
+      <div class="card-meta" id="resultsMeta">—</div>
+    </div>
+    <div class="batch-progress" id="bprog"><div class="bar" id="bbar" style="width:0%;"></div></div>
+    <div class="results-toolbar">
+      <div class="toolbar-l">
+        <span><strong id="okCount">0</strong> ok</span>
+        <span><strong id="errCount">0</strong> error</span>
+        <span><strong id="avgConf">—</strong> avg conf</span>
+        <span><strong id="totalTime">—</strong> total</span>
+      </div>
+      <div class="toolbar-r">
+        <button class="btn btn-ghost" id="rerunFailedBtn" disabled>
+          <i data-lucide="refresh-cw"></i> Rerun failed
+        </button>
+      </div>
+    </div>
+    <div style="max-height: calc(100vh - 270px); overflow-y: auto;">
+      <table class="btable">
+        <thead>
+          <tr>
+            <th class="tn">#</th>
+            <th>Input</th>
+            <th>Final address</th>
+            <th class="stat">Status</th>
+            <th class="conf">Conf.</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="resBody">
+          <tr><td colspan="6"><div class="empty-results">
+            <i data-lucide="layers" style="width:32px;height:32px;color:var(--text-3);margin-bottom:10px;"></i>
+            <div style="color:var(--text);font-weight:500;font-size:13px;margin-bottom:4px;">No batch runs yet</div>
+            <div style="font-size:12px;">Paste addresses on the left and hit <kbd style="background:var(--surface-2);border:1px solid var(--border);padding:1px 5px;border-radius:3px;font-size:10px;">Run batch</kbd></div>
+          </div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ta = document.getElementById("batchInput");
+const inputStats = document.getElementById("inputStats");
+const drop = document.getElementById("dropZone");
+const fileInput = document.getElementById("fileInput");
+const runBtn = document.getElementById("runBtn");
+const clearBtn = document.getElementById("clearBtn");
+const resBody = document.getElementById("resBody");
+const okCount = document.getElementById("okCount");
+const errCount = document.getElementById("errCount");
+const avgConf = document.getElementById("avgConf");
+const totalTime = document.getElementById("totalTime");
+const bprog = document.getElementById("bprog");
+const bbar = document.getElementById("bbar");
+const rerunFailedBtn = document.getElementById("rerunFailedBtn");
+const exportCsvBtn = document.getElementById("exportCsvBtn");
+const exportJsonBtn = document.getElementById("exportJsonBtn");
+const resultsMeta = document.getElementById("resultsMeta");
+
+let results = [];
+
+function lines() {
+  return ta.value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+}
+
+function updateInputStats() {
+  const n = lines().length;
+  inputStats.textContent = `${n} line${n === 1 ? "" : "s"}`;
+}
+ta.addEventListener("input", updateInputStats);
+
+clearBtn.addEventListener("click", () => { ta.value = ""; updateInputStats(); });
+
+// Drag & drop
+;["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => {
+  e.preventDefault(); e.stopPropagation(); drop.classList.add("over");
+}));
+;["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => {
+  e.preventDefault(); e.stopPropagation(); drop.classList.remove("over");
+}));
+drop.addEventListener("drop", e => {
+  const f = e.dataTransfer.files[0];
+  if (f) readFile(f);
+});
+drop.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", e => {
+  const f = e.target.files[0];
+  if (f) readFile(f);
+});
+function readFile(f) {
+  const r = new FileReader();
+  r.onload = (e) => {
+    let text = e.target.result;
+    // simple CSV: take first column
+    if (f.name.toLowerCase().endsWith(".csv")) {
+      text = text.split(/\r?\n/).map(line => {
+        const m = line.match(/^"([^"]*)"|^([^,]*)/);
+        return m ? (m[1] ?? m[2] ?? line) : line;
+      }).join("\n");
+    }
+    ta.value = text.trim();
+    updateInputStats();
+    AAI.toast(`Loaded ${f.name}`);
+  };
+  r.readAsText(f);
+}
+
+function rowClass(r) {
+  if (r.error) return "err";
+  if (r.running) return "run";
+  return "ok";
+}
+function rowHTML(r, i) {
+  let stat;
+  if (r.running) stat = '<span class="row-status run"><span class="dot"></span> running</span>';
+  else if (r.error) stat = '<span class="row-status err"><span class="dot"></span> error</span>';
+  else stat = `<span class="row-status ok"><span class="dot"></span> ${(r.status || "ok").replace(/_/g, " ")}</span>`;
+
+  const final = r.error ? `<span style="color:var(--red);">${AAI.esc(r.error)}</span>`
+                        : AAI.esc(r.final || "—");
+  const conf = r.error ? "—" : (AAI.pct(r.confidence) + "%");
+
+  return `
+    <tr data-i="${i}">
+      <td class="tn">${String(i + 1).padStart(3, "0")}</td>
+      <td class="raw">${AAI.esc(r.query)}</td>
+      <td class="out">${final}</td>
+      <td class="stat">${stat}</td>
+      <td class="conf">${conf}</td>
+      <td class="actions">
+        ${r.final ? `<button class="btn btn-ghost" data-copy="${AAI.esc(r.final)}"><i data-lucide="copy" style="width:12px;height:12px;"></i></button>` : ""}
+        ${r.query ? `<a href="/v2?q=${encodeURIComponent(r.query)}" class="btn btn-ghost" target="_blank"><i data-lucide="external-link" style="width:12px;height:12px;"></i></a>` : ""}
+      </td>
+    </tr>
+  `;
+}
+
+function renderTable() {
+  if (!results.length) return;
+  resBody.innerHTML = results.map(rowHTML).join("");
+  resBody.querySelectorAll("[data-copy]").forEach(b => {
+    b.addEventListener("click", () => AAI.copy(b.dataset.copy, b));
+  });
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function recomputeStats() {
+  const ok = results.filter(r => !r.error && !r.running);
+  const err = results.filter(r => r.error);
+  okCount.textContent = ok.length;
+  errCount.textContent = err.length;
+  if (ok.length) {
+    const avg = ok.reduce((a, x) => a + AAI.pct(x.confidence), 0) / ok.length;
+    avgConf.textContent = Math.round(avg) + "%";
+  } else avgConf.textContent = "—";
+  rerunFailedBtn.disabled = err.length === 0;
+  exportCsvBtn.disabled = ok.length === 0;
+  exportJsonBtn.disabled = ok.length === 0;
+  resultsMeta.textContent = `${results.length} row${results.length === 1 ? "" : "s"}`;
+}
+
+async function runOne(idx) {
+  const r = results[idx];
+  r.running = true;
+  renderTable();
+  try {
+    const prefs = AAI.loadPrefs();
+    const t0 = performance.now();
+    const resp = await fetch("/v2/correct", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ q: r.query, n: prefs.topN })
+    });
+    const d = await resp.json();
+    const t1 = performance.now();
+    if (!resp.ok) throw new Error(d.error || resp.statusText);
+
+    r.running = false;
+    r.error = null;
+    r.status = d.status;
+    r.confidence = d.confidence;
+    r.spell = (d.spell && d.spell.corrected) || "";
+    r.db_match = (d.suggestions && d.suggestions[0] && (d.suggestions[0].address || d.suggestions[0].full_address)) || "";
+    r.geocoded = (d.verification || {}).geocoded === true;
+    r.final = ((d.verification || {}).geocode || {}).formatted_address || d.best_address || r.spell || r.query;
+    r.latency_ms = d.latency_ms ?? Math.round(t1 - t0);
+    r.lat = (d.structured || {}).lat;
+    r.lon = (d.structured || {}).lon;
+    r.raw = d;
+  } catch (e) {
+    r.running = false;
+    r.error = e.message;
+  }
+}
+
+async function runBatch() {
+  const items = lines();
+  if (!items.length) { AAI.toast("Enter at least one address"); return; }
+  if (items.length > 200) { AAI.toast("Maximum 200 rows per run"); return; }
+
+  results = items.map(s => ({ query: s, running: false }));
+  renderTable();
+  recomputeStats();
+  bprog.classList.add("show");
+  runBtn.disabled = true;
+  const origBtn = runBtn.innerHTML;
+  runBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Running';
+  if (window.lucide) window.lucide.createIcons();
+
+  const t0 = performance.now();
+  let done = 0;
+  // Run with concurrency = 3 to avoid overwhelming the API
+  const queue = results.map((_, i) => i);
+  const CONC = 3;
+  async function worker() {
+    while (queue.length) {
+      const i = queue.shift();
+      await runOne(i);
+      done++;
+      bbar.style.width = (done * 100 / results.length) + "%";
+      renderTable();
+      recomputeStats();
+    }
+  }
+  await Promise.all(Array.from({ length: CONC }, () => worker()));
+  const t1 = performance.now();
+  totalTime.textContent = Math.round((t1 - t0)) + "ms";
+
+  bprog.classList.remove("show");
+  bbar.style.width = "0%";
+  runBtn.disabled = false;
+  runBtn.innerHTML = origBtn;
+  if (window.lucide) window.lucide.createIcons();
+  AAI.toast(`Batch complete · ${results.length - results.filter(r => r.error).length}/${results.length} ok`);
+}
+
+runBtn.addEventListener("click", runBatch);
+
+rerunFailedBtn.addEventListener("click", async () => {
+  const failed = results.map((r, i) => r.error ? i : null).filter(i => i !== null);
+  if (!failed.length) return;
+  rerunFailedBtn.disabled = true;
+  for (const i of failed) {
+    results[i].error = null;
+    await runOne(i);
+    renderTable();
+    recomputeStats();
+  }
+  rerunFailedBtn.disabled = false;
+});
+
+function csvEscape(s) {
+  s = String(s ?? "");
+  if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+exportCsvBtn.addEventListener("click", () => {
+  const head = ["row", "input", "spell_corrected", "db_match", "final_address", "status", "confidence", "geocoded", "lat", "lon", "latency_ms", "error"];
+  const rows = results.map((r, i) => [
+    i + 1, r.query, r.spell || "", r.db_match || "", r.final || "",
+    r.status || "", AAI.pct(r.confidence), r.geocoded ?? "",
+    r.lat || "", r.lon || "", r.latency_ms || "", r.error || ""
+  ]);
+  const csv = [head, ...rows].map(row => row.map(csvEscape).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `batch-${Date.now()}.csv`; a.click();
+  URL.revokeObjectURL(url);
+  AAI.toast("CSV exported");
+});
+
+exportJsonBtn.addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(results, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `batch-${Date.now()}.json`; a.click();
+  URL.revokeObjectURL(url);
+  AAI.toast("JSON exported");
+});
+
+updateInputStats();
+</script>
+{% endblock %}
