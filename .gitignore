@@ -12,6 +12,7 @@ env/
 # Large data files not needed at runtime
 data/*.jsonl
 data/*.csv
+!data/india_post_pincodes.csv
 data/*.pkl
 data/*.backup
 data/*.backup2
