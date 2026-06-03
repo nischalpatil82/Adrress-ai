@@ -549,7 +549,7 @@ class AddressPipeline:
                 suggestions.insert(0, Suggestion(
                     address=format_generated_address(top.candidate.address),
                     addr_id=top_id,
-                    probability=round(max(top.probability, match_score), 4),
+                    probability=round(top.probability, 4),
                     features=top.features,
                 ))
 

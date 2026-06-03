@@ -67,6 +67,11 @@ def parse_args():
         action="store_true",
         help="Append city/state/pincode to prompts. Use only if inference also supplies that context.",
     )
+    parser.add_argument(
+        "--model-name",
+        default="google/flan-t5-base",
+        help="Pretrained model name or path (e.g. google/flan-t5-base).",
+    )
     return parser.parse_args()
 
 
@@ -231,12 +236,12 @@ def main():
     )
     print(f"  Train: {len(train_p):,}   Val: {len(val_p):,}")
 
-    print("Loading T5-small architecture...")
-    tokenizer = T5Tokenizer.from_pretrained("t5-small")
-    model     = T5ForConditionalGeneration.from_pretrained("t5-small")
-    # NOTE: we use the T5-small architecture with its pretrained weights
-    # as the starting point. Fine-tuning on your address data makes the
-    # weights domain-specific to YOUR dataset.
+    print(f"Loading model: {args.model_name} ...")
+    tokenizer = T5Tokenizer.from_pretrained(args.model_name)
+    model     = T5ForConditionalGeneration.from_pretrained(args.model_name)
+    # NOTE:we load the specified pretrained model as the starting point.
+    # Fine-tuning on your address data makes the weights domain-specific
+    # to your dataset.
 
     device, device_name, is_xla = pick_device(args.device)
     use_amp = (device.type == "cuda")
