@@ -440,6 +440,14 @@
     color: var(--text);
   }
   .ctable .c-id { width: 80px; color: var(--text-2); font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+  .ctable .c-action { width: 100px; text-align: center; }
+
+  /* Small button for table actions */
+  .btn-sm {
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 5px;
+  }
 
   /* Trace pipeline */
   .trace { padding: 14px; }
@@ -612,6 +620,7 @@
               <th>Address</th>
               <th class="c-id">DB ID</th>
               <th class="c-score">Score</th>
+              <th class="c-action">Action</th>
             </tr>
           </thead>
           <tbody id="candBody"></tbody>
@@ -1027,19 +1036,37 @@ function renderVerification(d) {
 function renderCandidates(d) {
   const sugs = (d.suggestions || []).filter(s => s && (s.address || s.full_address));
   const tb = document.getElementById("candBody");
-  if (!sugs.length) { tb.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-3);padding:24px;">no candidates returned</td></tr>'; return; }
+  if (!sugs.length) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-3);padding:24px;">no candidates returned</td></tr>'; return; }
   tb.innerHTML = sugs.slice(0, 10).map((s, i) => `
     <tr data-lat="${(s.structured && s.structured.lat) || s.lat || ""}" data-lon="${(s.structured && s.structured.lon) || s.lon || ""}">
       <td class="c-rank">${String(i + 1).padStart(2, "0")}</td>
       <td>${AAI.esc(s.address || s.full_address)}</td>
       <td class="c-id">${s.addr_id ? "#" + AAI.esc(s.addr_id) : "—"}</td>
       <td class="c-score">${AAI.pct(s.probability ?? s.score)}%</td>
+      <td class="c-action">
+        <button class="btn btn-sm" data-copy="${AAI.esc(s.address || s.full_address)}">
+          <i data-lucide="copy" style="width:14px;height:14px;"></i> Use this
+        </button>
+      </td>
     </tr>
   `).join("");
   tb.querySelectorAll("tr").forEach(tr => {
     tr.addEventListener("click", () => {
       const lat = tr.dataset.lat, lon = tr.dataset.lon;
       if (lat && lon && map) map.setView([Number(lat), Number(lon)], 16);
+    });
+  });
+  // Attach copy handlers to new buttons
+  tb.querySelectorAll("[data-copy]").forEach(b => {
+    b.addEventListener("click", (e) => {
+      e.stopPropagation(); // Prevent map zoom on button click
+      const t = b.getAttribute("data-copy");
+      navigator.clipboard.writeText(t).then(() => {
+        const orig = b.innerHTML;
+        b.innerHTML = '<i data-lucide="check" style="width:14px;height:14px;"></i> Copied!';
+        if (window.lucide) window.lucide.createIcons();
+        setTimeout(() => { b.innerHTML = orig; if (window.lucide) window.lucide.createIcons(); }, 1500);
+      });
     });
   });
 }

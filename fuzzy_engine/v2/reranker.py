@@ -37,6 +37,7 @@ log = logging.getLogger(__name__)
 FEATURE_NAMES = [
     "bm25_score", "faiss_score", "fuzzy_tsr", "fuzzy_pr",
     "edit_sim", "token_overlap", "len_diff", "num_match",
+    "query_specificity",
 ]
 
 
@@ -105,7 +106,18 @@ class Reranker:
         3. Else linear blend of features as a sanity fallback.
         """
         if self.model is None:
-            return X[:, 0] * 0.3 + X[:, 1] * 0.4 + X[:, 2] * 0.3
+            # Fallback with 9 features (including query_specificity)
+            if X.shape[1] >= 9:
+                return (X[:, 0] * 0.2 +      # bm25_score
+                        X[:, 1] * 0.1 +      # faiss_score
+                        X[:, 2] * 0.15 +     # fuzzy_tsr
+                        X[:, 3] * 0.15 +     # fuzzy_pr
+                        X[:, 4] * 0.15 +     # edit_sim
+                        X[:, 5] * 0.1 +      # token_overlap
+                        X[:, 8] * 0.15)      # query_specificity (most important for ranking)
+            else:
+                # Old 8-feature fallback
+                return X[:, 0] * 0.3 + X[:, 1] * 0.4 + X[:, 2] * 0.3
         try:
             if hasattr(self.model, "predict_proba"):
                 proba = self.model.predict_proba(X)
@@ -143,4 +155,17 @@ class Reranker:
         q_p = parse(query)
         a_p = parse(c.address)
         num_match = 1.0 if q_p.numbers and (q_p.numbers & a_p.numbers) else 0.0
-        return [bm25, faiss_s, tsr, pr, edit_sim, token_overlap, len_diff, num_match]
+        
+        # Query specificity: higher for more specific queries (locality + pincode vs pincode only)
+        q_specificity = 0.0
+        if q_p.locality_anchors:
+            q_specificity += 0.5  # Has locality
+        if q_p.road_anchor:
+            q_specificity += 0.3  # Has road
+        if q_p.numbers:
+            q_specificity += 0.2  # Has numbers (proxy for house number)
+        # Penalize pincode-only queries
+        if q_p.pincode and len(q_tok) <= 2:
+            q_specificity = 0.1  # Very low specificity
+        
+        return [bm25, faiss_s, tsr, pr, edit_sim, token_overlap, len_diff, num_match, q_specificity]
