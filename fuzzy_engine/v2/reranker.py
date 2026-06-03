@@ -79,7 +79,15 @@ class Reranker:
             [self._featurize(query, c) for c in candidates], dtype="float32"
         )
         raw = self._predict(feats)
-        probs = self._calibrate(raw)
+        base_probs = self._calibrate(raw)
+
+        # Boost probability based on query specificity
+        # Specific queries (with locality/road/house#) deserve higher confidence
+        specificities = feats[:, 8]  # query_specificity is index 8
+        boosted = np.clip(
+            0.65 * base_probs + 0.35 * specificities,
+            0.0, 1.0
+        )
 
         ranked = sorted(
             (
@@ -89,7 +97,7 @@ class Reranker:
                     probability=float(p),
                     features=dict(zip(FEATURE_NAMES, row.tolist())),
                 )
-                for c, r, p, row in zip(candidates, raw, probs, feats)
+                for c, r, p, row in zip(candidates, raw, boosted, feats)
             ),
             key=lambda x: -x.probability,
         )
@@ -105,19 +113,33 @@ class Reranker:
         2. Else use `predict` (regressor or raw_score regression model).
         3. Else linear blend of features as a sanity fallback.
         """
-        if self.model is None:
-            # Fallback with 9 features (including query_specificity)
+        # Fallback blend with 9 features (including query_specificity)
+        def fallback_blend(X):
             if X.shape[1] >= 9:
-                return (X[:, 0] * 0.2 +      # bm25_score
-                        X[:, 1] * 0.1 +      # faiss_score
-                        X[:, 2] * 0.15 +     # fuzzy_tsr
-                        X[:, 3] * 0.15 +     # fuzzy_pr
-                        X[:, 4] * 0.15 +     # edit_sim
-                        X[:, 5] * 0.1 +      # token_overlap
-                        X[:, 8] * 0.15)      # query_specificity (most important for ranking)
+                return (X[:, 0] * 0.15 +      # bm25_score
+                        X[:, 1] * 0.05 +      # faiss_score
+                        X[:, 2] * 0.10 +     # fuzzy_tsr
+                        X[:, 3] * 0.10 +     # fuzzy_pr
+                        X[:, 4] * 0.10 +     # edit_sim
+                        X[:, 5] * 0.05 +      # token_overlap
+                        X[:, 8] * 0.10)      # query_specificity
             else:
                 # Old 8-feature fallback
                 return X[:, 0] * 0.3 + X[:, 1] * 0.4 + X[:, 2] * 0.3
+
+        if self.model is None:
+            return fallback_blend(X)
+
+        # If model was trained with fewer features than we provide,
+        # use fallback blend so the new features (e.g., query_specificity) count.
+        try:
+            n_model_features = getattr(self.model, 'n_features_in_', None)
+            if n_model_features and X.shape[1] > n_model_features:
+                log.warning("Model expects %d features but we have %d; using fallback blend.", n_model_features, X.shape[1])
+                return fallback_blend(X)
+        except Exception:
+            pass
+
         try:
             if hasattr(self.model, "predict_proba"):
                 proba = self.model.predict_proba(X)
@@ -127,12 +149,17 @@ class Reranker:
             return self.model.predict(X)
         except Exception as exc:  # noqa: BLE001
             log.warning("Reranker predict failed: %s; falling back to blend.", exc)
-            return X[:, 0] * 0.3 + X[:, 1] * 0.4 + X[:, 2] * 0.3
+            return fallback_blend(X)
 
     def _calibrate(self, raw: np.ndarray) -> np.ndarray:
         if self.calibrator is not None:
             try:
-                return np.clip(self.calibrator.predict(raw), 0.0, 1.0)
+                result = np.clip(self.calibrator.predict(raw), 0.0, 1.0)
+                # If calibrator collapses all values to the same extreme,
+                # it was trained on a different score distribution; use sigmoid.
+                if len(set(np.round(result, 3))) > 1:
+                    return result
+                log.warning("Calibrator collapsed all scores to %.3f; using sigmoid.", result[0])
             except Exception as exc:  # noqa: BLE001
                 log.warning("Calibrator failed: %s; falling back to sigmoid.", exc)
         # Sigmoid fallback centred on 0 (assumes raw was z-ish).
@@ -156,16 +183,28 @@ class Reranker:
         a_p = parse(c.address)
         num_match = 1.0 if q_p.numbers and (q_p.numbers & a_p.numbers) else 0.0
         
-        # Query specificity: higher for more specific queries (locality + pincode vs pincode only)
-        q_specificity = 0.0
+        # Query specificity: higher for more specific queries
+        # 0.1 = pincode only, 0.5+ = full address with locality/road
+        q_specificity = 0.1  # Default low for vague queries
+        if q_p.pincode:
+            q_specificity = 0.2  # Has pincode
         if q_p.locality_anchors:
-            q_specificity += 0.5  # Has locality
+            q_specificity += 0.25  # Has locality suffix (e.g., "nagar", "layout")
         if q_p.road_anchor:
-            q_specificity += 0.3  # Has road
+            q_specificity += 0.2  # Has road/street
+        # Numbers beyond pincode = house number
         if q_p.numbers:
-            q_specificity += 0.2  # Has numbers (proxy for house number)
-        # Penalize pincode-only queries
-        if q_p.pincode and len(q_tok) <= 2:
-            q_specificity = 0.1  # Very low specificity
+            non_pincode = q_p.numbers - {q_p.pincode} if q_p.pincode else q_p.numbers
+            if non_pincode:
+                q_specificity += 0.15
+        # Informative tokens = meaningful words beyond pincode (catches "amrithahalli")
+        if q_p.informative_tokens:
+            non_pincode_tokens = q_p.informative_tokens
+            if q_p.pincode:
+                non_pincode_tokens = non_pincode_tokens - {q_p.pincode}
+            if len(non_pincode_tokens) > 0:
+                q_specificity += min(0.15 * len(non_pincode_tokens), 0.3)
+        # Cap at 1.0
+        q_specificity = min(q_specificity, 1.0)
         
         return [bm25, faiss_s, tsr, pr, edit_sim, token_overlap, len_diff, num_match, q_specificity]
