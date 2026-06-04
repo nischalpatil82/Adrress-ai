@@ -85,7 +85,7 @@ class Reranker:
         # Specific queries (with locality/road/house#) deserve higher confidence
         specificities = feats[:, 8]  # query_specificity is index 8
         boosted = np.clip(
-            0.65 * base_probs + 0.35 * specificities,
+            0.85 * base_probs + 0.15 * specificities,
             0.0, 1.0
         )
 
@@ -116,13 +116,13 @@ class Reranker:
         # Fallback blend with 9 features (including query_specificity)
         def fallback_blend(X):
             if X.shape[1] >= 9:
-                return (X[:, 0] * 0.15 +      # bm25_score
-                        X[:, 1] * 0.05 +      # faiss_score
-                        X[:, 2] * 0.10 +     # fuzzy_tsr
-                        X[:, 3] * 0.10 +     # fuzzy_pr
-                        X[:, 4] * 0.10 +     # edit_sim
-                        X[:, 5] * 0.05 +      # token_overlap
-                        X[:, 8] * 0.10)      # query_specificity
+                return (X[:, 0] * 0.25 +      # bm25_score (address relevance)
+                        X[:, 1] * 0.10 +      # faiss_score (semantic similarity)
+                        X[:, 2] * 0.20 +     # fuzzy_tsr (token similarity)
+                        X[:, 3] * 0.20 +     # fuzzy_pr (partial matching)
+                        X[:, 4] * 0.15 +     # edit_sim (edit distance)
+                        X[:, 5] * 0.10 +      # token_overlap (shared tokens)
+                        X[:, 8] * 0.05)      # query_specificity (small boost)
             else:
                 # Old 8-feature fallback
                 return X[:, 0] * 0.3 + X[:, 1] * 0.4 + X[:, 2] * 0.3
