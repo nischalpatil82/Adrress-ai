@@ -126,15 +126,16 @@ class GoogleGeocoder:
         self.country = country
         self.timeout = timeout
 
-    def geocode(self, query: str) -> Optional[GeocodeResult]:
+    def geocode(self, query: str, unrestricted: bool = False) -> Optional[GeocodeResult]:
         if not self.api_key:
             log.debug("GoogleGeocoder: no API key set; skipping.")
             return None
         params = {
             "address": query,
-            "components": f"country:{self.country}",
             "key": self.api_key,
         }
+        if not unrestricted:
+            params["components"] = f"country:{self.country}"
         try:
             r = requests.get(GOOGLE_GEOCODE_URL, params=params, timeout=self.timeout)
             r.raise_for_status()
@@ -144,6 +145,10 @@ class GoogleGeocoder:
             return None
 
         if data.get("status") != "OK" or not data.get("results"):
+            # If restricted to India and no results, try unrestricted
+            # (for international addresses).
+            if not unrestricted:
+                return self.geocode(query, unrestricted=True)
             return None
         return _parse_google_result(data["results"][0])
 
@@ -193,7 +198,7 @@ class GooglePlacesGeocoder:
         self.timeout = timeout
         self._geocoder = GoogleGeocoder(api_key=api_key, country=country, timeout=timeout)
 
-    def geocode(self, query: str) -> Optional[GeocodeResult]:
+    def geocode(self, query: str, unrestricted: bool = False) -> Optional[GeocodeResult]:
         if not self.api_key:
             return None
         # Residential-address shortcut: when the query begins with an
@@ -215,11 +220,12 @@ class GooglePlacesGeocoder:
                 "places.location,places.addressComponents,places.types"
             ),
         }
-        body = {
+        body: dict = {
             "textQuery": query,
-            "regionCode": self.country.upper(),
             "maxResultCount": 5,
         }
+        if not unrestricted:
+            body["regionCode"] = self.country.upper()
         try:
             r = requests.post(GOOGLE_PLACES_URL, headers=headers, json=body,
                               timeout=self.timeout)
@@ -231,6 +237,8 @@ class GooglePlacesGeocoder:
 
         places = data.get("places", [])
         if not places:
+            if not unrestricted:
+                return self.geocode(query, unrestricted=True)
             return self._geocoder.geocode(query)
 
         # Prefer a place whose postal_code matches the user's pincode
@@ -535,15 +543,16 @@ class NominatimGeocoder:
         self.timeout = timeout
         self.throttle = throttle
 
-    def geocode(self, query: str) -> Optional[GeocodeResult]:
+    def geocode(self, query: str, unrestricted: bool = False) -> Optional[GeocodeResult]:
         params = {
             "q": query,
             "format": "jsonv2",
             "addressdetails": 1,
             "limit": 1,
-            "countrycodes": self.country,
             "accept-language": "en",
         }
+        if not unrestricted:
+            params["countrycodes"] = self.country
         try:
             if self.throttle:
                 _NOMINATIM_LIMITER.wait()
@@ -559,6 +568,10 @@ class NominatimGeocoder:
             log.warning("Nominatim geocode failed for %r: %s", query, exc)
             return None
         if not data:
+            # If restricted to India and no results, try unrestricted
+            # (for international addresses).
+            if not unrestricted:
+                return self.geocode(query, unrestricted=True)
             return None
         return _parse_nominatim_result(data[0])
 
@@ -614,7 +627,7 @@ class LocationIQGeocoder:
         self.country = country
         self.timeout = timeout
 
-    def geocode(self, query: str) -> Optional[GeocodeResult]:
+    def geocode(self, query: str, unrestricted: bool = False) -> Optional[GeocodeResult]:
         if not self.api_key:
             return None
         params = {
@@ -623,9 +636,10 @@ class LocationIQGeocoder:
             "format": "json",
             "addressdetails": 1,
             "limit": 1,
-            "countrycodes": self.country,
             "accept-language": "en",
         }
+        if not unrestricted:
+            params["countrycodes"] = self.country
         try:
             r = requests.get(self.base_url, params=params, timeout=self.timeout)
             r.raise_for_status()
@@ -634,6 +648,8 @@ class LocationIQGeocoder:
             log.warning("LocationIQ geocode failed for %r: %s", query, exc)
             return None
         if not isinstance(data, list) or not data:
+            if not unrestricted:
+                return self.geocode(query, unrestricted=True)
             return None
         return _parse_nominatim_result(data[0])  # same schema
 
@@ -653,17 +669,18 @@ class OpenCageGeocoder:
         self.country = country
         self.timeout = timeout
 
-    def geocode(self, query: str) -> Optional[GeocodeResult]:
+    def geocode(self, query: str, unrestricted: bool = False) -> Optional[GeocodeResult]:
         if not self.api_key:
             return None
         params = {
             "key": self.api_key,
             "q": query,
-            "countrycode": self.country,
             "limit": 1,
             "no_annotations": 1,
             "language": "en",
         }
+        if not unrestricted:
+            params["countrycode"] = self.country
         try:
             r = requests.get(self.base_url, params=params, timeout=self.timeout)
             r.raise_for_status()
@@ -673,6 +690,8 @@ class OpenCageGeocoder:
             return None
         results = data.get("results") or []
         if not results:
+            if not unrestricted:
+                return self.geocode(query, unrestricted=True)
             return None
         return _parse_opencage_result(results[0])
 

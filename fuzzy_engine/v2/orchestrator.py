@@ -378,10 +378,64 @@ class AddressPipeline:
             except Exception as exc:
                 log.warning("SQL retrieval failed (non-fatal): %s", exc)
 
+        # ---- Fallback for zero DB candidates (international / out-of-corpus) ----
         if not candidates:
+            # Even with no DB hits, still try geocoding — the user may have
+            # typed an address outside India (e.g. German, US, UK addresses).
+            verification = self.verifier.verify(
+                query=search_query,
+                expected_pincode=parsed.pincode,
+                expected_state=parsed.state,
+            )
+            if verification.geocoded and verification.geocode:
+                notes.append("no_db_match_geocoded")
+                best_address = self._generate_address(
+                    spell_corrected=spell_res.corrected if spell_res.applied else raw,
+                    parsed=parsed,
+                    verification=verification,
+                )
+                structured = self._structured_from_input(
+                    spell_res.corrected if spell_res.applied else raw,
+                    parsed, verification,
+                )
+                confidence = self._generated_confidence(
+                    spell_res, parsed, verification, 0.0,
+                )
+                # For addresses outside the DB corpus (international / unknown),
+                # don't let a successful geocode sink below "generated"
+                # just because the lacks Indian city/pincode fields.
+                if verification.geocoded:
+                    confidence = max(confidence, LOW_CONFIDENCE_THRESHOLD)
+                status = "generated" if confidence >= LOW_CONFIDENCE_THRESHOLD else "low_confidence"
+                # If geocode precision is strong, promote to verified/high.
+                if verification.geocode and verification.geocode.precision >= 0.85:
+                    status = "verified"
+                    confidence = max(confidence, HIGH_CONFIDENCE_THRESHOLD)
+                elif verification.geocode and verification.geocode.precision >= 0.65:
+                    status = "high_confidence"
+                    confidence = max(confidence, 0.85)
+                return CorrectionResult(
+                    query=raw,
+                    status=status,
+                    confidence=round(confidence, 4),
+                    best_address=best_address,
+                    best_addr_id=None,
+                    structured=structured,
+                    spell={
+                        "applied": spell_res.applied,
+                        "corrected": spell_res.corrected,
+                        "changes": [list(c) for c in spell_res.changes],
+                        "used_t5": spell_res.used_t5,
+                    },
+                    parsed=parsed.to_dict(),
+                    verification=verification.to_dict(),
+                    suggestions=[],
+                    notes=notes + list(verification.notes),
+                )
+            # No DB hits and geocode also failed — genuine no_match.
             return self._empty_result(raw, status="no_match",
                                       spell=spell_res, parsed=parsed,
-                                      notes=["no_retrieval_hits"])
+                                      notes=["no_retrieval_hits"] + (notes or []))
 
         # L4 — rerank a wide pool, then apply pincode-anchored boost.
         # We rerank top 50 instead of `top_n` so the pincode boost has room
