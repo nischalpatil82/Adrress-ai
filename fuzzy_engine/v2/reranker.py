@@ -81,13 +81,9 @@ class Reranker:
         raw = self._predict(feats)
         base_probs = self._calibrate(raw)
 
-        # Boost probability based on query specificity
-        # Specific queries (with locality/road/house#) deserve higher confidence
-        specificities = feats[:, 8]  # query_specificity is index 8
-        boosted = np.clip(
-            0.85 * base_probs + 0.15 * specificities,
-            0.0, 1.0
-        )
+        # No boost - let the address features speak for themselves
+        # Different addresses should get different scores based on actual match quality
+        boosted = np.clip(base_probs, 0.0, 1.0)
 
         ranked = sorted(
             (
@@ -116,13 +112,13 @@ class Reranker:
         # Fallback blend with 9 features (including query_specificity)
         def fallback_blend(X):
             if X.shape[1] >= 9:
-                return (X[:, 0] * 0.25 +      # bm25_score (address relevance)
-                        X[:, 1] * 0.10 +      # faiss_score (semantic similarity)
-                        X[:, 2] * 0.20 +     # fuzzy_tsr (token similarity)
+                return (X[:, 0] * 0.35 +      # bm25_score (address relevance - highest weight)
+                        X[:, 1] * 0.05 +      # faiss_score (semantic similarity - low weight)
+                        X[:, 2] * 0.25 +     # fuzzy_tsr (token similarity - high weight)
                         X[:, 3] * 0.20 +     # fuzzy_pr (partial matching)
-                        X[:, 4] * 0.15 +     # edit_sim (edit distance)
-                        X[:, 5] * 0.10 +      # token_overlap (shared tokens)
-                        X[:, 8] * 0.05)      # query_specificity (small boost)
+                        X[:, 4] * 0.10 +     # edit_sim (edit distance)
+                        X[:, 5] * 0.05 +      # token_overlap (shared tokens)
+                        X[:, 8] * 0.00)      # query_specificity (no boost - let features speak)
             else:
                 # Old 8-feature fallback
                 return X[:, 0] * 0.3 + X[:, 1] * 0.4 + X[:, 2] * 0.3
