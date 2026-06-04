@@ -1,6 +1,7 @@
 """
 8_api.py
 Flask REST API for the high-accuracy Address AI pipeline.
+Version: 2024-06-04-v2 - Fixed reranker scoring with query specificity
 
 Default mode loads 5_full_pipeline_sql.py (T5 + BM25 + FAISS + reranker).
 Use --legacy or --csv to run the older fuzzy_engine.AddressCorrector path.
