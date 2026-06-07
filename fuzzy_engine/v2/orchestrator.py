@@ -548,8 +548,43 @@ class AddressPipeline:
         if is_strong_db_match:
             best_address = format_generated_address(top.candidate.address)
             best_addr_id = top.candidate.addr_id
-            structured = self._structured(top.candidate.address, verification)
+
+            # Geocode trust check: Google's pincode must agree with DB candidate.
+            # If not, the geocode may have relocated to a different locality
+            # (e.g. DB says 560039 but Google returns 560032 for Gangenahalli).
+            # In that case, demote confidence and use DB fields, not Google's.
+            cand_pin = parse(top.candidate.address).pincode
+            geo_pin = verification.geocode.postal_code if verification.geocode else None
+            geocode_trusted_for_struct = True
+            if cand_pin and geo_pin and cand_pin != geo_pin:
+                notes.append(f"geocode_pincode_mismatch: db={cand_pin} vs geo={geo_pin}")
+                geocode_trusted_for_struct = False
+
+            if geocode_trusted_for_struct:
+                structured = self._structured(top.candidate.address, verification)
+            else:
+                # Geocode disagrees with DB pincode; use DB-derived structured
+                # data to avoid showing a relocated address as "verified".
+                p = parse(top.candidate.address)
+                structured = {
+                    "house_number": None,
+                    "street": p.road_anchor,
+                    "sublocality": ", ".join(sorted(p.locality_anchors)) or None,
+                    "city": p.city,
+                    "state": p.state,
+                    "pincode": p.pincode,
+                    "country": "India",
+                    "lat": None,
+                    "lon": None,
+                    "place_id": None,
+                    "formatted": best_address,
+                    "source": "db_parse_geocode_untrusted",
+                }
+
             confidence = self._final_confidence(top, parsed, verification)
+            # Extra penalty when geocode pincode disagrees with DB pincode.
+            if not geocode_trusted_for_struct:
+                confidence *= 0.7
             confidence = max(confidence, match_score)  # honesty floor
             status = "found_in_database" if confidence >= HIGH_CONFIDENCE_THRESHOLD \
                 else self._status_from(confidence, verification)
