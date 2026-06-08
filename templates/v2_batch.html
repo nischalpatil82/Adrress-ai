@@ -137,6 +137,9 @@
 <button class="btn btn-ghost" id="exportCsvBtn" disabled>
   <i data-lucide="file-down"></i> Export CSV
 </button>
+<button class="btn btn-ghost" id="exportTxtBtn" disabled>
+  <i data-lucide="file-text"></i> Export TXT
+</button>
 <button class="btn btn-ghost" id="exportJsonBtn" disabled>
   <i data-lucide="braces"></i> Export JSON
 </button>
@@ -147,7 +150,7 @@
   <div class="page-head-row">
     <div>
       <div class="page-title">Batch Process</div>
-      <div class="page-sub">Paste up to 200 addresses or drop a CSV/TXT file. Each row runs through the full v2 pipeline.</div>
+      <div class="page-sub">Paste up to 1000 addresses or drop a CSV/TXT file. Each row runs through the full v2 pipeline.</div>
     </div>
   </div>
 </div>
@@ -176,7 +179,7 @@ vega city mall bengaluru
 house no 81 jakkasandra koramangala"></textarea>
 
       <div class="batch-controls">
-        <div class="batch-stats" id="batchHint">limit · 200 rows per run</div>
+        <div class="batch-stats" id="batchHint">limit · 1000 rows per run</div>
         <div style="display:flex;gap:6px;">
           <button class="btn" id="clearBtn"><i data-lucide="trash-2"></i> Clear</button>
           <button class="btn btn-primary" id="runBtn"><i data-lucide="play"></i> Run batch</button>
@@ -247,6 +250,7 @@ const bprog = document.getElementById("bprog");
 const bbar = document.getElementById("bbar");
 const rerunFailedBtn = document.getElementById("rerunFailedBtn");
 const exportCsvBtn = document.getElementById("exportCsvBtn");
+const exportTxtBtn = document.getElementById("exportTxtBtn");
 const exportJsonBtn = document.getElementById("exportJsonBtn");
 const resultsMeta = document.getElementById("resultsMeta");
 
@@ -348,6 +352,7 @@ function recomputeStats() {
   } else avgConf.textContent = "—";
   rerunFailedBtn.disabled = err.length === 0;
   exportCsvBtn.disabled = ok.length === 0;
+  exportTxtBtn.disabled = ok.length === 0;
   exportJsonBtn.disabled = ok.length === 0;
   resultsMeta.textContent = `${results.length} row${results.length === 1 ? "" : "s"}`;
 }
@@ -389,7 +394,7 @@ async function runOne(idx) {
 async function runBatch() {
   const items = lines();
   if (!items.length) { AAI.toast("Enter at least one address"); return; }
-  if (items.length > 200) { AAI.toast("Maximum 200 rows per run"); return; }
+  if (items.length > 1000) { AAI.toast("Maximum 1000 rows per run"); return; }
 
   results = items.map(s => ({ query: s, running: false }));
   renderTable();
@@ -449,13 +454,63 @@ function csvEscape(s) {
   }
   return s;
 }
+// Collect full structured data for exports
+function collectStructured(r) {
+  const raw = r.raw || {};
+  const struct = raw.structured || {};
+  const g = (raw.verification || {}).geocode || {};
+  const suggestions = raw.suggestions || [];
+  // Nearby matches (top 3)
+  const nearby = suggestions.slice(0, 3).map(s => ({
+    address: s.address || "",
+    confidence: s.probability || "",
+    source: s.source || ""
+  }));
+  return {
+    input: r.query,
+    corrected: r.spell || "",
+    nearby_matches: nearby,
+    geocoded_address: g.formatted_address || "",
+    geocoded_city: g.locality || "",
+    geocoded_state: g.administrative_area || "",
+    geocoded_pincode: g.postal_code || "",
+    geocoded_country: g.country || "India",
+    lat: r.lat || "",
+    lon: r.lon || "",
+    final_address: r.final || "",
+    status: r.status || "",
+    confidence: AAI.pct(r.confidence) || "",
+    geocoded: r.geocoded || false,
+    latency_ms: r.latency_ms || "",
+    error: r.error || "",
+    structured: struct
+  };
+}
+
 exportCsvBtn.addEventListener("click", () => {
-  const head = ["row", "input", "spell_corrected", "db_match", "final_address", "status", "confidence", "geocoded", "lat", "lon", "latency_ms", "error"];
-  const rows = results.map((r, i) => [
-    i + 1, r.query, r.spell || "", r.db_match || "", r.final || "",
-    r.status || "", AAI.pct(r.confidence), r.geocoded ?? "",
-    r.lat || "", r.lon || "", r.latency_ms || "", r.error || ""
-  ]);
+  if (!results.length) { AAI.toast("No results to export"); return; }
+  const head = [
+    "row", "input", "corrected", "final_address",
+    "nearby_match_1", "nearby_match_1_conf", "nearby_match_1_source",
+    "nearby_match_2", "nearby_match_2_conf", "nearby_match_2_source",
+    "nearby_match_3", "nearby_match_3_conf", "nearby_match_3_source",
+    "geocoded_address", "geocoded_city", "geocoded_state", "geocoded_pincode", "geocoded_country",
+    "latitude", "longitude", "status", "confidence", "geocoded", "latency_ms", "error"
+  ];
+  const rows = results.map((r, i) => {
+    const s = collectStructured(r);
+    const n1 = s.nearby_matches[0] || {};
+    const n2 = s.nearby_matches[1] || {};
+    const n3 = s.nearby_matches[2] || {};
+    return [
+      i + 1, s.input, s.corrected, s.final_address,
+      n1.address || "", n1.confidence || "", n1.source || "",
+      n2.address || "", n2.confidence || "", n2.source || "",
+      n3.address || "", n3.confidence || "", n3.source || "",
+      s.geocoded_address, s.geocoded_city, s.geocoded_state, s.geocoded_pincode, s.geocoded_country,
+      s.lat, s.lon, s.status, s.confidence, s.geocoded, s.latency_ms, s.error
+    ];
+  });
   const csv = [head, ...rows].map(row => row.map(csvEscape).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
@@ -463,6 +518,41 @@ exportCsvBtn.addEventListener("click", () => {
   a.href = url; a.download = `batch-${Date.now()}.csv`; a.click();
   URL.revokeObjectURL(url);
   AAI.toast("CSV exported");
+});
+
+exportTxtBtn.addEventListener("click", () => {
+  if (!results.length) { AAI.toast("No results to export"); return; }
+  const lines = results.map((r, i) => {
+    const s = collectStructured(r);
+    const n = s.nearby_matches;
+    const nearbyLines = n.length
+      ? "Nearby database matches:\n" + n.map((m, j) =>
+          `  #${j + 1}: ${m.address} (confidence: ${m.confidence}%)${m.source ? " [" + m.source + "]" : ""}`
+        ).join("\n")
+      : "Nearby database matches: none";
+    return `=== Row ${i + 1} ===
+Input:            ${s.input}
+Corrected:        ${s.corrected || "(no changes)"}
+Final address:    ${s.final_address || "—"}
+${nearbyLines}
+Geocoded address: ${s.geocoded_address || "(none)"}
+  City:             ${s.geocoded_city || "—"}
+  State:            ${s.geocoded_state || "—"}
+  Pincode:          ${s.geocoded_pincode || "—"}
+  Country:          ${s.geocoded_country}
+  Lat/Lng:          ${s.lat || "—"}, ${s.lon || "—"}
+Status:           ${s.status}
+Confidence:       ${s.confidence}%
+Geocoded:         ${s.geocoded ? "Yes" : "No"}
+Error:            ${s.error || "none"}`;
+  });
+  const text = lines.join("\n\n");
+  const blob = new Blob([text], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `batch-${Date.now()}.txt`; a.click();
+  URL.revokeObjectURL(url);
+  AAI.toast("TXT exported");
 });
 
 exportJsonBtn.addEventListener("click", () => {

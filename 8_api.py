@@ -68,6 +68,13 @@ def _maybe_load_v2() -> None:
         v2_error = str(exc)
         print(f"  [!] v2 pipeline failed to load: {exc}")
         traceback.print_exc()
+        # Write full traceback to file for debugging
+        try:
+            with open("v2_pipeline_error.log", "w", encoding="utf-8") as f:
+                f.write(f"v2 pipeline load error: {exc}\n")
+                f.write(traceback.format_exc())
+        except Exception:
+            pass
 
 
 def _load_pipeline_module():
@@ -267,6 +274,7 @@ def suggest():
 def v2_correct():
     _maybe_load_v2()
     if v2_pipeline is None:
+        print(f"[DEBUG] v2_pipeline is None, v2_error={v2_error!r}")
         return jsonify({"error": f"v2 pipeline unavailable: {v2_error}"}), 503
 
     if request.method == "POST":
@@ -515,9 +523,16 @@ def health():
 
 
 if __name__ == "__main__":
-    if "--v2" in sys.argv:
-        print("Pre-loading v2 pipeline in main thread to avoid worker deadlock...")
-        _maybe_load_v2()
+    # Pre-load v2 pipeline in the main thread to avoid worker-thread
+    # deadlock / EINVAL issues on Windows with FAISS / torch / SQLite.
+    print("Pre-loading v2 pipeline in main thread...")
+    _maybe_load_v2()
+
+    if v2_pipeline is None:
+        print("  [!] v2 pipeline failed to pre-load (see error above).")
+        print("  [!] Running with legacy / SQL pipeline only.")
+    else:
+        print("  [+] v2 pipeline ready.")
 
     eager_engine = os.getenv("LOAD_V1_ON_START", "0").lower() in (
         "1", "true", "yes", "on",
