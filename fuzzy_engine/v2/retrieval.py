@@ -332,18 +332,15 @@ class HybridRetriever:
         # share at least one significant (non-generic) token with the query.
         query_sig = _significant_tokens(query)
         if bucket is None and query_sig:
-            # Keep candidates that share at least one significant token
-            # or fallback entirely if the filter is too aggressive.
             filtered_bm25 = [(p, s) for p, s in bm25_hits
                            if self._addr_sig_tokens.get(p, set()) & set(query_sig)]
             filtered_dense = [(p, s) for p, s in dense_hits
                             if self._addr_sig_tokens.get(p, set()) & set(query_sig)]
-            # If we have fewer than k/2 candidates after filtering, relax.
-            if len(filtered_bm25) + len(filtered_dense) >= k // 2:
-                bm25_hits, dense_hits = filtered_bm25, filtered_dense
-                log.debug("Locality pre-filter active: %d BM25 + %d dense kept "
-                         "(query sig: %s)", len(bm25_hits), len(dense_hits),
-                         query_sig)
+            # Always apply the filter strictly. No fallback to non-matching candidates.
+            bm25_hits, dense_hits = filtered_bm25, filtered_dense
+            total_filtered = len(filtered_bm25) + len(filtered_dense)
+            log.debug("Locality pre-filter: %d candidates kept (query sig: %s)",
+                     total_filtered, query_sig)
 
         # Normalize raw scores per-source to [0,1] for cleaner fusion.
         bm25_norm = _normalize_scores(bm25_hits)
