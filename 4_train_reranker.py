@@ -19,6 +19,7 @@ from sklearn.model_selection import train_test_split
 from rapidfuzz import fuzz
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
+from fuzzy_engine.v2.normalize import parse
 
 # ── config ────────────────────────────────────────────────────────────────────
 BM25_PATH      = "models/bm25.pkl"
@@ -74,20 +75,43 @@ def extract_features(query: str, candidate: str,
     c_nums    = set(t for t in candidate.split() if t.isdigit())
     num_match = float(bool(q_nums & c_nums)) if q_nums else 0.5
 
+    # query specificity: how specific/detailed the input query is
+    q_p = parse(query)
+    q_specificity = 0.1
+    if q_p.pincode:
+        q_specificity = 0.2
+    if q_p.locality_anchors:
+        q_specificity += 0.25
+    if q_p.road_anchor:
+        q_specificity += 0.2
+    if q_p.numbers:
+        non_pincode = q_p.numbers - {q_p.pincode} if q_p.pincode else q_p.numbers
+        if non_pincode:
+            q_specificity += 0.15
+    if q_p.informative_tokens:
+        non_pincode_tokens = q_p.informative_tokens
+        if q_p.pincode:
+            non_pincode_tokens = non_pincode_tokens - {q_p.pincode}
+        if len(non_pincode_tokens) > 0:
+            q_specificity += min(0.15 * len(non_pincode_tokens), 0.3)
+    q_specificity = min(q_specificity, 1.0)
+
     return [
-        bm25_score,    # BM25 keyword score
-        faiss_score,   # cosine semantic score
-        fuzzy_tsr,     # token sort ratio
-        fuzzy_pr,      # partial ratio
-        edit_sim,      # character edit similarity
-        overlap,       # token overlap
-        len_diff,      # length difference
-        num_match,     # numeric token match
+        bm25_score,     # BM25 keyword score
+        faiss_score,    # cosine semantic score
+        fuzzy_tsr,      # token sort ratio
+        fuzzy_pr,       # partial ratio
+        edit_sim,       # character edit similarity
+        overlap,        # token overlap
+        len_diff,       # length difference
+        num_match,      # numeric token match
+        q_specificity, # query specificity
     ]
 
 FEATURE_NAMES = [
     "bm25_score", "faiss_score", "fuzzy_tsr", "fuzzy_pr",
     "edit_sim", "token_overlap", "len_diff", "num_match",
+    "query_specificity",
 ]
 
 

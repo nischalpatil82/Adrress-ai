@@ -178,29 +178,25 @@ class Reranker:
         q_p = parse(query)
         a_p = parse(c.address)
         num_match = 1.0 if q_p.numbers and (q_p.numbers & a_p.numbers) else 0.0
-        
+
         # Query specificity: higher for more specific queries
-        # 0.1 = pincode only, 0.5+ = full address with locality/road
-        q_specificity = 0.1  # Default low for vague queries
+        q_specificity = 0.1
         if q_p.pincode:
-            q_specificity = 0.2  # Has pincode
+            q_specificity = 0.2
         if q_p.locality_anchors:
-            q_specificity += 0.25  # Has locality suffix (e.g., "nagar", "layout")
+            q_specificity += 0.25
         if q_p.road_anchor:
-            q_specificity += 0.2  # Has road/street
-        # Numbers beyond pincode = house number
+            q_specificity += 0.2
         if q_p.numbers:
             non_pincode = q_p.numbers - {q_p.pincode} if q_p.pincode else q_p.numbers
             if non_pincode:
                 q_specificity += 0.15
-        # Informative tokens = meaningful words beyond pincode (catches "amrithahalli")
         if q_p.informative_tokens:
             non_pincode_tokens = q_p.informative_tokens
             if q_p.pincode:
                 non_pincode_tokens = non_pincode_tokens - {q_p.pincode}
             if len(non_pincode_tokens) > 0:
                 q_specificity += min(0.15 * len(non_pincode_tokens), 0.3)
-        # Cap at 1.0
         q_specificity = min(q_specificity, 1.0)
-        
+
         return [bm25, faiss_s, tsr, pr, edit_sim, token_overlap, len_diff, num_match, q_specificity]

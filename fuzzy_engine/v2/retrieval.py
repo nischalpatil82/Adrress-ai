@@ -34,9 +34,38 @@ from fuzzy_engine.v2.config import (
     RETRIEVAL_TOP_K,
     TRIE_PATH,
 )
-from fuzzy_engine.v2.normalize import normalize_text
+from fuzzy_engine.v2.normalize import normalize_text, parse as _parse_address
 
 log = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Helpers for locality pre-filtering
+# ---------------------------------------------------------------------------
+from functools import lru_cache
+
+@lru_cache(maxsize=10000)
+def _significant_tokens(address: str) -> frozenset[str]:
+    """Extract significant (non-generic) tokens from an address for locality filtering.
+
+    Significant tokens include: road anchors, locality anchors, informative tokens,
+    and numeric identifiers. Excludes city names and generic words.
+    Cached up to 10k addresses for O(1) repeated lookup.
+    """
+    parsed = _parse_address(address)
+    tokens = set()
+    if parsed.road_anchor:
+        tokens.add(parsed.road_anchor)
+    tokens.update(parsed.locality_anchors)
+    # informative_tokens are already filtered (>=4 chars, not generic/city)
+    tokens.update(parsed.informative_tokens)
+    # Include numbers beyond pincode (house/building numbers)
+    if parsed.numbers:
+        if parsed.pincode:
+            tokens.update(parsed.numbers - {parsed.pincode})
+        else:
+            tokens.update(parsed.numbers)
+    return frozenset(tokens)
 
 
 # ---------------------------------------------------------------------------
@@ -242,6 +271,11 @@ class HybridRetriever:
                     self._pincode_to_pos.setdefault(tok, []).append(i)
                     break
 
+        # Pre-compute significant tokens for each address for locality filtering.
+        self._addr_sig_tokens: dict[int, set[str]] = {}
+        for i, addr in enumerate(addresses):
+            self._addr_sig_tokens[i] = set(_significant_tokens(addr))
+
     # ---- factory ----
     @classmethod
     def from_artifacts(cls) -> "HybridRetriever":
@@ -291,6 +325,25 @@ class HybridRetriever:
             # itself so retrieval still produces something useful.
             if not bm25_hits and not dense_hits:
                 bm25_hits = [(p, 1.0) for p in list(bucket)[:k]]
+
+        # ---- Locality pre-filter (when no pincode to anchor us) -------------
+        # Without a pincode, generic city-only matches like "Marathahalli Bangalore"
+        # can outrank relevant locality matches. Filter candidates to those that
+        # share at least one significant (non-generic) token with the query.
+        query_sig = _significant_tokens(query)
+        if bucket is None and query_sig:
+            # Keep candidates that share at least one significant token
+            # or fallback entirely if the filter is too aggressive.
+            filtered_bm25 = [(p, s) for p, s in bm25_hits
+                           if self._addr_sig_tokens.get(p, set()) & set(query_sig)]
+            filtered_dense = [(p, s) for p, s in dense_hits
+                            if self._addr_sig_tokens.get(p, set()) & set(query_sig)]
+            # If we have fewer than k/2 candidates after filtering, relax.
+            if len(filtered_bm25) + len(filtered_dense) >= k // 2:
+                bm25_hits, dense_hits = filtered_bm25, filtered_dense
+                log.debug("Locality pre-filter active: %d BM25 + %d dense kept "
+                         "(query sig: %s)", len(bm25_hits), len(dense_hits),
+                         query_sig)
 
         # Normalize raw scores per-source to [0,1] for cleaner fusion.
         bm25_norm = _normalize_scores(bm25_hits)
