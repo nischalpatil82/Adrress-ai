@@ -50,6 +50,29 @@ from fuzzy_engine.v2.verify import (
 
 log = logging.getLogger(__name__)
 
+# Countries we do NOT support ( Indian addresses only )
+_NON_INDIAN_COUNTRIES = {
+    "us", "usa", "united states", "america",
+    "uk", "united kingdom", "england", "scotland", "wales",
+    "canada", "ca",
+    "australia", "au",
+    "germany", "de",
+    "france", "fr",
+    "singapore", "sg",
+    "uae", "united arab emirates", "dubai",
+    "china", "cn",
+    "japan", "jp",
+}
+
+
+def _detect_foreign_country(text: str) -> str | None:
+    """Return the non-Indian country name if the text mentions one, else None."""
+    lower = text.lower()
+    for country in _NON_INDIAN_COUNTRIES:
+        if country in lower:
+            return country
+    return None
+
 
 def _diff_tokens(before: str, after: str) -> list[tuple[str, str]]:
     """Return paired token differences between before/after strings.
@@ -310,6 +333,12 @@ class AddressPipeline:
             return self._empty_result(raw, status="no_match",
                                       notes=["query_too_short"])
 
+        # --- Country detection: note non-Indian addresses --------------------
+        detected = _detect_foreign_country(raw)
+        if detected:
+            notes.append(f"country_detected:{detected}")
+            notes.append("non_indian_address:results may be less accurate")
+
         # L1
         parsed = parse(raw)
 
@@ -354,29 +383,32 @@ class AddressPipeline:
             )
 
         # L3 — use parsed pincode as a hard pre-filter when present.
-        candidates = self.retriever.search(
-            search_query, k=RETRIEVAL_TOP_K, pincode=parsed.pincode
-        )
+        # Skip DB retrieval for non-Indian addresses (they won't be in the DB).
+        candidates: list[Candidate] = []
+        if not detected:
+            candidates = self.retriever.search(
+                search_query, k=RETRIEVAL_TOP_K, pincode=parsed.pincode
+            )
 
-        # L3b — merge live SQL DB candidates (if enabled and DB is reachable).
-        # The DB may itself contain typos, so we fuzzy-match the results.
-        if self.sql_retriever is not None:
-            try:
-                sql_cands = self.sql_retriever.search(search_query)
-                if sql_cands:
-                    # Merge: boost SQL candidates slightly so they compete
-                    # with static-index hits.  Prefer SQL source for
-                    # "found_in_database" later.
-                    seen = {c.addr_id: c for c in candidates}
-                    for sc in sql_cands:
-                        if sc.addr_id in seen:
-                            # augment existing candidate with SQL score
-                            existing = seen[sc.addr_id]
-                            existing.scores["sql"] = sc.scores.get("sql", 0.5)
-                        else:
-                            candidates.append(sc)
-            except Exception as exc:
-                log.warning("SQL retrieval failed (non-fatal): %s", exc)
+            # L3b — merge live SQL DB candidates (if enabled and DB is reachable).
+            # The DB may itself contain typos, so we fuzzy-match the results.
+            if self.sql_retriever is not None:
+                try:
+                    sql_cands = self.sql_retriever.search(search_query)
+                    if sql_cands:
+                        # Merge: boost SQL candidates slightly so they compete
+                        # with static-index hits.  Prefer SQL source for
+                        # "found_in_database" later.
+                        seen = {c.addr_id: c for c in candidates}
+                        for sc in sql_cands:
+                            if sc.addr_id in seen:
+                                # augment existing candidate with SQL score
+                                existing = seen[sc.addr_id]
+                                existing.scores["sql"] = sc.scores.get("sql", 0.5)
+                            else:
+                                candidates.append(sc)
+                except Exception as exc:
+                    log.warning("SQL retrieval failed (non-fatal): %s", exc)
 
         # ---- Fallback for zero DB candidates (international / out-of-corpus) ----
         if not candidates:
