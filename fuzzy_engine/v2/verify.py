@@ -445,15 +445,16 @@ class GoogleAddressValidator:
         self.country = country.upper()
         self.timeout = timeout
 
-    def validate(self, query: str) -> Optional[GeocodeResult]:
+    def validate(self, query: str, unrestricted: bool = False) -> Optional[GeocodeResult]:
         if not self.api_key:
             return None
-        body = {
-            "address": {
-                "regionCode": self.country,
-                "addressLines": [query],
-            },
-        }
+        # Build the request body.  Only bias toward a regionCode when we are
+        # sure the address is Indian; for international addresses the API will
+        # infer the correct country on its own.
+        addr_body: dict = {"addressLines": [query]}
+        if not unrestricted:
+            addr_body["regionCode"] = self.country
+        body = {"address": addr_body}
         params = {"key": self.api_key}
         try:
             r = requests.post(
@@ -1016,7 +1017,10 @@ class AddressVerifier:
                 if cached_v is not None:
                     refined = cached_v
                 else:
-                    refined = self.validator.validate(query)
+                    # If geocode already knows the country is non-Indian, skip the
+                    # default India regionCode bias in the Address Validation API.
+                    is_intl = geo is not None and geo.country and geo.country not in ("India", "IN")
+                    refined = self.validator.validate(query, unrestricted=is_intl)
                     self.cache.put("google_address_validation", query, refined)
                 if refined is not None:
                     notes.append("validated_by_google")
@@ -1035,7 +1039,11 @@ class AddressVerifier:
                             sublocality=refined.sublocality or geo.sublocality,
                             street=refined.street or geo.street,
                             house_number=refined.house_number or geo.house_number,
-                            country=refined.country or geo.country,
+                            # Don't override geocoded country with the validator's;
+                            # Address Validation is biased to self.country (IN by
+                            # default), so for international addresses it would
+                            # incorrectly replace the real country with India.
+                            country=geo.country or refined.country,
                         )
             except Exception as exc:
                 log.warning("AddressValidation refinement failed: %s", exc)

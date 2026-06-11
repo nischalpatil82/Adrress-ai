@@ -1550,7 +1550,7 @@ class AddressPipeline:
             "city": parsed.city or pin_info.get("district"),
             "state": parsed.state or pin_info.get("state"),
             "pincode": parsed.pincode,
-            "country": "India",
+            "country": _detect_foreign_country(spell_corrected) or "India",
             "lat": None,
             "lon": None,
             "place_id": None,
