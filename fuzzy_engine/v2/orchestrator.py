@@ -667,10 +667,27 @@ class AddressPipeline:
                 features=r.features,
             )
 
-        suggestions = [
-            _mk_sugg(r) for r in reranked
-            if self._reliable_suggestion(search_query, r, parsed)
-        ]
+        # The reranked candidates come from the Indian-address DB. When the
+        # geocoder resolved this address to a NON-Indian country, those
+        # candidates are meaningless ("nearest Indian DB match" for a US
+        # address is noise), so suppress them entirely.
+        geo_country = (
+            verification.geocode.country
+            if verification.geocode and verification.geocode.country
+            else None
+        )
+        is_foreign_result = bool(
+            geo_country and geo_country.strip().lower() not in ("india", "in")
+        )
+
+        if is_foreign_result:
+            suggestions: list[Suggestion] = []
+            notes.append(f"international_result:{geo_country}")
+        else:
+            suggestions = [
+                _mk_sugg(r) for r in reranked
+                if self._reliable_suggestion(search_query, r, parsed)
+            ]
         # NOTE: We deliberately do NOT fall back to top reranked rows when
         # `_reliable_suggestion` filters everything out. Showing junk
         # candidates (e.g. "Tavarekere Bangalore South Tq..." for an
@@ -681,7 +698,7 @@ class AddressPipeline:
         # the suggestion list so the "Nearest Database Match" card can
         # render it (otherwise _reliable_suggestion can hide the very
         # match we just told the user about).
-        if is_strong_db_match and top is not None:
+        if is_strong_db_match and top is not None and not is_foreign_result:
             top_id = top.candidate.addr_id
             if not any(s.addr_id == top_id for s in suggestions):
                 suggestions.insert(0, Suggestion(

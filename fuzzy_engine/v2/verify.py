@@ -54,6 +54,31 @@ GOOGLE_ADDRESS_VALIDATION_URL = "https://addressvalidation.googleapis.com/v1:val
 
 log = logging.getLogger(__name__)
 
+# Foreign-country cues in a query. When present, the geocoder must NOT bias
+# results to India (regionCode/components=country:IN), otherwise Google returns
+# a wrong Indian match instead of the real foreign address. Single words are
+# matched as whole tokens; phrases as substrings. Kept deliberately small and
+# unambiguous (no 2-letter ISO codes, which collide with Indian place names).
+_FOREIGN_COUNTRY_WORDS = {
+    "usa", "america", "england", "scotland", "wales",
+    "canada", "australia", "germany", "france",
+    "singapore", "china", "japan", "uae",
+}
+_FOREIGN_COUNTRY_PHRASES = (
+    "united states", "united kingdom", "united arab emirates",
+)
+
+
+def _query_names_foreign_country(text: str) -> bool:
+    """True if the query explicitly names a non-Indian country."""
+    import re as _re
+    lower = (text or "").lower()
+    for phrase in _FOREIGN_COUNTRY_PHRASES:
+        if phrase in lower:
+            return True
+    tokens = set(_re.split(r"[^a-z]+", lower))
+    return bool(tokens & _FOREIGN_COUNTRY_WORDS)
+
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -1103,6 +1128,17 @@ class AddressVerifier:
         cached = self.cache.get(self.provider.name, query)
         if cached is not None:
             return cached
-        result = self.provider.geocode(query)
+        # If the query names a foreign country, geocode without the India
+        # region bias so Google returns the real foreign address instead of
+        # forcing a (wrong) Indian match. Providers that don't support the
+        # `unrestricted` kwarg simply ignore it via the try/except.
+        unrestricted = _query_names_foreign_country(query)
+        if unrestricted:
+            try:
+                result = self.provider.geocode(query, unrestricted=True)
+            except TypeError:
+                result = self.provider.geocode(query)
+        else:
+            result = self.provider.geocode(query)
         self.cache.put(self.provider.name, query, result)
         return result
