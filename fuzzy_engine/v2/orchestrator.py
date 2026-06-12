@@ -19,6 +19,7 @@ The pipeline is designed to be safe by default:
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Optional
@@ -51,25 +52,41 @@ from fuzzy_engine.v2.verify import (
 log = logging.getLogger(__name__)
 
 # Countries we do NOT support ( Indian addresses only )
-_NON_INDIAN_COUNTRIES = {
-    "us", "usa", "united states", "america",
-    "uk", "united kingdom", "england", "scotland", "wales",
-    "canada", "ca",
-    "australia", "au",
-    "germany", "de",
-    "france", "fr",
-    "singapore", "sg",
-    "uae", "united arab emirates", "dubai",
-    "china", "cn",
-    "japan", "jp",
+# Single-word country names matched as *whole tokens* (never substrings).
+# 2-letter ISO codes (us/uk/ca/au/de/fr/sg/cn/jp) are deliberately excluded:
+# they collide with common Indian place-name fragments ("jp nagar",
+# "bus stop", "garden", "carmel"), causing ~17% of Indian addresses to be
+# misflagged as foreign and have DB retrieval skipped. "dubai" is likewise
+# excluded — it appears in Indian locality names ("dubai nagar").
+_NON_INDIAN_COUNTRY_WORDS = {
+    "usa", "america",
+    "england", "scotland", "wales",
+    "canada", "australia", "germany", "france",
+    "singapore", "china", "japan", "uae",
 }
+
+# Multi-word country phrases matched as whole substrings (unambiguous).
+_NON_INDIAN_COUNTRY_PHRASES = (
+    "united states", "united kingdom", "united arab emirates",
+)
+
+# Backwards-compat alias (older code / tests referenced this name).
+_NON_INDIAN_COUNTRIES = _NON_INDIAN_COUNTRY_WORDS | set(_NON_INDIAN_COUNTRY_PHRASES)
 
 
 def _detect_foreign_country(text: str) -> str | None:
-    """Return the non-Indian country name if the text mentions one, else None."""
+    """Return the non-Indian country name if the text mentions one, else None.
+
+    Single-word countries are matched as whole tokens so fragments inside
+    Indian place names (e.g. "jp nagar", "bus stop") are not false positives.
+    """
     lower = text.lower()
-    for country in _NON_INDIAN_COUNTRIES:
-        if country in lower:
+    for phrase in _NON_INDIAN_COUNTRY_PHRASES:
+        if phrase in lower:
+            return phrase
+    tokens = set(re.split(r"[^a-z]+", lower))
+    for country in _NON_INDIAN_COUNTRY_WORDS:
+        if country in tokens:
             return country
     return None
 
