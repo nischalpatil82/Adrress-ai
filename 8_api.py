@@ -14,6 +14,8 @@ Run:
 
 from __future__ import annotations
 
+import csv
+import io
 import importlib.util
 import json
 import os
@@ -28,7 +30,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # or unavailable. Users can override this in .env with V2_GEOCODE_TIMEOUT.
 os.environ.setdefault("V2_GEOCODE_TIMEOUT", "3")
 
-from flask import Flask, jsonify, redirect, render_template, request
+from flask import Flask, Response, jsonify, redirect, render_template, request
 
 
 ROOT = Path(__file__).resolve().parent
@@ -215,6 +217,175 @@ def legacy_index():
 @app.route("/v2", methods=["GET"])
 def index_v2():
     return render_template("v2.html")
+
+
+def _read_xlsx(raw_bytes: bytes):
+    """Parse an .xlsx file into (headers, rows) matching csv.DictReader shape.
+
+    Reads the first worksheet. The first non-empty row is treated as the
+    header. Cell values are coerced to strings (empty string for blanks).
+    """
+    import openpyxl  # lazy import; only needed for Excel uploads
+
+    wb = openpyxl.load_workbook(
+        io.BytesIO(raw_bytes), read_only=True, data_only=True,
+    )
+    ws = wb.active
+    rows_iter = ws.iter_rows(values_only=True)
+
+    headers: list[str] = []
+    for first in rows_iter:
+        if first is None:
+            continue
+        headers = [
+            (str(h).strip() if h is not None else f"column_{i + 1}")
+            for i, h in enumerate(first)
+        ]
+        if any(h for h in headers):
+            break
+
+    rows: list[dict] = []
+    for r in rows_iter:
+        if r is None or all(v is None for v in r):
+            continue
+        row = {}
+        for i, h in enumerate(headers):
+            v = r[i] if i < len(r) else None
+            row[h] = "" if v is None else str(v).strip()
+        rows.append(row)
+
+    wb.close()
+    return headers, rows
+
+
+@app.route("/v2/address_cleanse", methods=["GET", "POST"])
+def address_cleanse_v2():
+    if request.method == "GET":
+        return render_template("v2_address_cleanse.html")
+
+    # POST: accept uploaded CSV / XLSX and correct addresses
+    uploaded = request.files.get("csv_file")
+    if not uploaded or not uploaded.filename:
+        return jsonify({"error": "No file provided"}), 400
+
+    fname = uploaded.filename.lower()
+    raw_bytes = uploaded.stream.read()
+
+    # Read the uploaded file into headers + list-of-dict rows.
+    # Supports .csv and .xlsx (Excel). Old .xls is not supported.
+    try:
+        if fname.endswith(".xlsx"):
+            headers, rows = _read_xlsx(raw_bytes)
+        elif fname.endswith(".xls"):
+            return jsonify({
+                "error": "Legacy .xls files are not supported. "
+                         "Please save as .xlsx or .csv and re-upload."
+            }), 400
+        else:
+            stream = io.StringIO(raw_bytes.decode("utf-8-sig"))
+            reader = csv.DictReader(stream)
+            headers = list(reader.fieldnames or [])
+            rows = list(reader)
+    except Exception as exc:  # noqa: BLE001
+        return jsonify({"error": f"Failed to parse file: {exc}"}), 400
+
+    if not headers:
+        return jsonify({"error": "File has no header row"}), 400
+
+    # Limit to 1000 rows
+    if len(rows) > 1000:
+        rows = rows[:1000]
+
+    # Detect address-related columns automatically
+    _ADDRESS_KEYWORDS = [
+        "address", "addr", "line", "area", "locality",
+        "city", "state", "country", "pin", "zip", "postal",
+    ]
+    address_cols = [
+        h for h in headers
+        if any(k in h.lower() for k in _ADDRESS_KEYWORDS)
+    ]
+
+    # Load v2 pipeline
+    _maybe_load_v2()
+    if v2_pipeline is None:
+        return jsonify({"error": f"v2 pipeline unavailable: {v2_error}"}), 503
+
+    # Process each row
+    output_rows = []
+    for row in rows:
+        # Build query from address columns
+        parts = [str(row.get(c) or "").strip() for c in address_cols]
+        query = ", ".join(p for p in parts if p)
+
+        # Correct the address
+        try:
+            if query:
+                result = v2_pipeline.correct(query, top_n=1)
+                structured = result.structured if result else {}
+            else:
+                structured = {}
+        except Exception:  # noqa: BLE001
+            structured = {}
+
+        # Merge structured back into the row
+        corrected_row = dict(row)
+        for col in address_cols:
+            c_low = col.lower()
+            if "address 1" in c_low or "addr 1" in c_low or "line 1" in c_low:
+                val = f"{structured.get('house_number') or ''} {structured.get('street') or ''}".strip()
+                if val:
+                    corrected_row[col] = val
+            elif "address 2" in c_low or "addr 2" in c_low or "line 2" in c_low:
+                if structured.get("sublocality"):
+                    corrected_row[col] = structured["sublocality"]
+            elif "area" in c_low or "locality" in c_low:
+                val = structured.get("sublocality") or structured.get("city", "")
+                if val:
+                    corrected_row[col] = val
+            elif "city" in c_low or "town" in c_low:
+                if structured.get("city"):
+                    corrected_row[col] = structured["city"]
+            elif "state" in c_low or "province" in c_low:
+                if structured.get("state"):
+                    corrected_row[col] = structured["state"]
+            elif "country" in c_low:
+                if structured.get("country"):
+                    corrected_row[col] = structured["country"]
+            elif "pin" in c_low or "zip" in c_low or "postal" in c_low:
+                if structured.get("pincode"):
+                    corrected_row[col] = structured["pincode"]
+
+        corrected_row["Full Verified Address"] = (
+            structured.get("formatted", "")
+            or f"{structured.get('house_number') or ''} {structured.get('street') or ''}, "
+              f"{structured.get('sublocality') or ''}, {structured.get('city') or ''}, "
+              f"{structured.get('state') or ''}, {structured.get('country') or ''}, "
+              f"{structured.get('pincode') or ''}".strip(", ")
+        )
+
+        output_rows.append(corrected_row)
+
+    # Return corrected CSV as a download
+    out_stream = io.StringIO()
+    out_headers = headers + ["Full Verified Address"]
+    writer = csv.DictWriter(
+        out_stream, fieldnames=out_headers,
+        lineterminator="\n", extrasaction="ignore",
+    )
+    writer.writeheader()
+    writer.writerows(output_rows)
+
+    return Response(
+        out_stream.getvalue(),
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=corrected_addresses.csv",
+            "X-Rows-Processed": str(len(output_rows)),
+            "X-Address-Columns": ", ".join(address_cols),
+            "Access-Control-Expose-Headers": "X-Rows-Processed, X-Address-Columns",
+        },
+    )
 
 
 @app.route("/v2/batch", methods=["GET"])

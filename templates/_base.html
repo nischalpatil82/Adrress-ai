@@ -407,6 +407,26 @@
   .page::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
   .page::-webkit-scrollbar-track { background: transparent; }
 
+  /* ===== Global thin scrollbars (textareas, tables, dropdowns, etc.) ===== */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 6px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--text-3);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-corner { background: transparent; }
+
   .page-head {
     padding: 20px 22px 18px;
     border-bottom: 1px solid var(--border);
@@ -682,6 +702,9 @@
         </a>
         <a href="/v2/batch" class="side-link {% if active_page == 'batch' %}active{% endif %}">
           <i data-lucide="layers"></i> Batch Process
+        </a>
+        <a href="/v2/address_cleanse" class="side-link {% if active_page == 'address_cleanse' %}active{% endif %}">
+          <i data-lucide="sparkles"></i> Address Cleanse
         </a>
         <a href="/v2/analytics" class="side-link {% if active_page == 'analytics' %}active{% endif %}">
           <i data-lucide="bar-chart-2"></i> Analytics

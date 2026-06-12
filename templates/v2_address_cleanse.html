@@ -1,0 +1,550 @@
+{% extends "_base.html" %}
+{% set active_page = "address_cleanse" %}
+{% block title %}Address Cleanse · AddressAI{% endblock %}
+
+{% block extra_css %}
+  .cleanse-wrap {
+    padding: 20px 22px 32px;
+    max-width: 1080px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  /* ===== Step pipeline ===== */
+  .steps {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 13px 15px;
+    background: var(--glass);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 9px;
+    box-shadow: inset 0 1px 0 var(--glass-edge);
+    position: relative;
+  }
+  .step .num {
+    flex-shrink: 0;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 12px; font-weight: 700;
+    font-family: 'IBM Plex Mono', monospace;
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    color: var(--text-2);
+  }
+  .step.active .num {
+    background: linear-gradient(180deg, #ff4d4d 0%, var(--red-2) 100%);
+    border-color: var(--red-3);
+    color: #fff;
+    box-shadow: 0 4px 12px -4px var(--red-glow);
+  }
+  .step .step-t { font-size: 13px; font-weight: 600; color: var(--text); }
+  .step .step-d { font-size: 11px; color: var(--text-2); margin-top: 1px; }
+  .step .step-ico { margin-left: auto; color: var(--text-3); }
+  .step.active .step-ico { color: var(--red); }
+
+  /* ===== Drop zone ===== */
+  .drop-card { overflow: hidden; }
+  .upload-zone {
+    position: relative;
+    border: 1.5px dashed var(--border-strong);
+    border-radius: 10px;
+    padding: 52px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s, transform .15s;
+    background:
+      radial-gradient(60% 80% at 50% 0%, var(--red-soft), transparent 70%);
+  }
+  .upload-zone:hover, .upload-zone.over {
+    border-color: var(--red);
+    background:
+      radial-gradient(70% 90% at 50% 0%, var(--red-soft-2), transparent 72%);
+  }
+  .upload-zone.over { transform: scale(1.005); }
+  .upload-zone .ico-ring {
+    width: 56px; height: 56px;
+    margin: 0 auto 14px;
+    border-radius: 14px;
+    display: grid; place-items: center;
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    box-shadow: inset 0 1px 0 var(--glass-edge);
+  }
+  .upload-zone.over .ico-ring, .upload-zone:hover .ico-ring {
+    border-color: var(--red-soft-2);
+    background: var(--red-soft);
+  }
+  .upload-zone .ico-ring svg { width: 26px; height: 26px; color: var(--red); }
+  .upload-zone strong { color: var(--text); display: block; font-size: 16px; font-weight: 600; margin-bottom: 5px; }
+  .upload-zone .browse { color: var(--text-2); font-size: 12.5px; }
+  .upload-zone .browse u { color: var(--red); text-decoration: none; font-weight: 600; }
+
+  .supports {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    justify-content: center;
+    margin-top: 18px;
+  }
+  .chip {
+    font-size: 10.5px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text-2);
+    padding: 3px 9px;
+    border-radius: 20px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+  }
+
+  /* ===== Selected file ===== */
+  .file-info {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 15px;
+    margin-top: 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .file-info.show { display: flex; }
+  .file-info .fic {
+    width: 36px; height: 36px; border-radius: 8px;
+    display: grid; place-items: center;
+    background: var(--red-soft); border: 1px solid var(--red-soft-2);
+    flex-shrink: 0;
+  }
+  .file-info .fic svg { color: var(--red); width: 17px; height: 17px; }
+  .file-info .filename { font-weight: 600; color: var(--text); font-size: 13px; }
+  .file-info .size { color: var(--text-3); font-size: 11px; font-family: 'IBM Plex Mono', monospace; margin-top: 1px; }
+  .file-info .clear-file {
+    margin-left: auto; cursor: pointer; color: var(--text-3);
+    padding: 6px; border-radius: 6px; display: grid; place-items: center;
+  }
+  .file-info .clear-file:hover { color: var(--red); background: var(--red-soft); }
+
+  /* ===== Action row ===== */
+  .action-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 14px; margin-top: 16px;
+  }
+  .action-note { font-size: 11.5px; color: var(--text-3); display: flex; align-items: center; gap: 6px; }
+  .action-note svg { width: 13px; height: 13px; }
+  .btn-cleanse {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 22px; font-size: 13.5px; font-weight: 600;
+    border-radius: 8px; cursor: pointer; border: 1px solid var(--red-3);
+    color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,.3);
+    background: linear-gradient(180deg, #ff4d4d 0%, var(--red-2) 55%, #a01818 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 6px 16px -6px var(--red-glow);
+    transition: filter .15s, box-shadow .15s, transform .1s;
+  }
+  .btn-cleanse:hover:not(:disabled) { filter: brightness(1.07); box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 10px 24px -6px var(--red-glow); }
+  .btn-cleanse:active:not(:disabled) { transform: translateY(1px); }
+  .btn-cleanse:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-cleanse svg { width: 16px; height: 16px; color: #fff; }
+
+  /* ===== Processing ===== */
+  .progress-area { display: none; margin-top: 16px; }
+  .progress-area.show { display: block; }
+  .progress-head { display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--text-1); margin-bottom: 9px; }
+  .progress-head .spin { width: 15px; height: 15px; color: var(--red); animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .progress-bar { height: 5px; background: var(--surface-2); border-radius: 3px; overflow: hidden; border: 1px solid var(--border); }
+  .progress-bar .fill {
+    height: 100%; width: 30%; border-radius: 3px;
+    background: linear-gradient(90deg, var(--red-2), #ff5e5e);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+  }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  /* ===== Result (ready to download) ===== */
+  .result-area {
+    display: none;
+    align-items: center;
+    gap: 13px;
+    margin-top: 16px;
+    padding: 15px 17px;
+    border-radius: 10px;
+    background:
+      radial-gradient(80% 120% at 0% 0%, var(--red-soft), transparent 70%),
+      var(--surface-2);
+    border: 1px solid var(--red-soft-2);
+  }
+  .result-area.show { display: flex; }
+  .result-area .result-ico {
+    width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+    display: grid; place-items: center;
+    background: var(--red-soft); border: 1px solid var(--red-soft-2);
+  }
+  .result-area .result-ico svg { width: 20px; height: 20px; color: var(--red); }
+  .result-body { flex: 1; }
+  .result-t { font-size: 14px; font-weight: 600; color: var(--text); }
+  .result-d { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+  .btn-download {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 20px; font-size: 13px; font-weight: 600;
+    border-radius: 8px; cursor: pointer; text-decoration: none;
+    border: 1px solid var(--red-3); color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,.3);
+    background: linear-gradient(180deg, #ff4d4d 0%, var(--red-2) 55%, #a01818 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 6px 16px -6px var(--red-glow);
+    transition: filter .15s, transform .1s;
+    flex-shrink: 0;
+  }
+  .btn-download:hover { filter: brightness(1.07); }
+  .btn-download:active { transform: translateY(1px); }
+  .btn-download svg { width: 15px; height: 15px; color: #fff; }
+
+  /* ===== Error banner ===== */
+  .err-area {
+    display: none;
+    align-items: center; gap: 9px;
+    margin-top: 16px; padding: 12px 15px;
+    border-radius: 9px; font-size: 12.5px;
+    color: var(--red);
+    background: var(--red-soft); border: 1px solid var(--red-soft-2);
+  }
+  .err-area.show { display: flex; }
+  .err-area svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  /* ===== Capability cards ===== */
+  .caps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .cap {
+    padding: 14px;
+    background: var(--glass-soft);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 9px;
+  }
+  .cap .cap-ico {
+    width: 32px; height: 32px; border-radius: 8px; margin-bottom: 9px;
+    display: grid; place-items: center;
+    background: var(--red-soft); border: 1px solid var(--red-soft-2);
+  }
+  .cap .cap-ico svg { width: 16px; height: 16px; color: var(--red); }
+  .cap .cap-t { font-size: 12.5px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+  .cap .cap-d { font-size: 11px; color: var(--text-2); line-height: 1.45; }
+
+  /* ===== Before / after preview ===== */
+  .preview-card .card-body { padding: 0; }
+  .preview-split { display: grid; grid-template-columns: 1fr 1fr; }
+  .preview-col { padding: 16px 18px; }
+  .preview-col:first-child { border-right: 1px solid var(--border); }
+  .preview-label {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .7px;
+    padding: 3px 9px; border-radius: 5px; margin-bottom: 12px;
+  }
+  .preview-label.before { color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); }
+  .preview-label.after { color: var(--red); background: var(--red-soft); border: 1px solid var(--red-soft-2); }
+  .kv { display: flex; gap: 10px; padding: 5px 0; font-size: 12px; border-bottom: 1px dashed var(--border); }
+  .kv:last-child { border-bottom: none; }
+  .kv .k { width: 92px; flex-shrink: 0; color: var(--text-3); font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; padding-top: 1px; }
+  .kv .v { color: var(--text-1); }
+  .kv .v.fix { color: var(--text); font-weight: 600; }
+  .kv .v.full { color: var(--red); font-weight: 500; }
+
+  @media (max-width: 980px) {
+    .steps { grid-template-columns: 1fr; }
+    .caps { grid-template-columns: 1fr 1fr; }
+    .preview-split { grid-template-columns: 1fr; }
+    .preview-col:first-child { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+{% endblock %}
+
+{% block breadcrumb %}
+<span>Workspace</span>
+<i data-lucide="chevron-right"></i>
+<strong>Address Cleanse</strong>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="page-head-row">
+    <div>
+      <div class="page-title">Address Cleanse</div>
+      <div class="page-sub">Upload a contact list and get back a clean, geocode-verified address for every row — components corrected in place, plus a full verified address column.</div>
+    </div>
+  </div>
+</div>
+
+<div class="cleanse-wrap">
+
+  <!-- 3-step pipeline -->
+  <div class="steps">
+    <div class="step active" id="stepUpload">
+      <div class="num">1</div>
+      <div><div class="step-t">Upload CSV</div><div class="step-d">Any columns · we auto-map</div></div>
+      <i data-lucide="file-up" class="step-ico"></i>
+    </div>
+    <div class="step" id="stepProcess">
+      <div class="num">2</div>
+      <div><div class="step-t">AI Cleanse</div><div class="step-d">Verify &amp; correct each row</div></div>
+      <i data-lucide="sparkles" class="step-ico"></i>
+    </div>
+    <div class="step" id="stepDownload">
+      <div class="num">3</div>
+      <div><div class="step-t">Download</div><div class="step-d">Clean CSV, ready to use</div></div>
+      <i data-lucide="download" class="step-ico"></i>
+    </div>
+  </div>
+
+  <!-- Upload -->
+  <div class="card drop-card">
+    <div class="card-head">
+      <div class="card-title"><i data-lucide="file-spreadsheet"></i> Upload CSV or Excel</div>
+      <div class="card-meta">max 1000 rows · .csv / .xlsx</div>
+    </div>
+    <div class="card-body">
+      <form id="uploadForm" action="/v2/address_cleanse" method="post" enctype="multipart/form-data">
+        <div class="upload-zone" id="dropZone">
+          <div class="ico-ring"><i data-lucide="upload-cloud"></i></div>
+          <strong>Drop your CSV or Excel file here</strong>
+          <div class="browse">or <u>click to browse</u> · supports <b>.csv</b> and <b>.xlsx</b></div>
+          <input type="file" name="csv_file" id="csvFile" accept=".csv,.xlsx" required style="display:none;" />
+          <div class="supports">
+            <span class="chip">Name</span>
+            <span class="chip">Phone</span>
+            <span class="chip">Address 1</span>
+            <span class="chip">Address 2</span>
+            <span class="chip">Area</span>
+            <span class="chip">City</span>
+            <span class="chip">State</span>
+            <span class="chip">Country</span>
+            <span class="chip">Pincode</span>
+          </div>
+        </div>
+
+        <div class="file-info" id="fileInfo">
+          <div class="fic"><i data-lucide="file-check-2"></i></div>
+          <div>
+            <div class="filename" id="fileName">No file selected</div>
+            <div class="size" id="fileSize"></div>
+          </div>
+          <div class="clear-file" id="clearFile" title="Remove"><i data-lucide="x"></i></div>
+        </div>
+
+        <div class="progress-area" id="progressArea">
+          <div class="progress-head">
+            <i data-lucide="loader-2" class="spin"></i>
+            <span>Verifying &amp; correcting addresses… large files may take a few minutes. Please keep this tab open.</span>
+          </div>
+          <div class="progress-bar"><div class="fill"></div></div>
+        </div>
+
+        <div class="result-area" id="resultArea">
+          <div class="result-ico"><i data-lucide="circle-check-big"></i></div>
+          <div class="result-body">
+            <div class="result-t" id="resultTitle">Cleanse complete</div>
+            <div class="result-d" id="resultDesc">Your file is ready to download.</div>
+          </div>
+          <a class="btn-download" id="downloadBtn" download="corrected_addresses.csv">
+            <i data-lucide="download"></i> Download CSV
+          </a>
+        </div>
+
+        <div class="err-area" id="errArea">
+          <i data-lucide="alert-triangle"></i>
+          <span id="errMsg">Something went wrong.</span>
+        </div>
+
+        <div class="action-row">
+          <div class="action-note">
+            <i data-lucide="shield-check"></i>
+            Original columns preserved · address fields corrected in place
+          </div>
+          <button type="submit" class="btn-cleanse" id="cleanseBtn" disabled>
+            <i data-lucide="sparkles"></i> Cleanse Addresses
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Capabilities -->
+  <div class="caps">
+    <div class="cap">
+      <div class="cap-ico"><i data-lucide="scan-search"></i></div>
+      <div class="cap-t">Auto column mapping</div>
+      <div class="cap-d">Detects address, city, state &amp; pincode fields by header name.</div>
+    </div>
+    <div class="cap">
+      <div class="cap-ico"><i data-lucide="map-pin-check"></i></div>
+      <div class="cap-t">Geocode verified</div>
+      <div class="cap-d">Each address validated against live geocoding &amp; postal data.</div>
+    </div>
+    <div class="cap">
+      <div class="cap-ico"><i data-lucide="columns-3"></i></div>
+      <div class="cap-t">Corrected in place</div>
+      <div class="cap-d">Clean values written straight back to your original columns.</div>
+    </div>
+    <div class="cap">
+      <div class="cap-ico"><i data-lucide="file-check-2"></i></div>
+      <div class="cap-t">Full verified column</div>
+      <div class="cap-d">A new column with the complete, standardized address.</div>
+    </div>
+  </div>
+
+  <!-- Before / after -->
+  <div class="card preview-card">
+    <div class="card-head">
+      <div class="card-title"><i data-lucide="arrow-left-right"></i> What you get back</div>
+      <div class="card-meta">example row</div>
+    </div>
+    <div class="card-body">
+      <div class="preview-split">
+        <div class="preview-col">
+          <span class="preview-label before"><i data-lucide="file-input" style="width:12px;height:12px;"></i> Your input</span>
+          <div class="kv"><span class="k">Address 1</span><span class="v">rpnc systems bannergatta rd</span></div>
+          <div class="kv"><span class="k">City</span><span class="v">bangalore</span></div>
+          <div class="kv"><span class="k">State</span><span class="v">karnataka</span></div>
+          <div class="kv"><span class="k">Pincode</span><span class="v">560061</span></div>
+        </div>
+        <div class="preview-col">
+          <span class="preview-label after"><i data-lucide="sparkles" style="width:12px;height:12px;"></i> Cleansed output</span>
+          <div class="kv"><span class="k">Address 1</span><span class="v fix">RPNC Systems, Bannerghatta Main Road</span></div>
+          <div class="kv"><span class="k">City</span><span class="v fix">Bengaluru</span></div>
+          <div class="kv"><span class="k">State</span><span class="v fix">Karnataka</span></div>
+          <div class="kv"><span class="k">Pincode</span><span class="v fix">560076</span></div>
+          <div class="kv"><span class="k">Full Verified</span><span class="v full">RPNC Systems, Bannerghatta Main Rd, Bengaluru, Karnataka 560076, India</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const dropZone    = document.getElementById('dropZone');
+  const csvFile     = document.getElementById('csvFile');
+  const fileInfo    = document.getElementById('fileInfo');
+  const fileName    = document.getElementById('fileName');
+  const fileSize    = document.getElementById('fileSize');
+  const clearFile   = document.getElementById('clearFile');
+  const cleanseBtn  = document.getElementById('cleanseBtn');
+  const uploadForm  = document.getElementById('uploadForm');
+  const progressArea= document.getElementById('progressArea');
+  const resultArea  = document.getElementById('resultArea');
+  const resultTitle = document.getElementById('resultTitle');
+  const resultDesc  = document.getElementById('resultDesc');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const errArea     = document.getElementById('errArea');
+  const errMsg      = document.getElementById('errMsg');
+  const stepProcess = document.getElementById('stepProcess');
+  const stepDownload= document.getElementById('stepDownload');
+
+  let downloadUrl = null;  // object URL of the cleansed file
+
+  dropZone.addEventListener('click', () => csvFile.click());
+
+  ['dragenter','dragover','dragleave','drop'].forEach(ev =>
+    dropZone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); }));
+  ['dragenter','dragover'].forEach(ev =>
+    dropZone.addEventListener(ev, () => dropZone.classList.add('over')));
+  ['dragleave','drop'].forEach(ev =>
+    dropZone.addEventListener(ev, () => dropZone.classList.remove('over')));
+
+  dropZone.addEventListener('drop', e => {
+    const dt = e.dataTransfer;
+    if (dt.files.length) { csvFile.files = dt.files; updateFileInfo(dt.files[0]); }
+  });
+
+  csvFile.addEventListener('change', () => {
+    if (csvFile.files.length) updateFileInfo(csvFile.files[0]);
+  });
+
+  clearFile.addEventListener('click', () => {
+    csvFile.value = '';
+    fileInfo.classList.remove('show');
+    cleanseBtn.disabled = true;
+    resetOutputs();
+  });
+
+  function resetOutputs() {
+    resultArea.classList.remove('show');
+    errArea.classList.remove('show');
+    progressArea.classList.remove('show');
+    stepProcess.classList.remove('active');
+    stepDownload.classList.remove('active');
+    if (downloadUrl) { URL.revokeObjectURL(downloadUrl); downloadUrl = null; }
+  }
+
+  function updateFileInfo(file) {
+    fileName.textContent = file.name;
+    fileSize.textContent = (file.size / 1024).toFixed(1) + ' KB';
+    fileInfo.classList.add('show');
+    cleanseBtn.disabled = false;
+    resetOutputs();           // clear any previous run
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function setBtn(html, disabled) {
+    cleanseBtn.disabled = disabled;
+    cleanseBtn.innerHTML = html;
+    if (window.lucide) lucide.createIcons();
+  }
+
+  uploadForm.addEventListener('submit', async (e) => {
+    e.preventDefault();                 // no auto-download — we handle it
+    if (!csvFile.files.length) return;
+
+    resetOutputs();
+    progressArea.classList.add('show');
+    stepProcess.classList.add('active');
+    setBtn('<i data-lucide="loader-2" class="spin"></i> Processing…', true);
+
+    try {
+      const fd = new FormData();
+      fd.append('csv_file', csvFile.files[0]);
+      const resp = await fetch('/v2/address_cleanse', { method: 'POST', body: fd });
+
+      if (!resp.ok) {
+        let msg = 'Cleanse failed (HTTP ' + resp.status + ').';
+        try { const j = await resp.json(); if (j.error) msg = j.error; } catch (_) {}
+        throw new Error(msg);
+      }
+
+      const blob = await resp.blob();
+      const rows = resp.headers.get('X-Rows-Processed') || '';
+      const cols = resp.headers.get('X-Address-Columns') || '';
+
+      // Name output after the input file
+      const base = (csvFile.files[0].name || 'addresses').replace(/\.(csv|xlsx)$/i, '');
+      const outName = base + '_cleansed.csv';
+
+      downloadUrl = URL.createObjectURL(blob);
+      downloadBtn.href = downloadUrl;
+      downloadBtn.setAttribute('download', outName);
+
+      resultTitle.textContent = 'Cleanse complete' + (rows ? ' · ' + rows + ' rows' : '');
+      resultDesc.textContent = cols
+        ? ('Corrected columns: ' + cols + '. Click to download your verified file.')
+        : 'Your verified file is ready. Click to download.';
+
+      progressArea.classList.remove('show');
+      resultArea.classList.add('show');
+      stepDownload.classList.add('active');
+      setBtn('<i data-lucide="sparkles"></i> Cleanse Addresses', false);
+      if (window.lucide) lucide.createIcons();
+    } catch (err) {
+      progressArea.classList.remove('show');
+      stepProcess.classList.remove('active');
+      errMsg.textContent = err.message || 'Something went wrong.';
+      errArea.classList.add('show');
+      setBtn('<i data-lucide="sparkles"></i> Cleanse Addresses', false);
+      if (window.lucide) lucide.createIcons();
+    }
+  });
+</script>
+{% endblock %}
