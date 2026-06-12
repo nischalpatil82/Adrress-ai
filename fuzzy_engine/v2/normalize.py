@@ -218,21 +218,38 @@ def parse(raw: str) -> ParsedAddress:
 def repair_pincode(token: str) -> Optional[str]:
     """Try to repair a near-pincode token (5 or 7 digits) back to 6.
 
-    - 5 digits: pad a leading 0 only if it parses as plausible (heuristic).
-    - 7 digits: drop a stray leading/trailing digit if the inner 6 look valid.
-    Returns the repaired pincode or None.
+    Indian pincodes are exactly 6 digits with a leading digit 1-8. We only
+    return a repaired value when it satisfies that invariant; otherwise we
+    return None rather than fabricate an invalid code (a wrong pincode
+    pollutes the displayed address and the pincode-anchored retrieval boost).
+
+    - 6 digits: returned as-is if the leading digit is valid.
+    - 7 digits: if a digit is doubled (the common fat-finger error), drop one
+      occurrence; else try dropping the leading/trailing digit. Accept the
+      first candidate with a valid 1-8 leading digit.
+    - 5 digits: a dropped interior digit is not recoverable without a
+      gazetteer (padding a leading 0 yields an invalid pincode), so return
+      None and let downstream context-based lookup handle it.
     """
     if not token or not token.isdigit():
         return None
+
+    def _valid(p: str) -> bool:
+        return len(p) == 6 and p[0] in "12345678"
+
     if len(token) == 6:
-        return token
-    if len(token) == 5:
-        return "0" + token  # rare but happens; downstream India-Post will validate
+        return token if _valid(token) else None
     if len(token) == 7:
-        # Drop trailing if it makes a valid range, else drop leading.
-        for cand in (token[:6], token[1:]):
-            if cand[0] in "1-9" or True:
+        candidates: list[str] = []
+        # Prefer removing a doubled adjacent digit ("5600053" -> "560053").
+        for i in range(1, len(token)):
+            if token[i] == token[i - 1]:
+                candidates.append(token[:i] + token[i + 1:])
+        candidates.extend((token[:6], token[1:]))  # fallbacks: drop tail/head
+        for cand in candidates:
+            if _valid(cand):
                 return cand
+        return None
     return None
 
 

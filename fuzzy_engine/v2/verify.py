@@ -1048,12 +1048,27 @@ class AddressVerifier:
             except Exception as exc:
                 log.warning("AddressValidation refinement failed: %s", exc)
 
-        # pincode validation
+        # pincode / postal-code validation.
+        # The India Post CSV only covers Indian 6-digit pincodes. For
+        # international addresses (US ZIP, UK/CA alphanumeric, etc.) that
+        # index can never confirm a code, so a CSV miss must NOT be reported
+        # as invalid. When the geocoder resolved a non-Indian country, the
+        # geocoder is the authority: a postal code it returned is valid.
         pin = expected_pincode or (geo.postal_code if geo else None)
-        info = self.pincodes.lookup(pin) if pin else None
-        pincode_valid = bool(info)
-        if pin and not info and self.pincodes.loaded:
-            notes.append("pincode_unknown")
+        geo_country = (geo.country if geo else None) or ""
+        is_indian = geo_country.strip().lower() in ("", "india", "in")
+
+        if is_indian:
+            info = self.pincodes.lookup(pin) if pin else None
+            pincode_valid = bool(info)
+            if pin and not info and self.pincodes.loaded:
+                notes.append("pincode_unknown")
+        else:
+            # International: defer to the geocoder. A postal code returned by
+            # a successful geocode is treated as valid for its country.
+            info = None
+            pincode_valid = bool(geo and geo.postal_code)
+            notes.append(f"international_postal_code:{geo_country}")
 
         # consistency: pincode's state vs geocode state vs expected state
         consistent = True
