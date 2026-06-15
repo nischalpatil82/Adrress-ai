@@ -19,6 +19,7 @@ import io
 import importlib.util
 import json
 import os
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -258,6 +259,59 @@ def _read_xlsx(raw_bytes: bytes):
     return headers, rows
 
 
+# Google "Plus Code" pattern, e.g. "VJRH+FCR" — returned when no real street
+# address is found, so it signals an untrustworthy geocode.
+_PLUS_CODE_RE = re.compile(r"\b[23456789CFGHJMPQRVWX]{4,}\+[23456789CFGHJMPQRVWX]{2,}\b")
+
+
+def _row_pincode(row: dict, address_cols: list[str]) -> str:
+    """Extract the user-provided pincode from the row (first pin/zip column).
+
+    Falls back to any 6-digit token found in a pin-like column.
+    """
+    for col in address_cols:
+        cl = col.lower()
+        if "pin" in cl or "zip" in cl or "postal" in cl:
+            raw = str(row.get(col) or "").strip()
+            m = re.search(r"\b(\d{6})\b", raw)
+            if m:
+                return m.group(1)
+            if raw:
+                return raw
+    return ""
+
+
+def _build_address_line1(structured: dict) -> str:
+    """Build the 'Address 1' value, preserving a POI / business name.
+
+    The geocoder puts the place name (e.g. "Gopalan Innovation Mall") at the
+    front of the formatted address. House-number + street alone loses it, so
+    we recover the leading place name from the formatted string and prepend it
+    to "<house_number> <street>".
+    """
+    house = (structured.get("house_number") or "").strip()
+    street = (structured.get("street") or "").strip()
+    street_part = f"{house} {street}".strip()
+
+    formatted = (structured.get("formatted") or "").strip()
+    poi = ""
+    if formatted:
+        first_seg = formatted.split(",")[0].strip()
+        # Treat the first segment as a POI name only when it is not just the
+        # street/house number itself (i.e. it carries extra business words).
+        if first_seg and not first_seg[0].isdigit():
+            sl = first_seg.lower()
+            if not street or (street.lower() not in sl and sl not in street.lower()):
+                poi = first_seg
+
+    if poi and street_part:
+        # Avoid duplicating if the POI already contains the street part.
+        if street_part.lower() in poi.lower():
+            return poi
+        return f"{poi}, {street_part}"
+    return poi or street_part
+
+
 @app.route("/v2/address_cleanse", methods=["GET", "POST"])
 def address_cleanse_v2():
     if request.method == "GET":
@@ -319,58 +373,96 @@ def address_cleanse_v2():
         query = ", ".join(p for p in parts if p)
 
         # Correct the address
+        confidence = 0.0
         try:
             if query:
                 result = v2_pipeline.correct(query, top_n=1)
                 structured = result.structured if result else {}
+                confidence = float(getattr(result, "confidence", 0.0) or 0.0)
             else:
                 structured = {}
         except Exception:  # noqa: BLE001
             structured = {}
 
+        # ---- Decide whether the geocode is trustworthy enough to overwrite ----
+        # A result is UNTRUSTED when any of these hold:
+        #   * Google returned a Plus Code (no real street match was found)
+        #   * the geocoded pincode differs from the user's pincode (relocation
+        #     to a different area — the address was not actually found)
+        #   * confidence is low
+        # When untrusted we KEEP the user's original columns and only fill in
+        # genuinely empty ones, so we never replace good data with a guess.
+        user_pin = _row_pincode(row, address_cols)
+        geo_pin = (structured.get("pincode") or "").strip()
+        formatted = (structured.get("formatted") or "").strip()
+
+        is_plus_code = bool(_PLUS_CODE_RE.search(formatted))
+        pin_relocated = bool(user_pin and geo_pin and user_pin != geo_pin)
+        trusted = bool(structured) and not is_plus_code \
+            and not pin_relocated and confidence >= 0.55
+
+        if trusted:
+            review = "verified"
+        elif not structured:
+            review = "no_match"
+        elif is_plus_code:
+            review = "review: no exact street match"
+        elif pin_relocated:
+            review = f"review: pincode {user_pin}→{geo_pin}"
+        else:
+            review = "review: low confidence"
+
         # Merge structured back into the row
         corrected_row = dict(row)
         for col in address_cols:
             c_low = col.lower()
+            orig = str(row.get(col) or "").strip()
+
             if "address 1" in c_low or "addr 1" in c_low or "line 1" in c_low:
-                val = f"{structured.get('house_number') or ''} {structured.get('street') or ''}".strip()
-                if val:
-                    corrected_row[col] = val
+                val = _build_address_line1(structured)
             elif "address 2" in c_low or "addr 2" in c_low or "line 2" in c_low:
-                if structured.get("sublocality"):
-                    corrected_row[col] = structured["sublocality"]
+                val = structured.get("sublocality") or ""
             elif "area" in c_low or "locality" in c_low:
                 val = structured.get("sublocality") or structured.get("city", "")
+            elif "city" in c_low or "town" in c_low:
+                val = structured.get("city") or ""
+            elif "state" in c_low or "province" in c_low:
+                val = structured.get("state") or ""
+            elif "country" in c_low:
+                val = structured.get("country") or ""
+            elif "pin" in c_low or "zip" in c_low or "postal" in c_low:
+                val = structured.get("pincode") or ""
+            else:
+                val = ""
+
+            val = (val or "").strip()
+            if trusted:
+                # Confident: overwrite with the corrected value when present.
                 if val:
                     corrected_row[col] = val
-            elif "city" in c_low or "town" in c_low:
-                if structured.get("city"):
-                    corrected_row[col] = structured["city"]
-            elif "state" in c_low or "province" in c_low:
-                if structured.get("state"):
-                    corrected_row[col] = structured["state"]
-            elif "country" in c_low:
-                if structured.get("country"):
-                    corrected_row[col] = structured["country"]
-            elif "pin" in c_low or "zip" in c_low or "postal" in c_low:
-                if structured.get("pincode"):
-                    corrected_row[col] = structured["pincode"]
+            else:
+                # Not confident: keep the user's value; only fill if it was blank.
+                if not orig and val:
+                    corrected_row[col] = val
 
         corrected_row["Latitude"] = structured.get("lat") if structured.get("lat") is not None else ""
         corrected_row["Longitude"] = structured.get("lon") if structured.get("lon") is not None else ""
         corrected_row["Full Verified Address"] = (
-            structured.get("formatted", "")
+            formatted
             or f"{structured.get('house_number') or ''} {structured.get('street') or ''}, "
               f"{structured.get('sublocality') or ''}, {structured.get('city') or ''}, "
               f"{structured.get('state') or ''}, {structured.get('country') or ''}, "
               f"{structured.get('pincode') or ''}".strip(", ")
         )
+        corrected_row["Cleanse Status"] = review
 
         output_rows.append(corrected_row)
 
     # Return corrected CSV as a download
     out_stream = io.StringIO()
-    out_headers = headers + ["Latitude", "Longitude", "Full Verified Address"]
+    out_headers = headers + [
+        "Latitude", "Longitude", "Full Verified Address", "Cleanse Status",
+    ]
     writer = csv.DictWriter(
         out_stream, fieldnames=out_headers,
         lineterminator="\n", extrasaction="ignore",
