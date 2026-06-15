@@ -356,6 +356,8 @@ def address_cleanse_v2():
                 if structured.get("pincode"):
                     corrected_row[col] = structured["pincode"]
 
+        corrected_row["Latitude"] = structured.get("lat") if structured.get("lat") is not None else ""
+        corrected_row["Longitude"] = structured.get("lon") if structured.get("lon") is not None else ""
         corrected_row["Full Verified Address"] = (
             structured.get("formatted", "")
             or f"{structured.get('house_number') or ''} {structured.get('street') or ''}, "
@@ -368,7 +370,7 @@ def address_cleanse_v2():
 
     # Return corrected CSV as a download
     out_stream = io.StringIO()
-    out_headers = headers + ["Full Verified Address"]
+    out_headers = headers + ["Latitude", "Longitude", "Full Verified Address"]
     writer = csv.DictWriter(
         out_stream, fieldnames=out_headers,
         lineterminator="\n", extrasaction="ignore",
