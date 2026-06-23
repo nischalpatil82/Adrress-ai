@@ -3,58 +3,54 @@
 {% block title %}Address Cleanse · AddressAI{% endblock %}
 
 {% block extra_css %}
-  .cleanse-wrap {
+  /* ── Wizard container ── */
+  .wizard-wrap {
     padding: 20px 22px 32px;
-    max-width: 1080px;
+    max-width: 1200px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
     gap: 18px;
   }
 
-  /* ===== Step pipeline ===== */
-  .steps {
+  /* ── Steps header ── */
+  .step-bar {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 10px;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
   }
-  .step {
+  .step-item {
     display: flex;
     align-items: center;
-    gap: 11px;
-    padding: 13px 15px;
+    gap: 10px;
+    padding: 12px 14px;
     background: var(--glass);
     backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
     border: 1px solid var(--glass-border);
     border-radius: 9px;
-    box-shadow: inset 0 1px 0 var(--glass-edge);
-    position: relative;
+    opacity: 0.5;
+    transition: opacity 0.3s, background 0.3s;
   }
-  .step .num {
-    flex-shrink: 0;
-    width: 28px; height: 28px;
-    border-radius: 50%;
+  .step-item.active { opacity: 1; background: var(--red-soft); border-color: var(--red-soft-2); }
+  .step-item.done { opacity: 0.7; }
+  .step-num {
+    width: 28px; height: 28px; border-radius: 50%;
     display: grid; place-items: center;
     font-size: 12px; font-weight: 700;
-    font-family: 'IBM Plex Mono', monospace;
-    background: var(--surface-2);
-    border: 1px solid var(--border-strong);
+    background: var(--surface-2); border: 1px solid var(--border-strong);
     color: var(--text-2);
   }
-  .step.active .num {
-    background: linear-gradient(180deg, #ff4d4d 0%, var(--red-2) 100%);
-    border-color: var(--red-3);
-    color: #fff;
-    box-shadow: 0 4px 12px -4px var(--red-glow);
-  }
-  .step .step-t { font-size: 13px; font-weight: 600; color: var(--text); }
-  .step .step-d { font-size: 11px; color: var(--text-2); margin-top: 1px; }
-  .step .step-ico { margin-left: auto; color: var(--text-3); }
-  .step.active .step-ico { color: var(--red); }
+  .step-item.active .step-num { background: linear-gradient(180deg, #ff4d4d, var(--red-2)); border-color: var(--red-3); color: #fff; }
+  .step-item.done .step-num { background: #35c46b; border-color: #2da35a; color: #fff; }
+  .step-title { font-size: 13px; font-weight: 600; color: var(--text); }
+  .step-desc { font-size: 11px; color: var(--text-2); }
 
-  /* ===== Drop zone ===== */
-  .drop-card { overflow: hidden; }
+  /* ── Wizard screens ── */
+  .wizard-screen { display: none; animation: fadeIn 0.3s ease; }
+  .wizard-screen.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── Upload zone (reused) ── */
   .upload-zone {
     position: relative;
     border: 1.5px dashed var(--border-strong);
@@ -62,491 +58,1351 @@
     padding: 52px 24px;
     text-align: center;
     cursor: pointer;
-    transition: border-color .2s, background .2s, transform .15s;
-    background:
-      radial-gradient(60% 80% at 50% 0%, var(--red-soft), transparent 70%);
+    transition: border-color 0.2s, background 0.2s, transform 0.15s;
+    background: radial-gradient(60% 80% at 50% 0%, var(--red-soft), transparent 70%);
   }
-  .upload-zone:hover, .upload-zone.over {
-    border-color: var(--red);
-    background:
-      radial-gradient(70% 90% at 50% 0%, var(--red-soft-2), transparent 72%);
-  }
+  .upload-zone:hover, .upload-zone.over { border-color: var(--red); }
   .upload-zone.over { transform: scale(1.005); }
-  .upload-zone .ico-ring {
-    width: 56px; height: 56px;
-    margin: 0 auto 14px;
-    border-radius: 14px;
-    display: grid; place-items: center;
-    background: var(--surface-2);
-    border: 1px solid var(--border-strong);
-    box-shadow: inset 0 1px 0 var(--glass-edge);
-  }
-  .upload-zone.over .ico-ring, .upload-zone:hover .ico-ring {
-    border-color: var(--red-soft-2);
-    background: var(--red-soft);
-  }
-  .upload-zone .ico-ring svg { width: 26px; height: 26px; color: var(--red); }
-  .upload-zone strong { color: var(--text); display: block; font-size: 16px; font-weight: 600; margin-bottom: 5px; }
-  .upload-zone .browse { color: var(--text-2); font-size: 12.5px; }
-  .upload-zone .browse u { color: var(--red); text-decoration: none; font-weight: 600; }
+  .ico-ring { width: 56px; height: 56px; margin: 0 auto 14px; border-radius: 14px; display: grid; place-items: center; background: var(--surface-2); border: 1px solid var(--border-strong); }
+  .upload-zone:hover .ico-ring { border-color: var(--red-soft-2); background: var(--red-soft); }
+  .ico-ring svg { width: 26px; height: 26px; color: var(--red); }
 
-  .supports {
-    display: flex; flex-wrap: wrap; gap: 6px;
-    justify-content: center;
-    margin-top: 18px;
+  /* ── Range selector ── */
+  .range-bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px; background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 8px;
   }
-  .chip {
-    font-size: 10.5px;
-    font-family: 'IBM Plex Mono', monospace;
-    color: var(--text-2);
-    padding: 3px 9px;
-    border-radius: 20px;
-    background: var(--surface-2);
+  .range-bar label { font-size: 12px; color: var(--text-2); font-weight: 500; }
+  .range-bar input[type="number"] {
+    width: 80px; padding: 7px 10px;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface); color: var(--text);
+    font-size: 13px;
+  }
+  .range-bar span { font-size: 12px; color: var(--text-3); }
+
+  /* ── Processing scope selector ── */
+  .scope-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 760px) { .scope-options { grid-template-columns: 1fr; } }
+  .scope-opt {
+    display: flex; gap: 10px; align-items: flex-start; cursor: pointer;
+    padding: 13px 14px; border: 1px solid var(--border); border-radius: 9px;
+    background: var(--surface); transition: border-color .15s, background .15s;
+  }
+  .scope-opt:hover { border-color: var(--red-soft-2); }
+  .scope-opt.on { border-color: var(--red); background: var(--red-soft); }
+  .scope-opt input { margin-top: 2px; width: 15px; height: 15px; accent-color: var(--red); }
+  .scope-opt .scope-t { font-size: 13px; font-weight: 600; color: var(--text); }
+  .scope-opt .scope-d { font-size: 11px; color: var(--text-3); margin-top: 2px; line-height: 1.4; }
+  .range-inline { margin-top: 8px; font-size: 12px; color: var(--text-2); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .range-inline input { width: 80px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); color: var(--text); font-size: 12px; }
+
+  /* ── Download column picker ── */
+  .dlcol-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+  @media (max-width: 860px) { .dlcol-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 560px) { .dlcol-grid { grid-template-columns: 1fr; } }
+  .dlcol-item {
+    display: flex; align-items: center; gap: 9px; cursor: pointer; user-select: none;
+    padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface); font-size: 12.5px; color: var(--text);
+    transition: border-color .15s, background .15s;
+  }
+  .dlcol-item:hover { border-color: var(--red-soft-2); }
+  .dlcol-item.on { border-color: var(--red); background: var(--red-soft); }
+  .dlcol-item input { width: 15px; height: 15px; accent-color: var(--red); cursor: pointer; }
+
+  /* ── Progress bar ── */
+  .proc-track { height: 12px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; }
+  .proc-fill {
+    height: 100%; width: 0; border-radius: 8px;
+    background: linear-gradient(90deg, #ff6a6a, var(--red));
+    transition: width .35s cubic-bezier(.2,.8,.2,1);
+  }
+
+  /* ── Column mapping ── */
+  .colmap-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  }
+  @media (max-width: 980px) { .colmap-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 640px) { .colmap-grid { grid-template-columns: 1fr; } }
+
+  /* Column selection (checkbox list) */
+  .colsel-item {
+    display: flex; align-items: center; gap: 9px; cursor: pointer;
+    padding: 11px 13px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface); font-size: 12.5px; color: var(--text);
+    transition: border-color .15s, background .15s; user-select: none;
+  }
+  .colsel-item:hover { border-color: var(--red-soft-2); }
+  .colsel-item.on { border-color: var(--red); background: var(--red-soft); }
+  .colsel-item input { width: 15px; height: 15px; accent-color: var(--red); cursor: pointer; }
+  .colsel-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .colmap-card {
+    display: flex; flex-direction: column; gap: 6px;
+    padding: 14px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface); transition: border-color 0.2s;
+  }
+  .colmap-card:hover { border-color: var(--red-soft-2); }
+  .colmap-card .label { font-size: 12px; font-weight: 600; color: var(--text); }
+  .colmap-card .desc { font-size: 11px; color: var(--text-3); }
+  .colmap-card select {
+    width: 100%; padding: 8px 10px;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface-2); color: var(--text);
+    font-size: 13px;
+  }
+
+  /* ── Data preview table ── */
+  .preview-table-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .preview-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .preview-table th, .preview-table td {
+    padding: 8px 10px; border: 1px solid var(--border);
+    text-align: left; vertical-align: top;
+  }
+  .preview-table th { background: var(--surface); font-weight: 600; color: var(--text-2); white-space: nowrap; }
+  .preview-table tr:nth-child(even) td { background: var(--surface-2); }
+  .preview-table tr:hover td { background: var(--red-soft); }
+
+  /* ── Review table (the big one) ── */
+  .review-toolbar {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 10px 14px; background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; margin-bottom: 10px;
+  }
+  .review-toolbar .stat-pill {
+    font-size: 11px; padding: 4px 10px; border-radius: 20px;
+    background: var(--surface); border: 1px solid var(--border);
+  }
+  .review-toolbar .stat-pill.ok { color: #35c46b; background: rgba(53,196,107,.08); border-color: rgba(53,196,107,.25); }
+  .review-toolbar .stat-pill.warn { color: var(--red); background: var(--red-soft); border-color: var(--red-soft-2); }
+  .review-toolbar button {
+    padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-size: 12px; cursor: pointer;
+  }
+  .review-toolbar button:hover { border-color: var(--red-soft-2); background: var(--red-soft); }
+
+  .review-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  .review-table th {
+    padding: 10px 8px; background: var(--surface); border: 1px solid var(--border);
+    font-weight: 600; color: var(--text-2); text-align: left; position: sticky; top: 0;
+  }
+  .review-table td {
+    padding: 10px 8px; border: 1px solid var(--border); vertical-align: top;
+  }
+  .review-table tr.approved { background: rgba(53,196,107,.06) !important; }
+  .review-table tr.rejected { background: rgba(239,68,68,.06) !important; }
+
+  /* ── Enterprise review console ── */
+  .thresh-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .thresh-control { display: flex; align-items: center; gap: 10px; min-width: 240px; }
+  .thresh-control input[type="range"] { width: 200px; accent-color: var(--red); }
+  .thresh-val { font-size: 14px; color: var(--text); min-width: 42px; }
+  .histogram { display: flex; align-items: flex-end; gap: 2px; height: 64px; margin-top: 14px; }
+  .histogram .hbar { flex: 1; background: var(--surface-2); border: 1px solid var(--border); border-bottom: none; border-radius: 3px 3px 0 0; min-height: 2px; transition: height .4s, background .2s; position: relative; }
+  .histogram .hbar.below { background: linear-gradient(180deg, #ffd089, #ffb454); }
+  .histogram .hbar.above { background: linear-gradient(180deg, #5fd98a, #35c46b); }
+  .histo-axis { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-3); margin-top: 4px; }
+
+  .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .chip-f {
+    display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+    padding: 7px 13px; border-radius: 20px; font-size: 12px; user-select: none;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text-2);
+    transition: border-color .15s, background .15s, color .15s;
+  }
+  .chip-f:hover { border-color: var(--red-soft-2); }
+  .chip-f.on { background: var(--red-soft); border-color: var(--red); color: var(--text); }
+  .chip-f.anom { border-color: rgba(239,68,68,.4); color: var(--red); }
+  .chip-f.anom.on { background: var(--red); color: #fff; border-color: var(--red); }
+
+  .anom-flag {
+    display: inline-block; font-size: 10.5px; font-weight: 600; color: var(--red);
+    background: rgba(239,68,68,.10); border: 1px solid rgba(239,68,68,.30);
+    border-radius: 4px; padding: 1px 6px; margin: 0 4px 3px 0; white-space: nowrap;
+  }
+  .chip-f .cnt { font-weight: 700; }
+  .chip-f .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .chip-f .dot.auto { background: #35c46b; }
+  .chip-f .dot.review { background: #ffb454; }
+  .chip-f .dot.clean { background: #4f8cff; }
+  .chip-f .dot.nomatch { background: var(--text-3); }
+  .chip-f .dot.all { background: var(--red); }
+
+  .bulk-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; }
+  .bulk-bar button { font-size: 11.5px; padding: 6px 11px; }
+
+  .bucket-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .bucket-tag.auto_fixable { color: #35c46b; background: rgba(53,196,107,.1); border: 1px solid rgba(53,196,107,.25); }
+  .bucket-tag.needs_review { color: #ffb454; background: rgba(255,180,84,.1); border: 1px solid rgba(255,180,84,.28); }
+  .bucket-tag.already_clean { color: #4f8cff; background: rgba(79,140,255,.1); border: 1px solid rgba(79,140,255,.28); }
+  .bucket-tag.no_match { color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); }
+
+  .pager { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; }
+  .pager button { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 12px; cursor: pointer; }
+  .pager button:disabled { opacity: .4; cursor: not-allowed; }
+  .pager .pinfo { font-size: 12px; color: var(--text-2); }
+
+  /* Per-column change list inside a review row */
+  .col-changes { display: flex; flex-direction: column; gap: 4px; max-width: 520px; }
+  .col-change {
+    display: grid; grid-template-columns: minmax(70px,auto) 1fr; gap: 6px;
+    align-items: baseline; padding: 3px 6px; border-radius: 5px;
+    background: var(--surface-2); border: 1px solid var(--border);
+  }
+  .col-change .ccol { font-weight: 600; color: var(--text-2); font-size: 10.5px; text-transform: uppercase; letter-spacing: .3px; }
+  .col-change .cval .from { color: var(--red); opacity: .9; }
+  .col-change .cval .orig { color: var(--text); }
+  .col-change .cval .same { color: var(--text); }
+  .col-change .cval .arrow { color: var(--text-2); margin: 0 5px; }
+  .col-change .cval .to { color: #35c46b; font-weight: 600; }
+  .col-change-none { color: var(--text-2); font-size: 11px; font-style: italic; }
+  .row-toggle {
+    cursor: pointer; user-select: none; color: var(--red);
+    font-size: 11px; font-weight: 600; margin-top: 4px; display: inline-block;
+  }
+  .col-changes.collapsed { display: none; }
+
+  .row-status { display: inline-flex; align-items: center; gap: 4px; }
+  .row-status select {
+    padding: 4px 8px; border-radius: 5px; border: 1px solid var(--border);
+    font-size: 11px; background: var(--surface); color: var(--text);
+  }
+
+  .diff-view { display: flex; flex-direction: column; gap: 2px; }
+  .diff-old { text-decoration: line-through; color: var(--text-3); font-size: 11px; }
+  .diff-new { color: var(--text); font-weight: 500; font-size: 11.5px; }
+  .diff-same { color: var(--text-2); font-size: 11px; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 600;
     border: 1px solid var(--border);
   }
+  .badge.ok { color: #35c46b; background: rgba(53,196,107,.1); border-color: rgba(53,196,107,.25); }
+  .badge.warn { color: #ffb454; background: rgba(255,180,84,.1); border-color: rgba(255,180,84,.28); }
+  .badge.err { color: var(--red); background: var(--red-soft); border-color: var(--red-soft-2); }
+  .badge.info { color: var(--text-2); background: var(--surface-2); border-color: var(--border); }
 
-  /* ===== Selected file ===== */
-  .file-info {
-    display: none;
-    align-items: center;
-    gap: 12px;
-    padding: 13px 15px;
-    margin-top: 14px;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-  }
-  .file-info.show { display: flex; }
-  .file-info .fic {
-    width: 36px; height: 36px; border-radius: 8px;
-    display: grid; place-items: center;
-    background: var(--red-soft); border: 1px solid var(--red-soft-2);
-    flex-shrink: 0;
-  }
-  .file-info .fic svg { color: var(--red); width: 17px; height: 17px; }
-  .file-info .filename { font-weight: 600; color: var(--text); font-size: 13px; }
-  .file-info .size { color: var(--text-3); font-size: 11px; font-family: 'IBM Plex Mono', monospace; margin-top: 1px; }
-  .file-info .clear-file {
-    margin-left: auto; cursor: pointer; color: var(--text-3);
-    padding: 6px; border-radius: 6px; display: grid; place-items: center;
-  }
-  .file-info .clear-file:hover { color: var(--red); background: var(--red-soft); }
+  .issues-list { font-size: 10.5px; color: var(--text-3); line-height: 1.4; }
+  .issues-list .issue { display: block; }
 
-  /* ===== Action row ===== */
-  .action-row {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 14px; margin-top: 16px;
+  /* ── Correction detail card ── */
+  .corr-detail {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px; margin-top: 6px; display: none;
   }
-  .action-note { font-size: 11.5px; color: var(--text-3); display: flex; align-items: center; gap: 6px; }
-  .action-note svg { width: 13px; height: 13px; }
-  .btn-cleanse {
+  .corr-detail.show { display: block; animation: fadeIn 0.2s ease; }
+  .corr-detail .field-row {
+    display: grid; grid-template-columns: 1fr 1fr 40px; gap: 8px; align-items: center;
+    padding: 5px 0; border-bottom: 1px solid var(--border);
+  }
+  .corr-detail .field-row:last-child { border-bottom: none; }
+  .corr-detail .fn { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.4px; }
+  .corr-detail .fb { font-size: 11px; color: var(--text-3); text-decoration: line-through; }
+  .corr-detail .fa { font-size: 11px; color: var(--red); font-weight: 500; }
+
+  /* ── Batch action bar (sticky) ── */
+  .batch-bar {
+    position: sticky; bottom: 0;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 12px 16px; background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; margin-top: 12px;
+  }
+
+  /* ── Result summary ── */
+  .result-summary {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  }
+  .stat-card {
+    padding: 16px; border-radius: 10px; text-align: center;
+    background: var(--surface-2); border: 1px solid var(--border);
+  }
+  .stat-card .stat-val { font-size: 24px; font-weight: 700; color: var(--text); }
+  .stat-card .stat-label { font-size: 11px; color: var(--text-2); margin-top: 4px; }
+  .stat-card.ok .stat-val { color: #35c46b; }
+  .stat-card.warn .stat-val { color: #ffb454; }
+  .stat-card.err .stat-val { color: var(--red); }
+
+  /* ── Enterprise statistics page ── */
+  .stats-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 2px; }
+  .stats-title { font-size: 18px; font-weight: 700; color: var(--text); }
+  .stats-sub { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  @media (max-width: 980px) { .kpi-grid { grid-template-columns: 1fr 1fr; } }
+  .kpi-card {
+    position: relative; overflow: hidden;
+    padding: 16px 16px 14px; border-radius: 11px;
+    background: var(--surface-2); border: 1px solid var(--border);
+  }
+  .kpi-card .kv { font-size: 26px; font-weight: 700; color: var(--text); line-height: 1; }
+  .kpi-card .kl { font-size: 10.5px; color: var(--text-2); margin-top: 7px; text-transform: uppercase; letter-spacing: .5px; }
+  .kpi-card .ksub { font-size: 10.5px; color: var(--text-3); margin-top: 3px; }
+  .kpi-card .kbar { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--text-3); }
+  .kpi-card.ok .kv { color: #35c46b; }   .kpi-card.ok .kbar { background: #35c46b; }
+  .kpi-card.warn .kv { color: #ffb454; } .kpi-card.warn .kbar { background: #ffb454; }
+  .kpi-card.err .kv { color: var(--red); } .kpi-card.err .kbar { background: var(--red); }
+  .kpi-card.info .kv { color: var(--text); } .kpi-card.info .kbar { background: #4f8cff; }
+
+  .stats-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  @media (max-width: 980px) { .stats-cols { grid-template-columns: 1fr; } }
+
+  .bar-list { display: flex; flex-direction: column; gap: 11px; }
+  .bar-row { display: grid; grid-template-columns: 168px 1fr 44px; gap: 10px; align-items: center; }
+  .bar-row .bl {
+    font-size: 10.5px; color: var(--text-2); text-transform: uppercase; letter-spacing: .3px;
+    line-height: 1.25; word-break: break-word;
+  }
+  .bar-track { height: 9px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); overflow: hidden; }
+  .bar-fill {
+    height: 100%; border-radius: 6px; width: 0;
+    background: linear-gradient(90deg, #ff6a6a, var(--red));
+    transition: width .7s cubic-bezier(.2,.8,.2,1);
+  }
+  .bar-fill.ok   { background: linear-gradient(90deg, #5fd98a, #35c46b); }
+  .bar-fill.warn { background: linear-gradient(90deg, #ffd089, #ffb454); }
+  .bar-fill.info { background: linear-gradient(90deg, #7fb0ff, #4f8cff); }
+  .bar-row .bv { font-size: 12px; font-weight: 600; color: var(--text); text-align: right; }
+  .bar-empty { font-size: 12px; color: var(--text-2); font-style: italic; padding: 4px 0; }
+
+  .meta-list { display: flex; flex-direction: column; gap: 14px; }
+  .meta-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .meta-row .ml { font-size: 12px; color: var(--text-2); }
+  .meta-row .mv { font-size: 13px; font-weight: 600; color: var(--text); }
+  .ring {
+    width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0;
+    background: conic-gradient(#35c46b calc(var(--p, 0) * 1%), var(--surface) 0);
+  }
+  .ring .ring-in {
+    width: 58px; height: 58px; border-radius: 50%; background: var(--surface-2);
+    display: grid; place-items: center; font-size: 15px; font-weight: 700; color: var(--text);
+  }
+  .ring-wrap { display: flex; align-items: center; gap: 16px; }
+  .ring-wrap .ring-cap { font-size: 11.5px; color: var(--text-2); }
+
+  /* ── Buttons ── */
+  .btn-primary {
     display: inline-flex; align-items: center; gap: 8px;
     padding: 10px 22px; font-size: 13.5px; font-weight: 600;
-    border-radius: 8px; cursor: pointer; border: 1px solid var(--red-3);
+    border-radius: 8px; border: 1px solid var(--red-3); cursor: pointer;
     color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,.3);
     background: linear-gradient(180deg, #ff4d4d 0%, var(--red-2) 55%, #a01818 100%);
     box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 6px 16px -6px var(--red-glow);
-    transition: filter .15s, box-shadow .15s, transform .1s;
+    transition: filter 0.15s;
   }
-  .btn-cleanse:hover:not(:disabled) { filter: brightness(1.07); box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 10px 24px -6px var(--red-glow); }
-  .btn-cleanse:active:not(:disabled) { transform: translateY(1px); }
-  .btn-cleanse:disabled { opacity: .45; cursor: not-allowed; }
-  .btn-cleanse svg { width: 16px; height: 16px; color: #fff; }
-
-  /* ===== Processing ===== */
-  .progress-area { display: none; margin-top: 16px; }
-  .progress-area.show { display: block; }
-  .progress-head { display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--text-1); margin-bottom: 9px; }
-  .progress-head .spin { width: 15px; height: 15px; color: var(--red); animation: spin 1s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .progress-bar { height: 5px; background: var(--surface-2); border-radius: 3px; overflow: hidden; border: 1px solid var(--border); }
-  .progress-bar .fill {
-    height: 100%; width: 30%; border-radius: 3px;
-    background: linear-gradient(90deg, var(--red-2), #ff5e5e);
-    background-size: 200% 100%;
-    animation: shimmer 1.4s linear infinite;
-  }
-  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-
-  /* ===== Result (ready to download) ===== */
-  .result-area {
-    display: none;
-    align-items: center;
-    gap: 13px;
-    margin-top: 16px;
-    padding: 15px 17px;
-    border-radius: 10px;
-    background:
-      radial-gradient(80% 120% at 0% 0%, var(--red-soft), transparent 70%),
-      var(--surface-2);
-    border: 1px solid var(--red-soft-2);
-  }
-  .result-area.show { display: flex; }
-  .result-area .result-ico {
-    width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
-    display: grid; place-items: center;
-    background: var(--red-soft); border: 1px solid var(--red-soft-2);
-  }
-  .result-area .result-ico svg { width: 20px; height: 20px; color: var(--red); }
-  .result-body { flex: 1; }
-  .result-t { font-size: 14px; font-weight: 600; color: var(--text); }
-  .result-d { font-size: 12px; color: var(--text-2); margin-top: 2px; }
-  .btn-download {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 10px 20px; font-size: 13px; font-weight: 600;
-    border-radius: 8px; cursor: pointer; text-decoration: none;
-    border: 1px solid var(--red-3); color: #fff; text-shadow: 0 1px 1px rgba(0,0,0,.3);
-    background: linear-gradient(180deg, #ff4d4d 0%, var(--red-2) 55%, #a01818 100%);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 6px 16px -6px var(--red-glow);
-    transition: filter .15s, transform .1s;
-    flex-shrink: 0;
-  }
-  .btn-download:hover { filter: brightness(1.07); }
-  .btn-download:active { transform: translateY(1px); }
-  .btn-download svg { width: 15px; height: 15px; color: #fff; }
-
-  /* ===== Error banner ===== */
-  .err-area {
-    display: none;
-    align-items: center; gap: 9px;
-    margin-top: 16px; padding: 12px 15px;
-    border-radius: 9px; font-size: 12.5px;
-    color: var(--red);
-    background: var(--red-soft); border: 1px solid var(--red-soft-2);
-  }
-  .err-area.show { display: flex; }
-  .err-area svg { width: 16px; height: 16px; flex-shrink: 0; }
-
-  /* ===== Capability cards ===== */
-  .caps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-  .cap {
-    padding: 14px;
-    background: var(--glass-soft);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--glass-border);
-    border-radius: 9px;
-  }
-  .cap .cap-ico {
-    width: 32px; height: 32px; border-radius: 8px; margin-bottom: 9px;
-    display: grid; place-items: center;
-    background: var(--red-soft); border: 1px solid var(--red-soft-2);
-  }
-  .cap .cap-ico svg { width: 16px; height: 16px; color: var(--red); }
-  .cap .cap-t { font-size: 12.5px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
-  .cap .cap-d { font-size: 11px; color: var(--text-2); line-height: 1.45; }
-
-  /* ===== Before / after preview ===== */
-  .preview-card .card-body { padding: 0; }
-  .preview-split { display: grid; grid-template-columns: 1fr 1fr; }
-  .preview-col { padding: 16px 18px; }
-  .preview-col:first-child { border-right: 1px solid var(--border); }
-  .preview-label {
+  .btn-primary:hover { filter: brightness(1.07); }
+  .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-secondary {
     display: inline-flex; align-items: center; gap: 6px;
-    font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .7px;
-    padding: 3px 9px; border-radius: 5px; margin-bottom: 12px;
+    padding: 8px 16px; font-size: 12.5px; font-weight: 500;
+    border-radius: 7px; border: 1px solid var(--border); cursor: pointer;
+    background: var(--surface); color: var(--text);
   }
-  .preview-label.before { color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); }
-  .preview-label.after { color: var(--red); background: var(--red-soft); border: 1px solid var(--red-soft-2); }
-  .kv { display: flex; gap: 10px; padding: 5px 0; font-size: 12px; border-bottom: 1px dashed var(--border); }
-  .kv:last-child { border-bottom: none; }
-  .kv .k { width: 92px; flex-shrink: 0; color: var(--text-3); font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; padding-top: 1px; }
-  .kv .v { color: var(--text-1); }
-  .kv .v.fix { color: var(--text); font-weight: 600; }
-  .kv .v.full { color: var(--red); font-weight: 500; }
+  .btn-secondary:hover { border-color: var(--red-soft-2); background: var(--red-soft); }
+
+  .nav-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+
+  .card { border-radius: 10px; background: var(--glass-soft); border: 1px solid var(--glass-border); overflow: hidden; }
+  .card-head { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .card-body { padding: 16px; }
+
+  .err { color: var(--red); font-size: 12px; padding: 10px 14px; background: var(--red-soft); border-radius: 6px; display: none; }
+  .err.show { display: block; }
 
   @media (max-width: 980px) {
-    .steps { grid-template-columns: 1fr; }
-    .caps { grid-template-columns: 1fr 1fr; }
-    .preview-split { grid-template-columns: 1fr; }
-    .preview-col:first-child { border-right: none; border-bottom: 1px solid var(--border); }
+    .step-bar { grid-template-columns: 1fr; }
+    .result-summary { grid-template-columns: 1fr 1fr; }
   }
-{% endblock %}
-
-{% block breadcrumb %}
-<span>Workspace</span>
-<i data-lucide="chevron-right"></i>
-<strong>Address Cleanse</strong>
 {% endblock %}
 
 {% block content %}
-<div class="page-head">
-  <div class="page-head-row">
-    <div>
-      <div class="page-title">Address Cleanse</div>
-      <div class="page-sub">Upload a contact list and get back a clean, geocode-verified address for every row — components corrected in place, plus a full verified address column.</div>
-    </div>
-  </div>
-</div>
+<div class="wizard-wrap">
 
-<div class="cleanse-wrap">
-
-  <!-- 3-step pipeline -->
-  <div class="steps">
-    <div class="step active" id="stepUpload">
-      <div class="num">1</div>
-      <div><div class="step-t">Upload CSV</div><div class="step-d">Any columns · we auto-map</div></div>
-      <i data-lucide="file-up" class="step-ico"></i>
+  <!-- ========== Step Bar ========== -->
+  <div class="step-bar" id="stepBar">
+    <div class="step-item active" id="step1">
+      <div class="step-num">1</div>
+      <div><div class="step-title">Upload</div><div class="step-desc">Select file</div></div>
     </div>
-    <div class="step" id="stepProcess">
-      <div class="num">2</div>
-      <div><div class="step-t">AI Cleanse</div><div class="step-d">Verify &amp; correct each row</div></div>
-      <i data-lucide="sparkles" class="step-ico"></i>
+    <div class="step-item" id="step2">
+      <div class="step-num">2</div>
+      <div><div class="step-title">Map Columns</div><div class="step-desc">Choose row range & columns</div></div>
     </div>
-    <div class="step" id="stepDownload">
-      <div class="num">3</div>
-      <div><div class="step-t">Download</div><div class="step-d">Clean CSV, ready to use</div></div>
-      <i data-lucide="download" class="step-ico"></i>
+    <div class="step-item" id="step3">
+      <div class="step-num">3</div>
+      <div><div class="step-title">AI Review</div><div class="step-desc">Preview & approve</div></div>
+    </div>
+    <div class="step-item" id="step4">
+      <div class="step-num">4</div>
+      <div><div class="step-title">Statistics</div><div class="step-desc">Cleanse report</div></div>
+    </div>
+    <div class="step-item" id="step5">
+      <div class="step-num">5</div>
+      <div><div class="step-title">Download</div><div class="step-desc">Get cleansed file</div></div>
     </div>
   </div>
 
-  <!-- Upload -->
-  <div class="card drop-card">
-    <div class="card-head">
-      <div class="card-title"><i data-lucide="file-spreadsheet"></i> Upload CSV or Excel</div>
-      <div class="card-meta">max 1000 rows · .csv / .xlsx</div>
-    </div>
-    <div class="card-body">
-      <form id="uploadForm" action="/v2/address_cleanse" method="post" enctype="multipart/form-data">
+  <!-- ========== Screen 1: Upload ========== -->
+  <div class="wizard-screen active" id="screen1">
+    <div class="card">
+      <div class="card-body" style="padding: 0;">
         <div class="upload-zone" id="dropZone">
-          <div class="ico-ring"><i data-lucide="upload-cloud"></i></div>
+          <div class="ico-ring"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
           <strong>Drop your CSV or Excel file here</strong>
-          <div class="browse">or <u>click to browse</u> · supports <b>.csv</b> and <b>.xlsx</b></div>
-          <input type="file" name="csv_file" id="csvFile" accept=".csv,.xlsx" required style="display:none;" />
-          <div class="supports">
-            <span class="chip">Name</span>
-            <span class="chip">Phone</span>
-            <span class="chip">Address 1</span>
-            <span class="chip">Address 2</span>
-            <span class="chip">Area</span>
-            <span class="chip">City</span>
-            <span class="chip">State</span>
-            <span class="chip">Country</span>
-            <span class="chip">Pincode</span>
+          <div style="color: var(--text-2); font-size: 12.5px; margin-top: 5px;">or <u>click to browse</u> · supports <b>.csv</b> and <b>.xlsx</b></div>
+          <input type="file" id="csvFile" accept=".csv,.xlsx" style="display:none;" />
+        </div>
+        <div id="fileInfo" style="display:none; padding: 14px 16px; border-top: 1px solid var(--border);">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:36px;height:36px;border-radius:8px;display:grid;place-items:center;background:var(--red-soft);border:1px solid var(--red-soft-2);"><svg style="width:17px;height:17px;color:var(--red);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+            <div><div id="fileName" style="font-weight:600;font-size:13px;color:var(--text);"></div><div id="fileSize" style="color:var(--text-3);font-size:11px;"></div></div>
           </div>
-        </div>
-
-        <div class="file-info" id="fileInfo">
-          <div class="fic"><i data-lucide="file-check-2"></i></div>
-          <div>
-            <div class="filename" id="fileName">No file selected</div>
-            <div class="size" id="fileSize"></div>
-          </div>
-          <div class="clear-file" id="clearFile" title="Remove"><i data-lucide="x"></i></div>
-        </div>
-
-        <div class="progress-area" id="progressArea">
-          <div class="progress-head">
-            <i data-lucide="loader-2" class="spin"></i>
-            <span>Verifying &amp; correcting addresses… large files may take a few minutes. Please keep this tab open.</span>
-          </div>
-          <div class="progress-bar"><div class="fill"></div></div>
-        </div>
-
-        <div class="result-area" id="resultArea">
-          <div class="result-ico"><i data-lucide="circle-check-big"></i></div>
-          <div class="result-body">
-            <div class="result-t" id="resultTitle">Cleanse complete</div>
-            <div class="result-d" id="resultDesc">Your file is ready to download.</div>
-          </div>
-          <a class="btn-download" id="downloadBtn" download="corrected_addresses.csv">
-            <i data-lucide="download"></i> Download CSV
-          </a>
-        </div>
-
-        <div class="err-area" id="errArea">
-          <i data-lucide="alert-triangle"></i>
-          <span id="errMsg">Something went wrong.</span>
-        </div>
-
-        <div class="action-row">
-          <div class="action-note">
-            <i data-lucide="shield-check"></i>
-            Original columns preserved · address fields corrected in place
-          </div>
-          <button type="submit" class="btn-cleanse" id="cleanseBtn" disabled>
-            <i data-lucide="sparkles"></i> Cleanse Addresses
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Capabilities -->
-  <div class="caps">
-    <div class="cap">
-      <div class="cap-ico"><i data-lucide="scan-search"></i></div>
-      <div class="cap-t">Auto column mapping</div>
-      <div class="cap-d">Detects address, city, state &amp; pincode fields by header name.</div>
-    </div>
-    <div class="cap">
-      <div class="cap-ico"><i data-lucide="map-pin-check"></i></div>
-      <div class="cap-t">Geocode verified</div>
-      <div class="cap-d">Validated against live geocoding &amp; postal data, with latitude &amp; longitude added.</div>
-    </div>
-    <div class="cap">
-      <div class="cap-ico"><i data-lucide="columns-3"></i></div>
-      <div class="cap-t">Corrected in place</div>
-      <div class="cap-d">Clean values written straight back to your original columns.</div>
-    </div>
-    <div class="cap">
-      <div class="cap-ico"><i data-lucide="file-check-2"></i></div>
-      <div class="cap-t">Full verified column</div>
-      <div class="cap-d">A new column with the complete, standardized address.</div>
-    </div>
-  </div>
-
-  <!-- Before / after -->
-  <div class="card preview-card">
-    <div class="card-head">
-      <div class="card-title"><i data-lucide="arrow-left-right"></i> What you get back</div>
-      <div class="card-meta">example row</div>
-    </div>
-    <div class="card-body">
-      <div class="preview-split">
-        <div class="preview-col">
-          <span class="preview-label before"><i data-lucide="file-input" style="width:12px;height:12px;"></i> Your input</span>
-          <div class="kv"><span class="k">Address 1</span><span class="v">rpnc systems bannergatta rd</span></div>
-          <div class="kv"><span class="k">City</span><span class="v">bangalore</span></div>
-          <div class="kv"><span class="k">State</span><span class="v">karnataka</span></div>
-          <div class="kv"><span class="k">Pincode</span><span class="v">560061</span></div>
-        </div>
-        <div class="preview-col">
-          <span class="preview-label after"><i data-lucide="sparkles" style="width:12px;height:12px;"></i> Cleansed output</span>
-          <div class="kv"><span class="k">Address 1</span><span class="v fix">RPNC Systems, Bannerghatta Main Road</span></div>
-          <div class="kv"><span class="k">City</span><span class="v fix">Bengaluru</span></div>
-          <div class="kv"><span class="k">State</span><span class="v fix">Karnataka</span></div>
-          <div class="kv"><span class="k">Pincode</span><span class="v fix">560076</span></div>
-          <div class="kv"><span class="k">Latitude</span><span class="v fix">12.8995</span></div>
-          <div class="kv"><span class="k">Longitude</span><span class="v fix">77.5995</span></div>
-          <div class="kv"><span class="k">Full Verified</span><span class="v full">RPNC Systems, Bannerghatta Main Rd, Bengaluru, Karnataka 560076, India</span></div>
         </div>
       </div>
     </div>
+    <div class="nav-buttons"><button class="btn-primary" id="btnNext1" disabled>Next <span style="margin-left:4px;">→</span></button></div>
+    <div class="err" id="err1"></div>
+  </div>
+
+  <!-- ========== Screen 2: Column Mapping & Processing Scope ========== -->
+  <div class="wizard-screen" id="screen2">
+    <div class="card">
+      <div class="card-head"><div class="card-title">📊 Address Columns & Processing Scope</div></div>
+      <div class="card-body">
+        <p style="font-size:12px;color:var(--text-2);margin-bottom:14px;">Tick the columns that make up the address, then choose how many rows the AI should process.</p>
+
+        <!-- Column Mapping -->
+        <div class="colmap-grid" id="colmapGrid"></div>
+
+        <!-- Processing scope -->
+        <div style="margin-top:18px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;">⚙️ Processing scope</div>
+          <div class="scope-options">
+            <label class="scope-opt on">
+              <input type="radio" name="scopeMode" value="all" checked onchange="onScopeModeChange()">
+              <div>
+                <div class="scope-t">Process all rows</div>
+                <div class="scope-d">Run the AI on every row in the file (<b id="scopeAllCount">0</b> rows). Best for a complete cleanse.</div>
+              </div>
+            </label>
+            <label class="scope-opt">
+              <input type="radio" name="scopeMode" value="range" onchange="onScopeModeChange()">
+              <div>
+                <div class="scope-t">Specific range</div>
+                <div class="scope-d">Process only a chosen slice of rows.</div>
+                <div class="range-inline" id="rangeInline" style="display:none;">
+                  rows <input type="number" id="startRow" value="1" min="1" />
+                  to <input type="number" id="endRow" value="50" min="1" />
+                  <span>of <b id="totalRows">0</b></span>
+                </div>
+              </div>
+            </label>
+          </div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:8px;">
+            Rows are processed in batches with a live progress bar. Rows outside the scope pass through your file unchanged.
+          </div>
+        </div>
+
+        <!-- Data Preview -->
+        <div style="margin-top:18px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;">📋 Data Preview (first 5 rows)</div>
+          <div class="preview-table-wrap" id="dataPreviewTable"></div>
+        </div>
+
+        <!-- Progress (hidden until processing starts) -->
+        <div id="processBox" style="display:none;margin-top:18px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+            <div style="font-size:12px;font-weight:600;color:var(--text);">🤖 AI processing…</div>
+            <div style="font-size:12px;color:var(--text-2);"><b id="procDone">0</b> / <b id="procTotal">0</b> rows · <span id="procPct">0%</span></div>
+          </div>
+          <div class="proc-track"><div class="proc-fill" id="procFill"></div></div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:6px;" id="procNote">Starting…</div>
+        </div>
+      </div>
+    </div>
+    <div class="nav-buttons">
+      <button class="btn-secondary" id="btnBack2">← Back</button>
+      <button class="btn-primary" id="btnNext2">Run AI Cleanse →</button>
+    </div>
+    <div class="err" id="err2"></div>
+  </div>
+
+  <!-- ========== Screen 3: Enterprise AI Review Console ========== -->
+  <div class="wizard-screen" id="screen3">
+
+    <!-- KPI dashboard -->
+    <div class="kpi-grid" id="reviewKpis" style="margin-bottom:12px;"></div>
+
+    <!-- Threshold + confidence histogram -->
+    <div class="card" style="margin-bottom:12px;">
+      <div class="card-body">
+        <div class="thresh-row">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--text);">Auto-approve confidence threshold</div>
+            <div style="font-size:11px;color:var(--text-3);margin-top:2px;">Rows at or above this confidence are auto-applied on download (unless you reject them). Drag to re-bucket instantly.</div>
+          </div>
+          <div class="thresh-control">
+            <input type="range" id="approveThreshold" min="0" max="100" step="1" value="80" oninput="onThresholdInput(this.value)">
+            <span class="thresh-val"><b id="threshVal">80</b>%</span>
+          </div>
+        </div>
+        <div class="histogram" id="confHistogram" title="Confidence distribution"></div>
+        <div class="histo-axis"><span>0%</span><span>50%</span><span>100%</span></div>
+      </div>
+    </div>
+
+    <!-- Filter chips -->
+    <div class="filter-bar" id="filterBar"></div>
+
+    <!-- Bulk actions -->
+    <div class="bulk-bar">
+      <div style="font-size:12px;color:var(--text-2);">
+        Showing <b id="pageInfo">0</b> · <span id="bucketLabel">All</span>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+        <button class="btn-secondary" onclick="bulkDecide('approve')">✓ Approve this filter</button>
+        <button class="btn-secondary" onclick="bulkDecide('reject')">✗ Reject this filter</button>
+        <button class="btn-secondary" onclick="bulkDecide('pending')">Reset this filter</button>
+      </div>
+    </div>
+
+    <!-- Review Table (server-paginated) -->
+    <div class="card" style="overflow:auto;max-height:58vh;">
+      <table class="review-table" id="reviewTable">
+        <thead>
+          <tr>
+            <th>Row</th>
+            <th>Bucket</th>
+            <th>Corrections <span style="font-weight:400;color:var(--text-3);">(red → green = changed · white = unchanged)</span></th>
+            <th>Confidence</th>
+            <th>Issues</th>
+            <th style="width:120px;">Decision</th>
+          </tr>
+        </thead>
+        <tbody id="reviewTableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pager" id="pager"></div>
+
+    <!-- Continue bar -->
+    <div class="batch-bar">
+      <div style="font-size:12px;color:var(--text-2);">
+        <span id="decisionSummary">Auto-approve handles most rows — only override what you need.</span>
+      </div>
+      <button class="btn-primary" id="btnNext3">View Statistics →</button>
+    </div>
+    <div class="err" id="err3"></div>
+  </div>
+
+  <!-- ========== Screen 4: Enterprise Statistics ========== -->
+  <div class="wizard-screen" id="screen4">
+    <div class="stats-head">
+      <div>
+        <div class="stats-title">📊 Cleanse Statistics</div>
+        <div class="stats-sub">A full audit of what the AI reviewed and what was applied to your file.</div>
+      </div>
+      <button class="btn-secondary" id="btnBackStats">← Back to review</button>
+    </div>
+
+    <!-- KPI cards -->
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <!-- Detail panels -->
+    <div class="stats-cols">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Corrections by Column</div></div>
+        <div class="card-body"><div id="colBreakdown" class="bar-list"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Breakdown by Bucket</div></div>
+        <div class="card-body"><div id="actionBreakdown" class="bar-list"></div></div>
+      </div>
+    </div>
+
+    <div class="stats-cols">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Top Data-Quality Issues</div></div>
+        <div class="card-body"><div id="issuesBreakdown" class="bar-list"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Geocoding &amp; Confidence</div></div>
+        <div class="card-body"><div id="qualityMeta" class="meta-list"></div></div>
+      </div>
+    </div>
+
+    <div class="batch-bar">
+      <div style="font-size:12px;color:var(--text-2);">Review complete — your cleansed file is ready to download.</div>
+      <button class="btn-primary" id="btnNext4">Continue to Download →</button>
+    </div>
+  </div>
+
+  <!-- ========== Screen 5: Download ========== -->
+  <div class="wizard-screen" id="screen5">
+    <div class="card">
+      <div class="card-head"><div class="card-title">✅ Cleanse Complete</div></div>
+      <div class="card-body" style="text-align:center; padding: 26px 24px;">
+        <svg style="width:56px;height:56px;color:#35c46b;margin-bottom:12px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        <div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:6px;">Your file is ready!</div>
+        <div style="font-size:13px;color:var(--text-2);">Your original columns are always kept. Pick which extra columns to add below.</div>
+      </div>
+    </div>
+
+    <!-- Column picker -->
+    <div class="card" style="margin-top:12px;">
+      <div class="card-head"><div class="card-title">Columns to add to the file</div></div>
+      <div class="card-body">
+        <div class="dlcol-grid" id="dlColGrid"></div>
+      </div>
+    </div>
+
+    <div class="nav-buttons" style="justify-content:space-between; margin-top:14px;">
+      <button class="btn-secondary" id="btnBackDownload">← Back to statistics</button>
+      <button class="btn-primary" id="btnDownload">
+        <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download Cleansed File
+      </button>
+    </div>
+    <a id="downloadBtn" download="corrected_addresses.csv" style="display:none;"></a>
+    <div class="err" id="err5"></div>
   </div>
 
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
-  const dropZone    = document.getElementById('dropZone');
-  const csvFile     = document.getElementById('csvFile');
-  const fileInfo    = document.getElementById('fileInfo');
-  const fileName    = document.getElementById('fileName');
-  const fileSize    = document.getElementById('fileSize');
-  const clearFile   = document.getElementById('clearFile');
-  const cleanseBtn  = document.getElementById('cleanseBtn');
-  const uploadForm  = document.getElementById('uploadForm');
-  const progressArea= document.getElementById('progressArea');
-  const resultArea  = document.getElementById('resultArea');
-  const resultTitle = document.getElementById('resultTitle');
-  const resultDesc  = document.getElementById('resultDesc');
-  const downloadBtn = document.getElementById('downloadBtn');
-  const errArea     = document.getElementById('errArea');
-  const errMsg      = document.getElementById('errMsg');
-  const stepProcess = document.getElementById('stepProcess');
-  const stepDownload= document.getElementById('stepDownload');
+// ========== State ==========
+let currentStep = 1;
+let sessionId = '';
+let fileData = null;
+let previewResults = [];
+let rowDecisions = {}; // rowIndex -> 'approve' | 'reject' | 'pending'
+let allRows = [];
+let headers = [];
+let roles = {};
+let addressColumns = [];
+let countryHint = '';
+let minConfidence = 0.80;
+let rowCount = 0;
+// Enterprise review-console state
+let reviewThreshold = 80;        // percent
+let activeBucket = 'all';
+let reviewPage = 0;
+let reviewPageSize = 50;
+let reviewSummary = null;        // last /review_summary payload
+// Small chunks keep the progress bar moving smoothly. Each row takes ~1s
+// (pooled keep-alive HTTP to the geocoder), so a chunk of 10 updates the bar
+// roughly every ~10s with row count + live ETA.
+const CHUNK_SIZE = 10;
 
-  let downloadUrl = null;  // object URL of the cleansed file
-
-  dropZone.addEventListener('click', () => csvFile.click());
-
-  ['dragenter','dragover','dragleave','drop'].forEach(ev =>
-    dropZone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); }));
-  ['dragenter','dragover'].forEach(ev =>
-    dropZone.addEventListener(ev, () => dropZone.classList.add('over')));
-  ['dragleave','drop'].forEach(ev =>
-    dropZone.addEventListener(ev, () => dropZone.classList.remove('over')));
-
-  dropZone.addEventListener('drop', e => {
-    const dt = e.dataTransfer;
-    if (dt.files.length) { csvFile.files = dt.files; updateFileInfo(dt.files[0]); }
+// ========== Step Navigation ==========
+function goToStep(n) {
+  document.querySelectorAll('.wizard-screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen' + n).classList.add('active');
+  document.querySelectorAll('.step-item').forEach((el, i) => {
+    el.classList.remove('active');
+    if (i < n - 1) el.classList.add('done');
+    else el.classList.remove('done');
   });
+  document.getElementById('step' + n).classList.add('active');
+  currentStep = n;
+}
 
-  csvFile.addEventListener('change', () => {
-    if (csvFile.files.length) updateFileInfo(csvFile.files[0]);
+// ========== Screen 1: Upload ==========
+const dropZone = document.getElementById('dropZone');
+const csvFile = document.getElementById('csvFile');
+
+['dragenter','dragover','dragleave','drop'].forEach(ev =>
+  dropZone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); }));
+['dragenter','dragover'].forEach(ev =>
+  dropZone.addEventListener(ev, () => dropZone.classList.add('over')));
+['dragleave','drop'].forEach(ev =>
+  dropZone.addEventListener(ev, () => dropZone.classList.remove('over')));
+
+dropZone.addEventListener('click', () => csvFile.click());
+dropZone.addEventListener('drop', e => {
+  if (e.dataTransfer.files.length) {
+    csvFile.files = e.dataTransfer.files;
+    handleFileSelect(e.dataTransfer.files[0]);
+  }
+});
+csvFile.addEventListener('change', () => {
+  if (csvFile.files.length) handleFileSelect(csvFile.files[0]);
+});
+
+function handleFileSelect(file) {
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('fileSize').textContent = (file.size / 1024).toFixed(1) + ' KB';
+  document.getElementById('fileInfo').style.display = 'block';
+  fileData = file;
+  document.getElementById('btnNext1').disabled = false;
+}
+
+document.getElementById('btnNext1').addEventListener('click', async () => {
+  if (!fileData) return;
+  document.getElementById('btnNext1').disabled = true;
+  try {
+    const fd = new FormData();
+    fd.append('csv_file', fileData);
+    const resp = await fetch('/v2/address_cleanse/analyze', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Analysis failed');
+
+    sessionId = data.session_id || '';
+    allRows = data.display_rows || [];
+    headers = data.headers || [];
+    roles = data.roles || {};
+    addressColumns = data.address_columns || [];
+    countryHint = data.country_hint || '';
+    rowCount = data.row_count || 0;
+    document.getElementById('totalRows').textContent = rowCount;
+    document.getElementById('scopeAllCount').textContent = rowCount.toLocaleString();
+    document.getElementById('endRow').value = Math.min(50, rowCount || 50);
+    document.getElementById('endRow').max = rowCount || 1000;
+
+    renderColumnMapping(data.headers, data.roles, data.address_columns);
+    renderDataPreview(data.display_rows, data.headers);
+    goToStep(2);
+  } catch (err) {
+    showError('err1', err.message);
+    document.getElementById('btnNext1').disabled = false;
+  }
+});
+
+// ========== Screen 2: Address Column Selection ==========
+function renderColumnMapping(headers, detectedRoles, addressCols) {
+  const container = document.getElementById('colmapGrid');
+  const checked = new Set(addressCols || []);
+  container.innerHTML = headers.map(h => {
+    const isOn = checked.has(h);
+    return `
+      <label class="colsel-item ${isOn ? 'on' : ''}">
+        <input type="checkbox" class="colsel-cb" value="${escapeHtml(h)}" ${isOn ? 'checked' : ''} onchange="onColSelToggle(this)">
+        <span title="${escapeHtml(h)}">${escapeHtml(h)}</span>
+      </label>`;
+  }).join('');
+}
+
+function onColSelToggle(cb) {
+  cb.closest('.colsel-item').classList.toggle('on', cb.checked);
+}
+
+function renderDataPreview(rows, headers) {
+  if (!rows.length) return;
+  const table = document.createElement('table');
+  table.className = 'preview-table';
+  const thead = document.createElement('thead');
+  thead.innerHTML = '<tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr>';
+  table.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  rows.forEach(row => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = headers.map(h => `<td>${row[h] || ''}</td>`).join('');
+    tbody.appendChild(tr);
   });
+  table.appendChild(tbody);
+  document.getElementById('dataPreviewTable').innerHTML = '';
+  document.getElementById('dataPreviewTable').appendChild(table);
+}
 
-  clearFile.addEventListener('click', () => {
-    csvFile.value = '';
-    fileInfo.classList.remove('show');
-    cleanseBtn.disabled = true;
-    resetOutputs();
-  });
+function onScopeModeChange() {
+  const mode = document.querySelector('input[name="scopeMode"]:checked').value;
+  document.querySelectorAll('.scope-opt').forEach(el => el.classList.remove('on'));
+  document.querySelector(`.scope-opt:has(input[value="${mode}"])`)?.classList.add('on');
+  document.getElementById('rangeInline').style.display = mode === 'range' ? 'flex' : 'none';
+}
 
-  function resetOutputs() {
-    resultArea.classList.remove('show');
-    errArea.classList.remove('show');
-    progressArea.classList.remove('show');
-    stepProcess.classList.remove('active');
-    stepDownload.classList.remove('active');
-    if (downloadUrl) { URL.revokeObjectURL(downloadUrl); downloadUrl = null; }
+document.getElementById('btnNext2').addEventListener('click', async () => {
+  addressColumns = [...document.querySelectorAll('.colsel-cb')]
+    .filter(cb => cb.checked)
+    .map(cb => cb.value);
+
+  if (!addressColumns.length) {
+    alert('Please select at least one address column.');
+    return;
   }
 
-  function updateFileInfo(file) {
-    fileName.textContent = file.name;
-    fileSize.textContent = (file.size / 1024).toFixed(1) + ' KB';
-    fileInfo.classList.add('show');
-    cleanseBtn.disabled = false;
-    resetOutputs();           // clear any previous run
-    if (window.lucide) lucide.createIcons();
+  // Resolve the processing scope (0-based [scopeStart, scopeEnd)).
+  const mode = document.querySelector('input[name="scopeMode"]:checked').value;
+  let scopeStart = 0, scopeEnd = rowCount;
+  if (mode === 'range') {
+    scopeStart = Math.max(0, (parseInt(document.getElementById('startRow').value) || 1) - 1);
+    scopeEnd = Math.min(rowCount, parseInt(document.getElementById('endRow').value) || rowCount);
+    if (scopeEnd <= scopeStart) { showError('err2', 'End row must be greater than start row.'); return; }
   }
 
-  function setBtn(html, disabled) {
-    cleanseBtn.disabled = disabled;
-    cleanseBtn.innerHTML = html;
-    if (window.lucide) lucide.createIcons();
-  }
+  const btn = document.getElementById('btnNext2');
+  btn.disabled = true;
+  document.getElementById('err2').classList.remove('show');
 
-  uploadForm.addEventListener('submit', async (e) => {
-    e.preventDefault();                 // no auto-download — we handle it
-    if (!csvFile.files.length) return;
+  // Show progress UI.
+  const box = document.getElementById('processBox');
+  box.style.display = 'block';
+  const scopeTotal = scopeEnd - scopeStart;
+  document.getElementById('procTotal').textContent = scopeTotal.toLocaleString();
+  document.getElementById('procDone').textContent = '0';
+  document.getElementById('procPct').textContent = '0%';
+  document.getElementById('procFill').style.width = '0%';
+  document.getElementById('procNote').textContent = 'Processing in batches…';
 
-    resetOutputs();
-    progressArea.classList.add('show');
-    stepProcess.classList.add('active');
-    setBtn('<i data-lucide="loader-2" class="spin"></i> Processing…', true);
+  reviewThreshold = parseInt(document.getElementById('approveThreshold')?.value || 80);
 
-    try {
-      const fd = new FormData();
-      fd.append('csv_file', csvFile.files[0]);
-      const resp = await fetch('/v2/address_cleanse', { method: 'POST', body: fd });
-
-      if (!resp.ok) {
-        let msg = 'Cleanse failed (HTTP ' + resp.status + ').';
-        try { const j = await resp.json(); if (j.error) msg = j.error; } catch (_) {}
-        throw new Error(msg);
+  try {
+    let nextStart = scopeStart;
+    let first = true;
+    const t0 = Date.now();
+    while (true) {
+      const body = {
+        session_id: sessionId,
+        chunk_start: nextStart,
+        chunk_size: CHUNK_SIZE,
+        scope_start: scopeStart,
+        scope_end: scopeEnd,
+      };
+      if (first) {
+        body.address_columns = addressColumns;
+        body.country_hint = document.getElementById('countryHint')?.value || countryHint;
+        body.min_confidence = reviewThreshold / 100;
+        first = false;
       }
+      const resp = await fetch('/v2/address_cleanse/process_chunk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Processing failed');
 
-      const blob = await resp.blob();
-      const rows = resp.headers.get('X-Rows-Processed') || '';
-      const cols = resp.headers.get('X-Address-Columns') || '';
+      const pct = data.progress_percent || 0;
+      const done = data.processed || 0;
+      document.getElementById('procDone').textContent = done.toLocaleString();
+      document.getElementById('procPct').textContent = pct + '%';
+      document.getElementById('procFill').style.width = pct + '%';
 
-      // Name output after the input file
-      const base = (csvFile.files[0].name || 'addresses').replace(/\.(csv|xlsx)$/i, '');
-      const outName = base + '_cleansed.csv';
+      // Live rate + ETA so a long run never looks frozen.
+      const elapsed = (Date.now() - t0) / 1000;
+      const rate = done / Math.max(elapsed, 0.001); // rows/sec
+      const remaining = Math.max(0, scopeTotal - done);
+      const etaSec = rate > 0 ? Math.round(remaining / rate) : 0;
+      const etaTxt = etaSec > 90 ? `~${Math.ceil(etaSec / 60)} min left` : `~${etaSec}s left`;
+      document.getElementById('procNote').textContent =
+        `${rate.toFixed(1)} rows/sec · ${etaTxt}`;
 
-      downloadUrl = URL.createObjectURL(blob);
-      downloadBtn.href = downloadUrl;
-      downloadBtn.setAttribute('download', outName);
-
-      resultTitle.textContent = 'Cleanse complete' + (rows ? ' · ' + rows + ' rows' : '');
-      resultDesc.textContent = cols
-        ? ('Corrected columns: ' + cols + '. Click to download your verified file.')
-        : 'Your verified file is ready. Click to download.';
-
-      progressArea.classList.remove('show');
-      resultArea.classList.add('show');
-      stepDownload.classList.add('active');
-      setBtn('<i data-lucide="sparkles"></i> Cleanse Addresses', false);
-      if (window.lucide) lucide.createIcons();
-    } catch (err) {
-      progressArea.classList.remove('show');
-      stepProcess.classList.remove('active');
-      errMsg.textContent = err.message || 'Something went wrong.';
-      errArea.classList.add('show');
-      setBtn('<i data-lucide="sparkles"></i> Cleanse Addresses', false);
-      if (window.lucide) lucide.createIcons();
+      if (data.done) break;
+      nextStart = data.next_start;
     }
+    document.getElementById('procNote').textContent = 'Done. Loading review console…';
+
+    await loadReviewConsole();
+    goToStep(3);
+  } catch (err) {
+    showError('err2', err.message);
+    document.getElementById('processBox').style.display = 'none';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('btnBack2').addEventListener('click', () => goToStep(1));
+
+// ========== Screen 3: AI Review ==========
+function renderColumnChanges(changes, rowNum) {
+  if (!changes || !changes.length) {
+    return '<div class="col-change-none">No column changes — already clean</div>';
+  }
+  const items = changes.map(c => `
+    <div class="col-change">
+      <span class="ccol">${escapeHtml(c.column)}</span>
+      <span class="cval">
+        <span class="from">${escapeHtml(c.from || '(empty)')}</span>
+        <span class="arrow">→</span>
+        <span class="to">${escapeHtml(c.to || '')}</span>
+      </span>
+    </div>`).join('');
+  return `<div class="col-changes" id="cc-${rowNum}">${items}</div>`;
+}
+
+function renderInputFields(fields, changedCols) {
+  if (!fields || !fields.length) return '<div class="col-change-none">-</div>';
+  const changed = new Set(changedCols || []);
+  const items = fields.map(f => `
+    <div class="col-change">
+      <span class="ccol">${escapeHtml(f.column)}</span>
+      <span class="cval"><span class="${changed.has(f.column) ? 'from' : 'orig'}">${escapeHtml(f.value || '(empty)')}</span></span>
+    </div>`).join('');
+  return `<div class="col-changes">${items}</div>`;
+}
+
+// Single merged column: for every selected field show old → new (red → green)
+// when it changed, or the plain value in white when it's unchanged.
+function renderMergedCorrections(inputFields, fieldChanges) {
+  if (!inputFields || !inputFields.length) return '<div class="col-change-none">-</div>';
+  const byCol = {};
+  (fieldChanges || []).forEach(c => { byCol[c.column] = c; });
+  const items = inputFields.map(f => {
+    const ch = byCol[f.column];
+    const body = ch
+      ? `<span class="from">${escapeHtml(ch.from || '(empty)')}</span>
+         <span class="arrow">→</span>
+         <span class="to">${escapeHtml(ch.to || '')}</span>`
+      : `<span class="same">${escapeHtml(f.value || '(empty)')}</span>`;
+    return `
+      <div class="col-change">
+        <span class="ccol">${escapeHtml(f.column)}</span>
+        <span class="cval">${body}</span>
+      </div>`;
+  }).join('');
+  return `<div class="col-changes">${items}</div>`;
+}
+
+// ========== Enterprise review console ==========
+const BUCKET_META = {
+  all:           { label: 'All',            dot: 'all' },
+  auto_fixable:  { label: 'Auto-fixable',   dot: 'auto' },
+  needs_review:  { label: 'Needs review',   dot: 'review' },
+  already_clean: { label: 'Already clean',  dot: 'clean' },
+  no_match:      { label: 'No match',       dot: 'nomatch' },
+  anomalies:     { label: '⚠ Anomalies',    dot: 'review' },
+};
+
+// Human labels for anomaly flags (likely-wrong matches).
+const ANOMALY_LABELS = {
+  country_mismatch:    'Country differs',
+  state_mismatch:      'State differs',
+  city_mismatch:       'City differs',
+  approximate_location:'Approximate location',
+  not_geocoded:        'Not geocoded',
+  processing_error:    'Processing error',
+};
+
+// Load summary + first page after processing completes or threshold changes.
+async function loadReviewConsole() {
+  await refreshSummary();
+  activeBucket = 'all';
+  reviewPage = 0;
+  renderFilterChips();
+  await loadReviewPage();
+}
+
+async function refreshSummary() {
+  const resp = await fetch('/v2/address_cleanse/review_summary', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId, threshold: reviewThreshold / 100 }),
   });
+  reviewSummary = await resp.json();
+  if (!resp.ok) throw new Error(reviewSummary.error || 'Summary failed');
+  renderReviewKpis();
+  renderHistogram();
+  renderFilterChips();
+}
+
+function renderReviewKpis() {
+  const s = reviewSummary, b = s.buckets || {};
+  const total = s.total || 0;
+  const pct = (n) => total ? Math.round((n / total) * 100) : 0;
+  const kpis = [
+    { cls: 'info', val: total.toLocaleString(), label: 'Rows Processed' },
+    { cls: 'ok',   val: (b.auto_fixable||0).toLocaleString(), label: 'Auto-fixable', sub: pct(b.auto_fixable||0)+'% · auto-applied' },
+    { cls: 'warn', val: (b.needs_review||0).toLocaleString(), label: 'Needs Review', sub: pct(b.needs_review||0)+'% of rows' },
+    { cls: 'info', val: (b.already_clean||0).toLocaleString(), label: 'Already Clean' },
+    { cls: 'err',  val: (b.no_match||0).toLocaleString(), label: 'No Match' },
+    { cls: 'ok',   val: (s.avg_confidence||0)+'%', label: 'Avg Confidence' },
+    { cls: 'info', val: (s.fields_changeable||0).toLocaleString(), label: 'Field Corrections' },
+    { cls: (s.anomaly_count||0) ? 'err' : 'ok', val: (s.anomaly_count||0).toLocaleString(), label: '⚠ Flagged', sub: 'likely wrong — check' },
+  ];
+  document.getElementById('reviewKpis').innerHTML = kpis.map(k => `
+    <div class="kpi-card ${k.cls}"><div class="kbar"></div>
+      <div class="kv">${k.val}</div><div class="kl">${k.label}</div>
+      ${k.sub ? `<div class="ksub">${k.sub}</div>` : ''}</div>`).join('');
+}
+
+function renderHistogram() {
+  const hist = (reviewSummary && reviewSummary.histogram) || [];
+  const max = Math.max(...hist, 1);
+  const thBin = Math.floor(reviewThreshold / 10);
+  document.getElementById('confHistogram').innerHTML = hist.map((c, i) => {
+    const h = Math.round((c / max) * 100);
+    const cls = i >= thBin ? 'above' : 'below';
+    return `<div class="hbar ${cls}" style="height:${Math.max(2,h)}%" title="${i*10}–${i*10+10}%: ${c} rows"></div>`;
+  }).join('');
+}
+
+function renderFilterChips() {
+  const b = (reviewSummary && reviewSummary.buckets) || {};
+  const total = (reviewSummary && reviewSummary.total) || 0;
+  const anomCount = (reviewSummary && reviewSummary.anomaly_count) || 0;
+  const order = ['all','auto_fixable','needs_review','already_clean','no_match'];
+  let html = order.map(key => {
+    const m = BUCKET_META[key];
+    const count = key === 'all' ? total : (b[key] || 0);
+    return `<span class="chip-f ${activeBucket===key?'on':''}" onclick="setBucket('${key}')">
+      <span class="dot ${m.dot}"></span>${m.label} <span class="cnt">${count.toLocaleString()}</span></span>`;
+  }).join('');
+  // Orthogonal anomaly filter — separated, red-accented.
+  html += `<span class="chip-f anom ${activeBucket==='anomalies'?'on':''}" onclick="setBucket('anomalies')"
+            style="margin-left:auto;">⚠ Anomalies <span class="cnt">${anomCount.toLocaleString()}</span></span>`;
+  document.getElementById('filterBar').innerHTML = html;
+}
+
+async function setBucket(key) {
+  activeBucket = key;
+  reviewPage = 0;
+  renderFilterChips();
+  await loadReviewPage();
+}
+
+let onThreshTimer = null;
+function onThresholdInput(val) {
+  reviewThreshold = parseInt(val);
+  document.getElementById('threshVal').textContent = reviewThreshold;
+  renderHistogram();
+  // Debounce the server re-bucket so dragging stays smooth.
+  clearTimeout(onThreshTimer);
+  onThreshTimer = setTimeout(async () => {
+    await refreshSummary();
+    reviewPage = 0;
+    await loadReviewPage();
+  }, 250);
+}
+
+async function loadReviewPage() {
+  const resp = await fetch('/v2/address_cleanse/review_page', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      session_id: sessionId, threshold: reviewThreshold / 100,
+      bucket: activeBucket, page: reviewPage, page_size: reviewPageSize,
+    }),
+  });
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data.error || 'Page load failed');
+  renderReviewTable(data.rows || []);
+  renderPager(data);
+  const startN = data.total_matched ? reviewPage * reviewPageSize + 1 : 0;
+  const endN = Math.min((reviewPage + 1) * reviewPageSize, data.total_matched);
+  document.getElementById('pageInfo').textContent = `${startN}–${endN} of ${data.total_matched.toLocaleString()}`;
+  document.getElementById('bucketLabel').textContent = BUCKET_META[activeBucket].label;
+}
+
+function renderReviewTable(rows) {
+  const tbody = document.getElementById('reviewTableBody');
+  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-2);padding:24px;">No rows in this filter.</td></tr>`; return; }
+  tbody.innerHTML = rows.map(r => {
+    const conf = r.accuracy_percent || 0;
+    const anoms = (r.anomalies || []).map(a =>
+      `<span class="anom-flag" title="Likely wrong match">⚠ ${ANOMALY_LABELS[a] || a}</span>`).join('');
+    const issues = (r.issues || []).map(i => `<span class="issue">• ${i}</span>`).join('');
+    const decision = rowDecisions[r.row_number] || 'pending';
+    const m = BUCKET_META[r.bucket] || BUCKET_META.no_match;
+    return `
+    <tr id="row-${r.row_number}" data-row="${r.row_number}" class="${decision==='approve'?'approved':decision==='reject'?'rejected':''}">
+      <td>#${r.row_number}</td>
+      <td><span class="bucket-tag ${r.bucket}">${m.label}</span></td>
+      <td>${renderMergedCorrections(r.input_fields, r.field_changes)}</td>
+      <td>${conf}%</td>
+      <td><div class="issues-list">${anoms}${issues || (anoms ? '' : '-')}</div></td>
+      <td>
+        <select onchange="setRowDecision(${r.row_number}, this.value)">
+          <option value="pending" ${decision === 'pending' ? 'selected' : ''}>Auto (default)</option>
+          <option value="approve" ${decision === 'approve' ? 'selected' : ''}>✓ Approve</option>
+          <option value="reject" ${decision === 'reject' ? 'selected' : ''}>✗ Reject</option>
+        </select>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPager(data) {
+  const pages = data.total_pages || 1;
+  const el = document.getElementById('pager');
+  if (pages <= 1) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <button onclick="gotoPage(0)" ${reviewPage===0?'disabled':''}>« First</button>
+    <button onclick="gotoPage(${reviewPage-1})" ${reviewPage===0?'disabled':''}>‹ Prev</button>
+    <span class="pinfo">Page ${reviewPage+1} of ${pages}</span>
+    <button onclick="gotoPage(${reviewPage+1})" ${reviewPage>=pages-1?'disabled':''}>Next ›</button>
+    <button onclick="gotoPage(${pages-1})" ${reviewPage>=pages-1?'disabled':''}>Last »</button>`;
+}
+
+async function gotoPage(p) { reviewPage = p; await loadReviewPage(); }
+
+function setRowDecision(rowNum, decision) {
+  rowDecisions[rowNum] = decision;
+  const tr = document.getElementById('row-' + rowNum);
+  if (tr) {
+    tr.classList.remove('approved', 'rejected');
+    if (decision === 'approve') tr.classList.add('approved');
+    if (decision === 'reject') tr.classList.add('rejected');
+  }
+  updateDecisionSummary();
+}
+
+// Bulk-decide every row in the current filter (server-side row-number list).
+async function bulkDecide(decision) {
+  const resp = await fetch('/v2/address_cleanse/review_page', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      session_id: sessionId, threshold: reviewThreshold / 100,
+      bucket: activeBucket, page: 0, page_size: 1000000,
+    }),
+  });
+  const data = await resp.json();
+  if (!resp.ok) { showError('err3', data.error || 'Bulk action failed'); return; }
+  (data.rows || []).forEach(r => {
+    if (decision === 'pending') delete rowDecisions[r.row_number];
+    else rowDecisions[r.row_number] = decision;
+  });
+  await loadReviewPage();
+  updateDecisionSummary();
+}
+
+function updateDecisionSummary() {
+  const approved = Object.values(rowDecisions).filter(v => v === 'approve').length;
+  const rejected = Object.values(rowDecisions).filter(v => v === 'reject').length;
+  const auto = (reviewSummary && reviewSummary.buckets && reviewSummary.buckets.auto_fixable) || 0;
+  document.getElementById('decisionSummary').innerHTML =
+    `<b>${auto.toLocaleString()}</b> auto-applied · <b>${approved}</b> manually approved · <b>${rejected}</b> rejected`;
+}
+
+document.getElementById('btnNext3').addEventListener('click', async () => {
+  const approved = Object.entries(rowDecisions).filter(([k, v]) => v === 'approve').map(([k, v]) => parseInt(k));
+  const rejected = Object.entries(rowDecisions).filter(([k, v]) => v === 'reject').map(([k, v]) => parseInt(k));
+
+  const btn = document.getElementById('btnNext3');
+  btn.disabled = true;
+  try {
+    const resp = await fetch('/v2/address_cleanse/final', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: sessionId,
+        approved_rows: approved,
+        rejected_rows: rejected,
+        // Auto-approve threshold: rows in the auto-fixable bucket get applied
+        // automatically unless explicitly rejected. Rows outside the processed
+        // scope pass through unchanged (handled server-side).
+        threshold: reviewThreshold / 100,
+      }),
+    });
+    if (!resp.ok) {
+      let msg = 'Cleanse failed';
+      if (resp.status === 400) {
+        msg = 'Your session expired (the server may have restarted). Please go back to Step 1 and re-upload your file.';
+      } else {
+        try { const e = await resp.json(); if (e.error) msg = e.error; } catch (_) {}
+      }
+      throw new Error(msg);
+    }
+
+    // Read just the stats header here; the actual file is generated on the
+    // download step (with the user's chosen columns). Consume the body so the
+    // connection is freed.
+    await resp.text();
+
+    // Rich stats header; fall back to the individual count headers.
+    let stats;
+    try {
+      stats = JSON.parse(resp.headers.get('X-Cleanse-Stats') || 'null');
+    } catch (e) { stats = null; }
+    if (!stats) {
+      stats = {
+        processed: parseInt(resp.headers.get('X-Rows-Processed') || '0'),
+        approved: parseInt(resp.headers.get('X-Approved') || '0'),
+        rejected: parseInt(resp.headers.get('X-Rejected') || '0'),
+        auto_corrected: parseInt(resp.headers.get('X-Auto-Corrected') || '0'),
+        unchanged: 0, rows_corrected: 0, fields_corrected: 0, geocoded: 0,
+        avg_confidence: 0, changes_by_column: [], changes_by_role: [],
+        action_breakdown: [], issues_breakdown: [],
+      };
+    }
+    // Rows the AI actually processed (the chosen scope), so the stats page
+    // frames "approved/corrected" against what was processed, not the whole file.
+    stats.reviewed = (reviewSummary && reviewSummary.total) || stats.processed;
+    renderStatistics(stats);
+    goToStep(4);
+  } catch (err) {
+    showError('err3', err.message);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ========== Screen 4: Enterprise Statistics ==========
+const ACTION_LABELS = {
+  // Confidence-based buckets (consistent with the review console + auto-apply)
+  auto_fixable: 'Auto-fixable',
+  needs_review: 'Needs review',
+  already_clean: 'Already clean',
+  no_match: 'No match',
+  // Legacy labels (kept for safety)
+  suggested_fix: 'Suggested fix',
+  review_required: 'Needs review',
+  ready_for_audit: 'Ready for audit',
+  not_run: 'Not processed',
+};
+
+function renderStatistics(s) {
+  const fileTotal = s.total_rows || s.processed || 0;   // rows in the uploaded file
+  const processed = s.processed || 0;                    // rows the AI processed (scope)
+  const passthrough = s.passthrough || Math.max(0, fileTotal - processed);
+  const pctProc = (n) => processed ? Math.round((n / processed) * 100) : 0;
+
+  const subEl = document.querySelector('.stats-sub');
+  if (subEl) {
+    subEl.textContent = passthrough > 0
+      ? `AI processed ${processed.toLocaleString()} of ${fileTotal.toLocaleString()} rows — the other ${passthrough.toLocaleString()} pass through unchanged.`
+      : `Full audit of all ${fileTotal.toLocaleString()} processed rows.`;
+  }
+
+  // ── KPI cards ──
+  const kpis = [
+    { cls: 'info', val: fileTotal.toLocaleString(), label: 'Rows in File' },
+    { cls: 'info', val: processed.toLocaleString(), label: 'AI Processed', sub: passthrough > 0 ? `${passthrough.toLocaleString()} passed through` : 'whole file' },
+    { cls: 'ok',   val: (s.auto_corrected||0).toLocaleString(), label: 'Auto-Corrected', sub: `${pctProc(s.auto_corrected||0)}% of processed` },
+    { cls: 'ok',   val: (s.approved||0).toLocaleString(), label: 'Manually Approved' },
+    { cls: 'err',  val: (s.rejected||0).toLocaleString(), label: 'Rejected' },
+    { cls: 'info', val: (s.fields_corrected||0).toLocaleString(), label: 'Fields Corrected' },
+    { cls: 'info', val: (s.geocoded||0).toLocaleString(), label: 'Geocoded (lat/lon)', sub: `${pctProc(s.geocoded||0)}% of processed` },
+    { cls: 'ok',   val: (s.avg_confidence || 0) + '%', label: 'Avg Confidence' },
+    { cls: (s.rows_with_anomaly||0) ? 'err' : 'ok', val: (s.rows_with_anomaly||0).toLocaleString(), label: 'Flagged (anomalies)', sub: 'likely wrong match' },
+  ];
+  document.getElementById('kpiGrid').innerHTML = kpis.map(k => `
+    <div class="kpi-card ${k.cls}">
+      <div class="kbar"></div>
+      <div class="kv">${k.val}</div>
+      <div class="kl">${k.label}</div>
+      ${k.sub ? `<div class="ksub">${k.sub}</div>` : ''}
+    </div>`).join('');
+
+  // ── Corrections by column ──
+  renderBars('colBreakdown', s.changes_by_column || [], 'ok',
+    'No corrections were applied.');
+
+  // ── AI action breakdown ──
+  const actions = (s.action_breakdown || []).map(([k, v]) => [ACTION_LABELS[k] || k, v]);
+  renderBars('actionBreakdown', actions, 'info', 'No actions recorded.');
+
+  // ── Data-quality issues ──
+  const issues = (s.issues_breakdown || []).map(([k, v]) => [prettyIssue(k), v]);
+  renderBars('issuesBreakdown', issues, 'warn', 'No data-quality issues detected. 🎉');
+
+  // ── Geocoding & confidence meta ──
+  const geoPct = pctProc(s.geocoded || 0);
+  document.getElementById('qualityMeta').innerHTML = `
+    <div class="ring-wrap">
+      <div class="ring" style="--p:${geoPct};"><div class="ring-in">${geoPct}%</div></div>
+      <div>
+        <div class="meta-row"><span class="ml">Rows geocoded to lat/lon</span></div>
+        <div class="ring-cap">${(s.geocoded||0).toLocaleString()} of ${processed.toLocaleString()} processed rows resolved to coordinates.</div>
+      </div>
+    </div>
+    <div class="meta-row"><span class="ml">Average match confidence</span><span class="mv">${s.avg_confidence || 0}%</span></div>
+    <div class="meta-row"><span class="ml">⚠ Rows flagged as anomalies</span><span class="mv">${(s.rows_with_anomaly||0).toLocaleString()}</span></div>
+    ${passthrough ? `<div class="meta-row"><span class="ml">Rows passed through (not processed)</span><span class="mv">${passthrough.toLocaleString()}</span></div>` : ''}
+    <div class="meta-row"><span class="ml">Processed rows left unchanged</span><span class="mv">${(s.unchanged||0).toLocaleString()}</span></div>
+    <div class="meta-row"><span class="ml">Total field-level corrections</span><span class="mv">${(s.fields_corrected||0).toLocaleString()}</span></div>`;
+}
+
+function renderBars(containerId, pairs, cls, emptyMsg) {
+  const el = document.getElementById(containerId);
+  if (!pairs.length) { el.innerHTML = `<div class="bar-empty">${emptyMsg}</div>`; return; }
+  const max = Math.max(...pairs.map(p => p[1]), 1);
+  el.innerHTML = pairs.map(([label, count]) => `
+    <div class="bar-row">
+      <span class="bl" title="${escapeHtml(String(label))}">${escapeHtml(String(label))}</span>
+      <div class="bar-track"><div class="bar-fill ${cls}" data-w="${Math.round((count / max) * 100)}"></div></div>
+      <span class="bv">${count}</span>
+    </div>`).join('');
+  // Animate the fills in after layout.
+  requestAnimationFrame(() => {
+    el.querySelectorAll('.bar-fill').forEach(f => { f.style.width = f.dataset.w + '%'; });
+  });
+}
+
+function prettyIssue(key) {
+  return String(key)
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+
+document.getElementById('btnBackStats').addEventListener('click', () => goToStep(3));
+document.getElementById('btnNext4').addEventListener('click', () => { renderDownloadColumns(); goToStep(5); });
+document.getElementById('btnBackDownload').addEventListener('click', () => goToStep(4));
+
+// ========== Screen 5: Download column picker ==========
+// Extra columns the cleanse can append. `on` = checked by default.
+// Per request: Cleanse Status, Original Address Query, Row Number default OFF.
+const DOWNLOAD_COLUMNS = [
+  { name: 'Cleanse Action',         on: true,  desc: 'auto/approved/rejected' },
+  { name: 'Cleanse Confidence %',   on: true,  desc: 'match confidence' },
+  { name: 'Full Verified Address',  on: true,  desc: 'standardized address' },
+  { name: 'Latitude',               on: true,  desc: 'geocoded lat' },
+  { name: 'Longitude',              on: true,  desc: 'geocoded lon' },
+  { name: 'Input Similarity %',     on: true,  desc: 'input vs result' },
+  { name: 'Cleanse Status',         on: false, desc: 'engine status' },
+  { name: 'Original Address Query', on: false, desc: 'what was sent to AI' },
+  { name: 'Row Number',             on: false, desc: 'source row index' },
+];
+
+function renderDownloadColumns() {
+  const grid = document.getElementById('dlColGrid');
+  if (grid.dataset.rendered) return;  // keep the user's choices on re-entry
+  grid.innerHTML = DOWNLOAD_COLUMNS.map(c => `
+    <label class="dlcol-item ${c.on ? 'on' : ''}">
+      <input type="checkbox" class="dlcol-cb" value="${escapeHtml(c.name)}" ${c.on ? 'checked' : ''}
+             onchange="this.closest('.dlcol-item').classList.toggle('on', this.checked)">
+      <span><b>${escapeHtml(c.name)}</b><br><span style="font-size:10.5px;color:var(--text-3);">${escapeHtml(c.desc)}</span></span>
+    </label>`).join('');
+  grid.dataset.rendered = '1';
+}
+
+document.getElementById('btnDownload').addEventListener('click', async () => {
+  const include = [...document.querySelectorAll('.dlcol-cb')].filter(cb => cb.checked).map(cb => cb.value);
+  const approved = Object.entries(rowDecisions).filter(([k, v]) => v === 'approve').map(([k]) => parseInt(k));
+  const rejected = Object.entries(rowDecisions).filter(([k, v]) => v === 'reject').map(([k]) => parseInt(k));
+  const btn = document.getElementById('btnDownload');
+  btn.disabled = true;
+  document.getElementById('err5').classList.remove('show');
+  try {
+    const resp = await fetch('/v2/address_cleanse/final', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: sessionId, approved_rows: approved, rejected_rows: rejected,
+        threshold: reviewThreshold / 100, include_columns: include,
+        save_to_history: true,
+      }),
+    });
+    if (!resp.ok) {
+      let msg = 'Download failed';
+      if (resp.status === 400) msg = 'Your session expired. Please go back to Step 1 and re-upload.';
+      else { try { const e = await resp.json(); if (e.error) msg = e.error; } catch (_) {} }
+      throw new Error(msg);
+    }
+    const blob = await resp.blob();
+    const a = document.getElementById('downloadBtn');
+    a.href = URL.createObjectURL(blob);
+    a.click();
+  } catch (err) {
+    showError('err5', err.message);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ========== Utilities ==========
+function showError(id, message) {
+  const el = document.getElementById(id);
+  el.textContent = message;
+  el.classList.add('show');
+}
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
 </script>
 {% endblock %}
