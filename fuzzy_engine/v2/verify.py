@@ -54,6 +54,41 @@ GOOGLE_ADDRESS_VALIDATION_URL = "https://addressvalidation.googleapis.com/v1:val
 
 log = logging.getLogger(__name__)
 
+# Per-thread HTTP session with keep-alive. Every geocode/validation call hits
+# the same 1-2 hosts, so reusing the TLS connection removes the per-call SSL
+# handshake (profiling showed it was ~64% of per-row time → ~2.6x faster).
+# Sessions are NOT shared across threads — a shared Session under the bulk
+# thread pool triggers "SSL: UNEXPECTED_EOF" failures on Windows — so each
+# worker thread gets its own session via thread-local storage.
+import threading as _threading
+_http_local = _threading.local()
+
+
+class _HTTPProxy:
+    """Routes .get()/.post() to the calling thread's own pooled Session."""
+    def _session(self):
+        s = getattr(_http_local, "session", None)
+        if s is None:
+            s = requests.Session()
+            try:
+                from requests.adapters import HTTPAdapter
+                a = HTTPAdapter(pool_connections=4, pool_maxsize=4, max_retries=0)
+                s.mount("https://", a)
+                s.mount("http://", a)
+            except Exception:  # noqa: BLE001
+                return requests  # no pooling, still works
+            _http_local.session = s
+        return s
+
+    def get(self, *a, **k):
+        return self._session().get(*a, **k)
+
+    def post(self, *a, **k):
+        return self._session().post(*a, **k)
+
+
+_HTTP = _HTTPProxy()
+
 # Foreign-country cues in a query. When present, the geocoder must NOT bias
 # results to India (regionCode/components=country:IN), otherwise Google returns
 # a wrong Indian match instead of the real foreign address. Single words are
@@ -78,6 +113,37 @@ def _query_names_foreign_country(text: str) -> bool:
             return True
     tokens = set(_re.split(r"[^a-z]+", lower))
     return bool(tokens & _FOREIGN_COUNTRY_WORDS)
+
+
+# Known geographic centroids that geocoders snap to when an address can't be
+# placed inside a region-restricted query. These are NEVER a real street-level
+# result, so seeing one means the lookup failed and should be retried without
+# the region bias. (lat, lon) rounded to 4 dp.
+_COUNTRY_CENTROIDS = {
+    (20.5937, 78.9629),   # India  (the regionCode=IN snap-to target)
+}
+
+
+def _is_country_centroid(geo: Optional["GeocodeResult"]) -> bool:
+    """True when a geocode result is a bare country-centroid fallback.
+
+    Detects the failure mode where a region-restricted geocode returns the
+    country polygon (e.g. just "India" at 20.59/78.96) instead of the real
+    address. Such a result has no street/locality/postal detail and sits on a
+    known centroid, so it must not be trusted.
+    """
+    if geo is None or geo.lat is None or geo.lon is None:
+        return False
+    rounded = (round(geo.lat, 4), round(geo.lon, 4))
+    if rounded not in _COUNTRY_CENTROIDS:
+        return False
+    # Confirm it's content-free (no real address parts) — a genuine ROOFTOP hit
+    # that happens to be near a centroid still has street/locality and is kept.
+    has_detail = any((
+        geo.house_number, geo.street, geo.sublocality,
+        geo.locality, geo.postal_code,
+    ))
+    return not has_detail
 
 
 # ---------------------------------------------------------------------------
@@ -162,7 +228,7 @@ class GoogleGeocoder:
         if not unrestricted:
             params["components"] = f"country:{self.country}"
         try:
-            r = requests.get(GOOGLE_GEOCODE_URL, params=params, timeout=self.timeout)
+            r = _HTTP.get(GOOGLE_GEOCODE_URL, params=params, timeout=self.timeout)
             r.raise_for_status()
             data = r.json()
         except Exception as exc:  # noqa: BLE001
@@ -235,7 +301,7 @@ class GooglePlacesGeocoder:
         q_lower = query.strip().lower()
         if _re.match(r"^(house\s*no|h\.?\s*no|d\.?\s*no|flat\s*no|no\.?|#)\s*\d", q_lower) \
                 or _re.match(r"^\d{1,4}[/,\s-]", q_lower):
-            return self._geocoder.geocode(query)
+            return self._geocoder.geocode(query, unrestricted=unrestricted)
         # New Places API (Text Search) - POST with field mask
         headers = {
             "Content-Type": "application/json",
@@ -252,19 +318,19 @@ class GooglePlacesGeocoder:
         if not unrestricted:
             body["regionCode"] = self.country.upper()
         try:
-            r = requests.post(GOOGLE_PLACES_URL, headers=headers, json=body,
+            r = _HTTP.post(GOOGLE_PLACES_URL, headers=headers, json=body,
                               timeout=self.timeout)
             r.raise_for_status()
             data = r.json()
         except Exception as exc:
             log.warning("Google Places search failed for %r: %s", query, exc)
-            return self._geocoder.geocode(query)
+            return self._geocoder.geocode(query, unrestricted=unrestricted)
 
         places = data.get("places", [])
         if not places:
             if not unrestricted:
                 return self.geocode(query, unrestricted=True)
-            return self._geocoder.geocode(query)
+            return self._geocoder.geocode(query, unrestricted=unrestricted)
 
         # Prefer a place whose postal_code matches the user's pincode
         # (if the query embedded a 6-digit pincode). Otherwise take first.
@@ -422,7 +488,7 @@ class GooglePlacesAutocomplete:
             "includedRegionCodes": [self.country],
         }
         try:
-            r = requests.post(GOOGLE_PLACES_AUTOCOMPLETE_URL, headers=headers,
+            r = _HTTP.post(GOOGLE_PLACES_AUTOCOMPLETE_URL, headers=headers,
                               json=body, timeout=self.timeout)
             r.raise_for_status()
             data = r.json()
@@ -482,7 +548,7 @@ class GoogleAddressValidator:
         body = {"address": addr_body}
         params = {"key": self.api_key}
         try:
-            r = requests.post(
+            r = _HTTP.post(
                 GOOGLE_ADDRESS_VALIDATION_URL,
                 params=params,
                 json=body,
@@ -582,7 +648,7 @@ class NominatimGeocoder:
         try:
             if self.throttle:
                 _NOMINATIM_LIMITER.wait()
-            r = requests.get(
+            r = _HTTP.get(
                 self.base_url,
                 params=params,
                 headers={"User-Agent": self.user_agent},
@@ -667,7 +733,7 @@ class LocationIQGeocoder:
         if not unrestricted:
             params["countrycodes"] = self.country
         try:
-            r = requests.get(self.base_url, params=params, timeout=self.timeout)
+            r = _HTTP.get(self.base_url, params=params, timeout=self.timeout)
             r.raise_for_status()
             data = r.json()
         except Exception as exc:  # noqa: BLE001
@@ -708,7 +774,7 @@ class OpenCageGeocoder:
         if not unrestricted:
             params["countrycode"] = self.country
         try:
-            r = requests.get(self.base_url, params=params, timeout=self.timeout)
+            r = _HTTP.get(self.base_url, params=params, timeout=self.timeout)
             r.raise_for_status()
             data = r.json()
         except Exception as exc:  # noqa: BLE001
@@ -806,6 +872,15 @@ class GeocodeCache:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.ttl = ttl_days * 86400.0
         self._conn = sqlite3.connect(str(self.path), check_same_thread=False)
+        # WAL + a busy timeout let many worker threads read/write the geocode
+        # cache concurrently without "database is locked" errors (bulk cleanse
+        # processes rows in a thread pool).
+        try:
+            self._conn.execute("PRAGMA journal_mode=WAL")
+            self._conn.execute("PRAGMA busy_timeout=8000")
+            self._conn.execute("PRAGMA synchronous=NORMAL")
+        except Exception:  # noqa: BLE001
+            pass
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS cache ("
             "key TEXT PRIMARY KEY, payload TEXT, fetched_at REAL, provider TEXT)"
@@ -961,7 +1036,7 @@ class PincodeIndex:
     # ---- live api ------------------------------------------------------
     def _fetch_live(self, pincode: str) -> Optional[dict]:
         try:
-            resp = requests.get(
+            resp = _HTTP.get(
                 self.LIVE_API.format(pin=pincode),
                 timeout=self.LIVE_TIMEOUT,
                 headers={"User-Agent": "address-ai/2.0"},
@@ -1017,19 +1092,25 @@ class AddressVerifier:
         self.provider = provider
         self.cache = cache or GeocodeCache()
         self.pincodes = pincodes or PincodeIndex()
-        # Address Validation API runs as a refinement step when a Google key
-        # is set. It returns higher-precision components than Geocoding alone.
-        if (validator is None and GOOGLE_API_KEY
+        # Address Validation API is a SECOND billable call per row that refines
+        # components. Disabled by default to keep cost at ONE API call per row
+        # and halve latency. Re-enable with V2_USE_ADDRESS_VALIDATION=1 when
+        # higher precision matters more than speed/cost.
+        _use_validation = os.getenv("V2_USE_ADDRESS_VALIDATION", "0").lower() in (
+            "1", "true", "yes", "on",
+        )
+        if (validator is None and _use_validation and GOOGLE_API_KEY
                 and not isinstance(provider, NullGeocoder)):
             validator = GoogleAddressValidator()
         self.validator = validator
 
     # ---- public ----------------------------------------------------------
     def verify(self, query: str, expected_pincode: Optional[str] = None,
-               expected_state: Optional[str] = None) -> Verification:
+               expected_state: Optional[str] = None,
+               country_hint: Optional[str] = None) -> Verification:
         notes: list[str] = []
 
-        geo = self._cached_geocode(query)
+        geo = self._cached_geocode(query, country_hint=country_hint)
         if geo is None:
             notes.append("geocode_miss")
 
@@ -1042,14 +1123,27 @@ class AddressVerifier:
                 if cached_v is not None:
                     refined = cached_v
                 else:
-                    # If geocode already knows the country is non-Indian, skip the
-                    # default India regionCode bias in the Address Validation API.
-                    is_intl = geo is not None and geo.country and geo.country not in ("India", "IN")
+                    # Skip the default India regionCode bias in the Address
+                    # Validation API when we already know the address is foreign:
+                    # the orchestrator passed a country_hint, the query names a
+                    # foreign country, or the geocode resolved to a non-Indian
+                    # country.
+                    geo_is_intl = bool(
+                        geo is not None and geo.country
+                        and geo.country not in ("India", "IN")
+                    )
+                    is_intl = bool(
+                        country_hint
+                        or _query_names_foreign_country(query)
+                        or geo_is_intl
+                    )
                     refined = self.validator.validate(query, unrestricted=is_intl)
                     self.cache.put("google_address_validation", query, refined)
                 if refined is not None:
                     notes.append("validated_by_google")
-                    if geo is None:
+                    if geo is None or _is_country_centroid(geo):
+                        # No usable geocode (or a junk country-centroid snap):
+                        # trust the validator's resolution outright.
                         geo = refined
                     else:
                         # Merge: prefer Places POI coords/address, fill missing
@@ -1120,25 +1214,43 @@ class AddressVerifier:
         return self._cached_geocode(query)
 
     # ---- internals -------------------------------------------------------
-    def _cached_geocode(self, query: str) -> Optional[GeocodeResult]:
+    def _geocode_once(self, query: str, unrestricted: bool) -> Optional[GeocodeResult]:
+        if unrestricted:
+            try:
+                return self.provider.geocode(query, unrestricted=True)
+            except TypeError:
+                return self.provider.geocode(query)
+        return self.provider.geocode(query)
+
+    def _cached_geocode(self, query: str,
+                        country_hint: Optional[str] = None) -> Optional[GeocodeResult]:
         if not query:
             return None
         if isinstance(self.provider, NullGeocoder):
             return None
         cached = self.cache.get(self.provider.name, query)
         if cached is not None:
-            return cached
-        # If the query names a foreign country, geocode without the India
-        # region bias so Google returns the real foreign address instead of
-        # forcing a (wrong) Indian match. Providers that don't support the
-        # `unrestricted` kwarg simply ignore it via the try/except.
-        unrestricted = _query_names_foreign_country(query)
-        if unrestricted:
-            try:
-                result = self.provider.geocode(query, unrestricted=True)
-            except TypeError:
-                result = self.provider.geocode(query)
-        else:
-            result = self.provider.geocode(query)
+            # A previously cached country-centroid junk result must not be
+            # trusted; re-resolve it unrestricted below.
+            if not _is_country_centroid(cached):
+                return cached
+            cached = None
+        # If the query names a foreign country (or `country_hint` was passed by
+        # the orchestrator), geocode WITHOUT the India region bias so the
+        # provider returns the real foreign address instead of forcing a wrong
+        # Indian match. Providers that don't support the `unrestricted` kwarg
+        # simply ignore it via the try/except.
+        unrestricted = bool(country_hint) or _query_names_foreign_country(query)
+        result = self._geocode_once(query, unrestricted)
+        # Self-heal: when the India-restricted lookup snaps to a bare country
+        # centroid (Google returns the "India" polygon at lat 20.59/lon 78.96
+        # for any address it can't place inside the region), the address is
+        # almost certainly NOT Indian. Retry once with no region bias so the
+        # real worldwide location is returned. Works for ANY country, even when
+        # the query never names one.
+        if not unrestricted and _is_country_centroid(result):
+            retried = self._geocode_once(query, unrestricted=True)
+            if retried is not None and not _is_country_centroid(retried):
+                result = retried
         self.cache.put(self.provider.name, query, result)
         return result

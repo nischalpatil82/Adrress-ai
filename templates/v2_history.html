@@ -101,12 +101,40 @@
   <div class="page-head-row">
     <div>
       <div class="page-title">History</div>
-      <div class="page-sub">All searches you've run on this device. Stored in <code class="mono" style="color:var(--red);">localStorage</code> · capped at 200 most-recent.</div>
+      <div class="page-sub">Bulk cleanse jobs (saved on this server) and lookup searches (this device).</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Bulk Cleanse Jobs (server-side) ===== -->
+<div class="history-wrap" style="padding-bottom:0;">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div style="font-size:13px;font-weight:600;color:var(--text);">🧹 Bulk Cleanse Jobs</div>
+    <span class="mono" style="font-size:11px;color:var(--text-3);" id="cjMeta">—</span>
+    <div style="flex:1;"></div>
+    <a class="btn btn-ghost" href="/v2/address_cleanse"><i data-lucide="plus"></i> New cleanse</a>
+  </div>
+  <div class="card card-tight">
+    <div style="max-height: 320px; overflow-y: auto;">
+      <table class="htable">
+        <thead>
+          <tr>
+            <th class="h-time">When</th>
+            <th>File</th>
+            <th class="h-c">Rows</th>
+            <th class="h-c">Auto-fixed</th>
+            <th class="h-c">Flagged</th>
+            <th class="h-act"></th>
+          </tr>
+        </thead>
+        <tbody id="cjbody"></tbody>
+      </table>
     </div>
   </div>
 </div>
 
 <div class="history-wrap">
+  <div style="font-size:13px;font-weight:600;color:var(--text);">🔎 Lookup Searches <span class="mono" style="font-size:11px;color:var(--text-3);font-weight:400;">· this device · capped at 200</span></div>
   <div class="filter-bar">
     <input type="text" class="input" id="filter" placeholder="Filter by query, address, status…" />
     <div class="seg" id="filterSeg">
@@ -204,6 +232,50 @@ function render() {
 
   if (window.lucide) window.lucide.createIcons();
 }
+
+// ===== Bulk cleanse jobs (server-side) =====
+const cjbody = document.getElementById("cjbody");
+const cjMeta = document.getElementById("cjMeta");
+
+function fmtJobTime(iso) {
+  try { const d = new Date(iso); return d.toLocaleString(); } catch (e) { return iso || "—"; }
+}
+
+async function renderCleanseJobs() {
+  let jobs = [];
+  try {
+    const r = await fetch("/v2/cleanse_history");
+    jobs = (await r.json()).jobs || [];
+  } catch (e) { /* ignore */ }
+  cjMeta.textContent = `${jobs.length} job${jobs.length === 1 ? "" : "s"}`;
+  if (!jobs.length) {
+    cjbody.innerHTML = `<tr class="empty-row"><td colspan="6">
+      <div style="color:var(--text);font-weight:500;font-size:13px;margin-bottom:4px;">No cleanse jobs yet</div>
+      <div style="font-size:12px;">Run one from the <a href="/v2/address_cleanse" style="color:var(--red);">Address Cleanse</a> page — it's saved here on download.</div>
+    </td></tr>`;
+    if (window.lucide) window.lucide.createIcons();
+    return;
+  }
+  cjbody.innerHTML = jobs.map(j => `
+    <tr>
+      <td class="h-time">${AAI.esc(fmtJobTime(j.created))}</td>
+      <td class="h-best">${AAI.esc(j.filename || "upload.csv")}</td>
+      <td class="h-c">${(j.total_rows || 0).toLocaleString()}</td>
+      <td class="h-c">${(j.auto_corrected || 0).toLocaleString()}</td>
+      <td class="h-c">${(j.rows_with_anomaly || 0).toLocaleString()}</td>
+      <td class="h-act">
+        <a class="btn btn-ghost" href="/v2/cleanse_history/${j.job_id}/file" title="Re-download"><i data-lucide="download" style="width:13px;height:13px;"></i></a>
+        <button class="btn btn-ghost" data-del="${j.job_id}" title="Delete"><i data-lucide="trash-2" style="width:13px;height:13px;"></i></button>
+      </td>
+    </tr>`).join("");
+  cjbody.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", async () => {
+    if (!confirm("Delete this saved cleanse job?")) return;
+    await fetch(`/v2/cleanse_history/${b.dataset.del}`, { method: "DELETE" });
+    renderCleanseJobs();
+  }));
+  if (window.lucide) window.lucide.createIcons();
+}
+renderCleanseJobs();
 
 filter.addEventListener("input", render);
 

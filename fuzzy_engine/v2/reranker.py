@@ -56,6 +56,8 @@ class Reranker:
         self.calibrator_path = Path(calibrator_path)
         self.model = None
         self.calibrator = None
+        self._feature_mismatch_logged = False
+        self._calibrator_collapse_logged = False
 
     def load(self) -> "Reranker":
         if self.model_path.exists():
@@ -126,13 +128,18 @@ class Reranker:
         if self.model is None:
             return fallback_blend(X)
 
-        # If model was trained with fewer features than we provide,
-        # use fallback blend so the new features (e.g., query_specificity) count.
+        # If model was trained with fewer features than we provide, trim to the
+        # saved artifact's schema instead of falling back on every row.
         try:
             n_model_features = getattr(self.model, 'n_features_in_', None)
             if n_model_features and X.shape[1] > n_model_features:
-                log.warning("Model expects %d features but we have %d; using fallback blend.", n_model_features, X.shape[1])
-                return fallback_blend(X)
+                if not self._feature_mismatch_logged:
+                    log.warning(
+                        "Model expects %d features but we have %d; trimming extra features.",
+                        n_model_features, X.shape[1],
+                    )
+                    self._feature_mismatch_logged = True
+                X = X[:, :n_model_features]
         except Exception:
             pass
 
@@ -155,7 +162,9 @@ class Reranker:
                 # it was trained on a different score distribution; use sigmoid.
                 if len(set(np.round(result, 3))) > 1:
                     return result
-                log.warning("Calibrator collapsed all scores to %.3f; using sigmoid.", result[0])
+                if not self._calibrator_collapse_logged:
+                    log.warning("Calibrator collapsed all scores to %.3f; using sigmoid.", result[0])
+                    self._calibrator_collapse_logged = True
             except Exception as exc:  # noqa: BLE001
                 log.warning("Calibrator failed: %s; falling back to sigmoid.", exc)
         # Sigmoid fallback centred on 0 (assumes raw was z-ish).

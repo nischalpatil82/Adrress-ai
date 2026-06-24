@@ -216,8 +216,24 @@ class DenseRetriever:
         if not self.faiss_path.exists():
             log.warning("FAISS index not found at %s", self.faiss_path)
             return self
-        self.index = faiss.read_index(str(self.faiss_path))
-        self.model = SentenceTransformer(self.model_name)
+        try:
+            self.index = faiss.read_index(str(self.faiss_path))
+        except Exception as exc:  # noqa: BLE001
+            log.warning("FAISS index failed to load: %s", exc)
+            self.index = None
+            return self
+        try:
+            try:
+                self.model = SentenceTransformer(self.model_name, local_files_only=True)
+            except TypeError:
+                self.model = SentenceTransformer(self.model_name)
+        except Exception as exc:  # noqa: BLE001
+            log.warning(
+                "Dense embedding model unavailable; continuing with BM25/trie only: %s",
+                exc,
+            )
+            self.index = None
+            self.model = None
         return self
 
     def search(self, query: str, k: int = RETRIEVAL_TOP_K) -> list[tuple[int, float]]:

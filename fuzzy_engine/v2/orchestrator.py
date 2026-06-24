@@ -363,8 +363,19 @@ class AddressPipeline:
         # locality / city alias canonicalization applied). This way Google APIs
         # receive a clean query (e.g. "bengaloore" -> "bangalore") instead of
         # echoing the user's typos back as the formatted address.
+        #
+        # IMPORTANT: the speller's vocabulary is Indian (place names, localities).
+        # For a foreign address it has never seen the proper nouns and "corrects"
+        # them into garbage ("saranac" -> "sharana", "rebound" -> "round"). When
+        # the query is a non-Indian address, skip the speller entirely and let
+        # the geocoder do the correction.
         spell_input = parsed.normalized or raw
-        spell_res = self.speller.correct(spell_input)
+        if detected:
+            from fuzzy_engine.v2.speller import SpellResult as _SpellResult
+            spell_res = _SpellResult(original=spell_input, corrected=spell_input,
+                                     changes=[], used_t5=False, applied=False)
+        else:
+            spell_res = self.speller.correct(spell_input)
         search_query = spell_res.corrected if spell_res.applied else spell_input
 
         # Post-spell dedup: remove consecutive identical tokens (e.g. "layout layout")
@@ -435,6 +446,7 @@ class AddressPipeline:
                 query=search_query,
                 expected_pincode=parsed.pincode,
                 expected_state=parsed.state,
+                country_hint=detected,
             )
             if verification.geocoded and verification.geocode:
                 notes.append("no_db_match_geocoded")
@@ -557,6 +569,7 @@ class AddressPipeline:
             query=search_query,
             expected_pincode=parsed.pincode,
             expected_state=parsed.state,
+            country_hint=detected,
         )
 
         # ---- L5.5 post-verification spell refinement --------------------
@@ -1370,8 +1383,13 @@ class AddressPipeline:
                 if pin and pin not in lower:
                     bits.append(pin)
                     lower += " " + pin
-                if "india" not in lower:
-                    bits.append("India")
+                # Append the resolved country (geocode authority), defaulting to
+                # India only when nothing else is known. Never force "India" onto
+                # an address the geocoder placed in another country.
+                country = (geo.country or _detect_foreign_country(spell_corrected)
+                           or "India")
+                if country.lower() not in lower:
+                    bits.append(country.title() if country.islower() else country)
                 return ", ".join(bits)
 
             # Non-generic & trusted: use geocoder formatted address directly.
@@ -1432,8 +1450,13 @@ class AddressPipeline:
             bits.append(parsed.state.title())
         if parsed.pincode and parsed.pincode not in lower:
             bits.append(parsed.pincode)
-        if "india" not in lower:
-            bits.append("India")
+        # Append the resolved country (geocode authority) rather than forcing
+        # "India" — the address may be anywhere in the world.
+        geo = verification.geocode
+        country = ((geo.country if geo else None)
+                   or _detect_foreign_country(spell_corrected) or "India")
+        if country.lower() not in lower:
+            bits.append(country.title() if country.islower() else country)
         return ", ".join(bits)
 
     @staticmethod
@@ -1575,6 +1598,10 @@ class AddressPipeline:
                 "place_id": g.place_id,
                 "formatted": g.formatted_address,
                 "source": source,
+                # Geocode match quality, so downstream consumers can grade
+                # confidence per-address instead of using a flat floor.
+                "precision": g.precision,
+                "location_type": g.location_type or "",
             }
         pin_info = verification.pincode_info or {}
         return {
@@ -1590,6 +1617,8 @@ class AddressPipeline:
             "place_id": None,
             "formatted": spell_corrected,
             "source": "input_corrected",
+            "precision": 0.0,
+            "location_type": "",
         }
 
     def _final_confidence(self, top: RerankResult,
