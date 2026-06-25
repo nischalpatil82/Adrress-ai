@@ -1,9 +1,9 @@
 {% extends "_base.html" %}
 {% set active_page = "address_cleanse" %}
-{% block title %}Address Cleanse · AddressAI{% endblock %}
+{% block title %}Address Cleanse - AddressAI{% endblock %}
 
 {% block extra_css %}
-  /* ── Wizard container ── */
+  /* -- Wizard container -- */
   .wizard-wrap {
     padding: 20px 22px 32px;
     max-width: 1200px;
@@ -13,7 +13,7 @@
     gap: 18px;
   }
 
-  /* ── Steps header ── */
+  /* -- Steps header -- */
   .step-bar {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
@@ -45,12 +45,12 @@
   .step-title { font-size: 13px; font-weight: 600; color: var(--text); }
   .step-desc { font-size: 11px; color: var(--text-2); }
 
-  /* ── Wizard screens ── */
+  /* -- Wizard screens -- */
   .wizard-screen { display: none; animation: fadeIn 0.3s ease; }
   .wizard-screen.active { display: block; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
-  /* ── Upload zone (reused) ── */
+  /* -- Upload zone (reused) -- */
   .upload-zone {
     position: relative;
     border: 1.5px dashed var(--border-strong);
@@ -67,7 +67,7 @@
   .upload-zone:hover .ico-ring { border-color: var(--red-soft-2); background: var(--red-soft); }
   .ico-ring svg { width: 26px; height: 26px; color: var(--red); }
 
-  /* ── Range selector ── */
+  /* -- Range selector -- */
   .range-bar {
     display: flex; align-items: center; gap: 12px;
     padding: 14px 16px; background: var(--surface-2);
@@ -82,7 +82,7 @@
   }
   .range-bar span { font-size: 12px; color: var(--text-3); }
 
-  /* ── Processing scope selector ── */
+  /* -- Processing scope selector -- */
   .scope-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   @media (max-width: 760px) { .scope-options { grid-template-columns: 1fr; } }
   .scope-opt {
@@ -98,7 +98,7 @@
   .range-inline { margin-top: 8px; font-size: 12px; color: var(--text-2); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .range-inline input { width: 80px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); color: var(--text); font-size: 12px; }
 
-  /* ── Download column picker ── */
+  /* -- Download column picker -- */
   .dlcol-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
   @media (max-width: 860px) { .dlcol-grid { grid-template-columns: 1fr 1fr; } }
   @media (max-width: 560px) { .dlcol-grid { grid-template-columns: 1fr; } }
@@ -112,7 +112,7 @@
   .dlcol-item.on { border-color: var(--red); background: var(--red-soft); }
   .dlcol-item input { width: 15px; height: 15px; accent-color: var(--red); cursor: pointer; }
 
-  /* ── Progress bar ── */
+  /* -- Progress bar -- */
   .proc-track { height: 12px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; }
   .proc-fill {
     height: 100%; width: 0; border-radius: 8px;
@@ -120,7 +120,7 @@
     transition: width .35s cubic-bezier(.2,.8,.2,1);
   }
 
-  /* ── Column mapping ── */
+  /* -- Column mapping -- */
   .colmap-grid {
     display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
   }
@@ -154,7 +154,7 @@
     font-size: 13px;
   }
 
-  /* ── Data preview table ── */
+  /* -- Data preview table -- */
   .preview-table-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
   .preview-table { width: 100%; border-collapse: collapse; font-size: 12px; }
   .preview-table th, .preview-table td {
@@ -165,7 +165,7 @@
   .preview-table tr:nth-child(even) td { background: var(--surface-2); }
   .preview-table tr:hover td { background: var(--red-soft); }
 
-  /* ── Review table (the big one) ── */
+  /* -- Review table (the big one) -- */
   .review-toolbar {
     display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     padding: 10px 14px; background: var(--surface-2); border: 1px solid var(--border);
@@ -183,18 +183,26 @@
   }
   .review-toolbar button:hover { border-color: var(--red-soft-2); background: var(--red-soft); }
 
-  .review-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  .review-table { width: 100%; border-collapse: collapse; font-size: 11.5px; table-layout: fixed; }
   .review-table th {
     padding: 10px 8px; background: var(--surface); border: 1px solid var(--border);
     font-weight: 600; color: var(--text-2); text-align: left; position: sticky; top: 0;
   }
   .review-table td {
-    padding: 10px 8px; border: 1px solid var(--border); vertical-align: top;
+    padding: 10px 8px; border: 1px solid var(--border); vertical-align: top; word-break: break-word;
   }
+  /* Fixed column widths so Corrections truncates and Decision is never cut off */
+  .review-table th:nth-child(1), .review-table td:nth-child(1) { width: 52px; }
+  .review-table th:nth-child(2), .review-table td:nth-child(2) { width: 108px; }
+  .review-table th:nth-child(4), .review-table td:nth-child(4) { width: 74px; }
+  .review-table th:nth-child(5), .review-table td:nth-child(5) { width: 150px; }
+  .review-table th:nth-child(6), .review-table td:nth-child(6) { width: 120px; }
+  .review-table td:nth-child(6) select { width: 100%; max-width: 100%; box-sizing: border-box; }
+  .review-table .issues-list { overflow-wrap: anywhere; }
   .review-table tr.approved { background: rgba(53,196,107,.06) !important; }
   .review-table tr.rejected { background: rgba(239,68,68,.06) !important; }
 
-  /* ── Enterprise review console ── */
+  /* -- Enterprise review console -- */
   .thresh-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
   .thresh-control { display: flex; align-items: center; gap: 10px; min-width: 240px; }
   .thresh-control input[type="range"] { width: 200px; accent-color: var(--red); }
@@ -258,6 +266,39 @@
   .col-change .cval .arrow { color: var(--text-2); margin: 0 5px; }
   .col-change .cval .to { color: #35c46b; font-weight: 600; }
   .col-change-none { color: var(--text-2); font-size: 11px; font-style: italic; }
+
+  /* -- Compact, expandable corrections cell -- */
+  .cc-wrap { max-width: 560px; }
+  .cc-toggle { display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+    background: none; border: none; cursor: pointer; padding: 5px 7px; border-radius: 7px;
+    color: var(--text); font: inherit; font-size: 12px; transition: background .12s; }
+  .cc-toggle:hover { background: var(--surface-2); }
+  .cc-chev { color: var(--text-3); font-size: 10px; width: 10px; flex: none; }
+  .cc-count { font-weight: 600; color: var(--text-2); white-space: nowrap; font-size: 11px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; }
+  .cc-preview { display: flex; align-items: center; gap: 6px; overflow: hidden;
+    white-space: nowrap; text-overflow: ellipsis; min-width: 0; }
+  .cc-to { color: #35c46b; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+  .cc-address { line-height: 1.35; margin: 6px 0 0 26px; display: grid; gap: 3px; }
+  .cc-line { display: grid; grid-template-columns: 62px 1fr; gap: 8px; align-items: start; }
+  .cc-line .lbl { color: var(--text-3); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .25px; }
+  .cc-line .val { overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .cc-line.input .val { color: var(--text-2); }
+  .cc-line.suggested .val { color: #35c46b; font-weight: 650; }
+  .cc-sep { color: var(--text-3); flex: none; }
+  .cc-more { color: var(--text-3); font-size: 10.5px; background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 999px; padding: 0 7px; flex: none; }
+  .cc-summary.muted { color: var(--text-3); font-style: italic; font-size: 11px; padding: 5px 7px; }
+  .cc-detail { margin: 4px 0 6px 20px; animation: fadeIn .15s ease; }
+  .cc-detail[hidden] { display: none; }
+
+  /* -- Pager: page-size selector + jump-to-page -- */
+  .pager .pgsize { font-size: 11.5px; color: var(--text-2); display: inline-flex; align-items: center; gap: 6px; }
+  .pager .pgsize select { padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-size: 11.5px; cursor: pointer; }
+  .pager .pgjump { width: 52px; padding: 4px 6px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-size: 12px; text-align: center; margin: 0 2px; }
+  .pager .pgjump::-webkit-inner-spin-button { opacity: .4; }
   .row-toggle {
     cursor: pointer; user-select: none; color: var(--red);
     font-size: 11px; font-weight: 600; margin-top: 4px; display: inline-block;
@@ -288,7 +329,7 @@
   .issues-list { font-size: 10.5px; color: var(--text-3); line-height: 1.4; }
   .issues-list .issue { display: block; }
 
-  /* ── Correction detail card ── */
+  /* -- Correction detail card -- */
   .corr-detail {
     background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px;
     padding: 10px; margin-top: 6px; display: none;
@@ -303,7 +344,7 @@
   .corr-detail .fb { font-size: 11px; color: var(--text-3); text-decoration: line-through; }
   .corr-detail .fa { font-size: 11px; color: var(--red); font-weight: 500; }
 
-  /* ── Batch action bar (sticky) ── */
+  /* -- Batch action bar (sticky) -- */
   .batch-bar {
     position: sticky; bottom: 0;
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -311,7 +352,7 @@
     border-radius: 8px; margin-top: 12px;
   }
 
-  /* ── Result summary ── */
+  /* -- Result summary -- */
   .result-summary {
     display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
   }
@@ -325,7 +366,7 @@
   .stat-card.warn .stat-val { color: #ffb454; }
   .stat-card.err .stat-val { color: var(--red); }
 
-  /* ── Enterprise statistics page ── */
+  /* -- Enterprise statistics page -- */
   .stats-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 2px; }
   .stats-title { font-size: 18px; font-weight: 700; color: var(--text); }
   .stats-sub { font-size: 12px; color: var(--text-2); margin-top: 2px; }
@@ -382,7 +423,7 @@
   .ring-wrap { display: flex; align-items: center; gap: 16px; }
   .ring-wrap .ring-cap { font-size: 11.5px; color: var(--text-2); }
 
-  /* ── Buttons ── */
+  /* -- Buttons -- */
   .btn-primary {
     display: inline-flex; align-items: center; gap: 8px;
     padding: 10px 22px; font-size: 13.5px; font-weight: 600;
@@ -415,6 +456,85 @@
   @media (max-width: 980px) {
     .step-bar { grid-template-columns: 1fr; }
     .result-summary { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* -- KPI cards that launch Focus Review -- */
+  .kpi-card { transition: border-color .15s, transform .15s, box-shadow .15s; }
+  .kpi-card.clickable { cursor: pointer; }
+  .kpi-card.clickable:hover { border-color: var(--red); transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,.28); }
+  .kpi-card.clickable::after { content: ' review'; position: absolute; right: 10px; bottom: 8px; font-size: 9.5px; font-weight: 700; letter-spacing: .4px; color: var(--red); opacity: 0; transition: opacity .15s; }
+  .kpi-card.clickable:hover::after { opacity: 1; }
+
+  /* -- Focus Review : full-screen rapid one-at-a-time triage -- */
+  .focus-launch { font-size: 11.5px; padding: 6px 13px; }
+  .focus-overlay {
+    position: fixed; inset: 0; z-index: 1000; padding: 24px;
+    background: rgba(8,8,10,.86); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    display: none; align-items: center; justify-content: center;
+  }
+  .focus-overlay.open { display: flex; animation: focusFade .2s ease; }
+  @keyframes focusFade { from { opacity: 0; } to { opacity: 1; } }
+
+  .focus-card {
+    width: 100%; max-width: 720px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 16px;
+    box-shadow: 0 24px 70px rgba(0,0,0,.55);
+    display: flex; flex-direction: column; max-height: 92vh; overflow: hidden;
+  }
+  .focus-card.flash-ok { animation: flashOk .45s ease; }
+  .focus-card.flash-no { animation: flashNo .45s ease; }
+  @keyframes flashOk { 30% { box-shadow: 0 0 0 3px #35c46b, 0 24px 70px rgba(0,0,0,.55); } }
+  @keyframes flashNo { 30% { box-shadow: 0 0 0 3px var(--red), 0 24px 70px rgba(0,0,0,.55); } }
+
+  .focus-head { display: flex; align-items: center; gap: 12px; padding: 15px 20px; border-bottom: 1px solid var(--border); }
+  .focus-head .fh-count { font-size: 12.5px; color: var(--text-2); font-weight: 600; }
+  .focus-head .fh-close { margin-left: auto; cursor: pointer; color: var(--text-3); background: none; border: none; font-size: 18px; line-height: 1; padding: 4px 9px; border-radius: 7px; }
+  .focus-head .fh-close:hover { color: var(--text); background: var(--surface-2); }
+
+  .focus-prog { height: 5px; background: var(--surface-2); }
+  .focus-prog > i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ffb454, #35c46b); transition: width .28s ease; }
+
+  #focusContent { display: flex; flex-direction: column; min-height: 0; }
+  .focus-body { padding: 22px 24px; overflow: auto; animation: cardSwap .22s ease; }
+  @keyframes cardSwap { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .focus-rownum { font-size: 11.5px; color: var(--text-3); margin-bottom: 14px; }
+
+  /* enlarged corrections inside the focus card */
+  .focus-body .col-changes { max-width: none; gap: 8px; }
+  .focus-body .col-change { padding: 11px 14px; grid-template-columns: minmax(120px,auto) 1fr; }
+  .focus-body .col-change .ccol { font-size: 11px; }
+  .focus-body .col-change .cval { font-size: 15px; }
+  .focus-body .col-change .cval .arrow { margin: 0 8px; }
+
+  .focus-meta { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .fissue { display: block; font-size: 11.5px; color: var(--text-3); line-height: 1.5; }
+  .focus-decided { font-size: 11px; font-weight: 700; padding: 3px 11px; border-radius: 999px; display: inline-block; }
+  .focus-decided.a { color: #35c46b; background: rgba(53,196,107,.13); }
+  .focus-decided.r { color: var(--red); background: var(--red-soft); }
+
+  .conf-ring { width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; position: relative; flex: none;
+    background: conic-gradient(var(--ring-c) calc(var(--p)*1%), var(--surface-2) 0); }
+  .conf-ring::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: var(--surface); }
+  .conf-ring b { position: relative; font-size: 14px; color: var(--text); }
+  .conf-lbl { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: .4px; }
+
+  .focus-foot { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--border); background: var(--surface-2); }
+  .fbtn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 14px; border-radius: 11px; font-size: 15px; font-weight: 700; cursor: pointer;
+    border: 1px solid var(--border); transition: transform .1s, filter .15s; }
+  .fbtn:active { transform: scale(.97); }
+  .fbtn .kbd { font-size: 10px; font-weight: 700; opacity: .75; border: 1px solid currentColor; border-radius: 4px; padding: 0 5px; }
+  .fbtn.reject { color: var(--red); background: var(--red-soft); border-color: var(--red-soft-2); }
+  .fbtn.reject:hover { filter: brightness(1.15); }
+  .fbtn.approve { color: #08160d; background: #35c46b; border-color: #35c46b; }
+  .fbtn.approve:hover { filter: brightness(1.07); }
+  .focus-nav { display: flex; align-items: center; justify-content: center; gap: 18px; padding: 9px; }
+  .focus-nav button { background: none; border: none; color: var(--text-2); cursor: pointer; font-size: 12px; padding: 4px 10px; border-radius: 6px; }
+  .focus-nav button:hover:not(:disabled) { color: var(--text); background: var(--surface-2); }
+  .focus-nav button:disabled { opacity: .35; cursor: not-allowed; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .focus-overlay.open, .focus-body, .focus-card.flash-ok, .focus-card.flash-no { animation: none; }
   }
 {% endblock %}
 
@@ -452,7 +572,7 @@
         <div class="upload-zone" id="dropZone">
           <div class="ico-ring"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
           <strong>Drop your CSV or Excel file here</strong>
-          <div style="color: var(--text-2); font-size: 12.5px; margin-top: 5px;">or <u>click to browse</u> · supports <b>.csv</b> and <b>.xlsx</b></div>
+          <div style="color: var(--text-2); font-size: 12.5px; margin-top: 5px;">or <u>click to browse</u> - supports <b>.csv</b> and <b>.xlsx</b></div>
           <input type="file" id="csvFile" accept=".csv,.xlsx" style="display:none;" />
         </div>
         <div id="fileInfo" style="display:none; padding: 14px 16px; border-top: 1px solid var(--border);">
@@ -463,14 +583,14 @@
         </div>
       </div>
     </div>
-    <div class="nav-buttons"><button class="btn-primary" id="btnNext1" disabled>Next <span style="margin-left:4px;">→</span></button></div>
+    <div class="nav-buttons"><button class="btn-primary" id="btnNext1" disabled>Next <span style="margin-left:4px;">-></span></button></div>
     <div class="err" id="err1"></div>
   </div>
 
   <!-- ========== Screen 2: Column Mapping & Processing Scope ========== -->
   <div class="wizard-screen" id="screen2">
     <div class="card">
-      <div class="card-head"><div class="card-title">📊 Address Columns & Processing Scope</div></div>
+      <div class="card-head"><div class="card-title"> Address Columns & Processing Scope</div></div>
       <div class="card-body">
         <p style="font-size:12px;color:var(--text-2);margin-bottom:14px;">Tick the columns that make up the address, then choose how many rows the AI should process.</p>
 
@@ -479,7 +599,7 @@
 
         <!-- Processing scope -->
         <div style="margin-top:18px;">
-          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;">⚙️ Processing scope</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;"> Processing scope</div>
           <div class="scope-options">
             <label class="scope-opt on">
               <input type="radio" name="scopeMode" value="all" checked onchange="onScopeModeChange()">
@@ -508,24 +628,24 @@
 
         <!-- Data Preview -->
         <div style="margin-top:18px;">
-          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;">📋 Data Preview (first 5 rows)</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;"> Data Preview (first 5 rows)</div>
           <div class="preview-table-wrap" id="dataPreviewTable"></div>
         </div>
 
         <!-- Progress (hidden until processing starts) -->
         <div id="processBox" style="display:none;margin-top:18px;">
           <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
-            <div style="font-size:12px;font-weight:600;color:var(--text);">🤖 AI processing…</div>
-            <div style="font-size:12px;color:var(--text-2);"><b id="procDone">0</b> / <b id="procTotal">0</b> rows · <span id="procPct">0%</span></div>
+            <div style="font-size:12px;font-weight:600;color:var(--text);"> AI processing...</div>
+            <div style="font-size:12px;color:var(--text-2);"><b id="procDone">0</b> / <b id="procTotal">0</b> rows - <span id="procPct">0%</span></div>
           </div>
           <div class="proc-track"><div class="proc-fill" id="procFill"></div></div>
-          <div style="font-size:11px;color:var(--text-3);margin-top:6px;" id="procNote">Starting…</div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:6px;" id="procNote">Starting...</div>
         </div>
       </div>
     </div>
     <div class="nav-buttons">
-      <button class="btn-secondary" id="btnBack2">← Back</button>
-      <button class="btn-primary" id="btnNext2">Run AI Cleanse →</button>
+      <button class="btn-secondary" id="btnBack2"><- Back</button>
+      <button class="btn-primary" id="btnNext2">Run AI Cleanse -></button>
     </div>
     <div class="err" id="err2"></div>
   </div>
@@ -542,7 +662,7 @@
         <div class="thresh-row">
           <div>
             <div style="font-size:13px;font-weight:600;color:var(--text);">Auto-approve confidence threshold</div>
-            <div style="font-size:11px;color:var(--text-3);margin-top:2px;">Rows at or above this confidence are auto-applied on download (unless you reject them). Drag to re-bucket instantly.</div>
+            <div style="font-size:11px;color:var(--text-3);margin-top:2px;">Only rows with no hard warnings and confidence above this threshold are auto-applied. Flagged rows stay in the exception queue.</div>
           </div>
           <div class="thresh-control">
             <input type="range" id="approveThreshold" min="0" max="100" step="1" value="80" oninput="onThresholdInput(this.value)">
@@ -560,23 +680,25 @@
     <!-- Bulk actions -->
     <div class="bulk-bar">
       <div style="font-size:12px;color:var(--text-2);">
-        Showing <b id="pageInfo">0</b> · <span id="bucketLabel">All</span>
+        Exception queue <b id="pageInfo">0</b> · <span id="bucketLabel">All</span>
       </div>
       <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
-        <button class="btn-secondary" onclick="bulkDecide('approve')">✓ Approve this filter</button>
-        <button class="btn-secondary" onclick="bulkDecide('reject')">✗ Reject this filter</button>
+        <button class="btn-secondary" id="expandAllBtn" onclick="toggleExpandAll()">+ Expand all</button>
+        <button class="btn-primary focus-launch" id="focusLaunchBtn" onclick="openFocus()">Focus review</button>
+        <button class="btn-secondary" onclick="bulkDecide('approve')">Approve this filter</button>
+        <button class="btn-secondary" onclick="bulkDecide('reject')">Reject this filter</button>
         <button class="btn-secondary" onclick="bulkDecide('pending')">Reset this filter</button>
       </div>
     </div>
 
     <!-- Review Table (server-paginated) -->
-    <div class="card" style="overflow:auto;max-height:58vh;">
+    <div class="card" style="overflow:auto;max-height:calc(100vh - 170px);">
       <table class="review-table" id="reviewTable">
         <thead>
           <tr>
             <th>Row</th>
             <th>Bucket</th>
-            <th>Corrections <span style="font-weight:400;color:var(--text-3);">(red → green = changed · white = unchanged)</span></th>
+            <th>Corrections <span style="font-weight:400;color:var(--text-3);">(red -> green = changed - white = unchanged)</span></th>
             <th>Confidence</th>
             <th>Issues</th>
             <th style="width:120px;">Decision</th>
@@ -592,9 +714,9 @@
     <!-- Continue bar -->
     <div class="batch-bar">
       <div style="font-size:12px;color:var(--text-2);">
-        <span id="decisionSummary">Auto-approve handles most rows — only override what you need.</span>
+        <span id="decisionSummary">Safe rows are handled automatically. Review only exceptions or override by bucket.</span>
       </div>
-      <button class="btn-primary" id="btnNext3">View Statistics →</button>
+      <button class="btn-primary" id="btnNext3">View Statistics -></button>
     </div>
     <div class="err" id="err3"></div>
   </div>
@@ -603,10 +725,10 @@
   <div class="wizard-screen" id="screen4">
     <div class="stats-head">
       <div>
-        <div class="stats-title">📊 Cleanse Statistics</div>
+        <div class="stats-title"> Cleanse Statistics</div>
         <div class="stats-sub">A full audit of what the AI reviewed and what was applied to your file.</div>
       </div>
-      <button class="btn-secondary" id="btnBackStats">← Back to review</button>
+      <button class="btn-secondary" id="btnBackStats"><- Back to review</button>
     </div>
 
     <!-- KPI cards -->
@@ -636,15 +758,15 @@
     </div>
 
     <div class="batch-bar">
-      <div style="font-size:12px;color:var(--text-2);">Review complete — your cleansed file is ready to download.</div>
-      <button class="btn-primary" id="btnNext4">Continue to Download →</button>
+      <div style="font-size:12px;color:var(--text-2);">Review complete - your cleansed file is ready to download.</div>
+      <button class="btn-primary" id="btnNext4">Continue to Download -></button>
     </div>
   </div>
 
   <!-- ========== Screen 5: Download ========== -->
   <div class="wizard-screen" id="screen5">
     <div class="card">
-      <div class="card-head"><div class="card-title">✅ Cleanse Complete</div></div>
+      <div class="card-head"><div class="card-title">Cleanse Complete</div></div>
       <div class="card-body" style="text-align:center; padding: 26px 24px;">
         <svg style="width:56px;height:56px;color:#35c46b;margin-bottom:12px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
         <div style="font-size:18px;font-weight:600;color:var(--text);margin-bottom:6px;">Your file is ready!</div>
@@ -661,7 +783,7 @@
     </div>
 
     <div class="nav-buttons" style="justify-content:space-between; margin-top:14px;">
-      <button class="btn-secondary" id="btnBackDownload">← Back to statistics</button>
+      <button class="btn-secondary" id="btnBackDownload"><- Back to statistics</button>
       <button class="btn-primary" id="btnDownload">
         <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Download Cleansed File
@@ -671,6 +793,19 @@
     <div class="err" id="err5"></div>
   </div>
 
+</div>
+
+<!-- ========== Focus Review : rapid one-at-a-time triage overlay ========== -->
+<div class="focus-overlay" id="focusMode" aria-hidden="true">
+  <div class="focus-card" id="focusCard" role="dialog" aria-label="Focus review">
+    <div class="focus-head">
+      <span class="bucket-tag" id="focusBucketTag"></span>
+      <span class="fh-count" id="focusCount"></span>
+      <button class="fh-close" onclick="closeFocus()" title="Close (Esc)">X</button>
+    </div>
+    <div class="focus-prog"><i id="focusProgBar"></i></div>
+    <div id="focusContent"></div>
+  </div>
 </div>
 {% endblock %}
 
@@ -682,6 +817,7 @@ let sessionId = '';
 let fileData = null;
 let previewResults = [];
 let rowDecisions = {}; // rowIndex -> 'approve' | 'reject' | 'pending'
+let bucketDecisions = {}; // bucket -> 'approve' | 'reject'
 let allRows = [];
 let headers = [];
 let roles = {};
@@ -698,7 +834,7 @@ let reviewSummary = null;        // last /review_summary payload
 // Small chunks keep the progress bar moving smoothly. Each row takes ~1s
 // (pooled keep-alive HTTP to the geocoder), so a chunk of 10 updates the bar
 // roughly every ~10s with row count + live ETA.
-const CHUNK_SIZE = 10;
+const CHUNK_SIZE = 80;
 
 // ========== Step Navigation ==========
 function goToStep(n) {
@@ -848,7 +984,7 @@ document.getElementById('btnNext2').addEventListener('click', async () => {
   document.getElementById('procDone').textContent = '0';
   document.getElementById('procPct').textContent = '0%';
   document.getElementById('procFill').style.width = '0%';
-  document.getElementById('procNote').textContent = 'Processing in batches…';
+  document.getElementById('procNote').textContent = 'Processing in batches...';
 
   reviewThreshold = parseInt(document.getElementById('approveThreshold')?.value || 80);
 
@@ -891,12 +1027,12 @@ document.getElementById('btnNext2').addEventListener('click', async () => {
       const etaSec = rate > 0 ? Math.round(remaining / rate) : 0;
       const etaTxt = etaSec > 90 ? `~${Math.ceil(etaSec / 60)} min left` : `~${etaSec}s left`;
       document.getElementById('procNote').textContent =
-        `${rate.toFixed(1)} rows/sec · ${etaTxt}`;
+        `${rate.toFixed(1)} rows/sec - ${etaTxt}`;
 
       if (data.done) break;
       nextStart = data.next_start;
     }
-    document.getElementById('procNote').textContent = 'Done. Loading review console…';
+    document.getElementById('procNote').textContent = 'Done. Loading review console...';
 
     await loadReviewConsole();
     goToStep(3);
@@ -913,14 +1049,14 @@ document.getElementById('btnBack2').addEventListener('click', () => goToStep(1))
 // ========== Screen 3: AI Review ==========
 function renderColumnChanges(changes, rowNum) {
   if (!changes || !changes.length) {
-    return '<div class="col-change-none">No column changes — already clean</div>';
+    return '<div class="col-change-none">No column changes - already clean</div>';
   }
   const items = changes.map(c => `
     <div class="col-change">
       <span class="ccol">${escapeHtml(c.column)}</span>
       <span class="cval">
         <span class="from">${escapeHtml(c.from || '(empty)')}</span>
-        <span class="arrow">→</span>
+        <span class="arrow">-></span>
         <span class="to">${escapeHtml(c.to || '')}</span>
       </span>
     </div>`).join('');
@@ -938,7 +1074,7 @@ function renderInputFields(fields, changedCols) {
   return `<div class="col-changes">${items}</div>`;
 }
 
-// Single merged column: for every selected field show old → new (red → green)
+// Single merged column: for every selected field show old -> new (red -> green)
 // when it changed, or the plain value in white when it's unchanged.
 function renderMergedCorrections(inputFields, fieldChanges) {
   if (!inputFields || !inputFields.length) return '<div class="col-change-none">-</div>';
@@ -948,7 +1084,7 @@ function renderMergedCorrections(inputFields, fieldChanges) {
     const ch = byCol[f.column];
     const body = ch
       ? `<span class="from">${escapeHtml(ch.from || '(empty)')}</span>
-         <span class="arrow">→</span>
+         <span class="arrow">-></span>
          <span class="to">${escapeHtml(ch.to || '')}</span>`
       : `<span class="same">${escapeHtml(f.value || '(empty)')}</span>`;
     return `
@@ -967,7 +1103,7 @@ const BUCKET_META = {
   needs_review:  { label: 'Needs review',   dot: 'review' },
   already_clean: { label: 'Already clean',  dot: 'clean' },
   no_match:      { label: 'No match',       dot: 'nomatch' },
-  anomalies:     { label: '⚠ Anomalies',    dot: 'review' },
+  anomalies:     { label: '! Anomalies',    dot: 'review' },
 };
 
 // Human labels for anomaly flags (likely-wrong matches).
@@ -981,9 +1117,17 @@ const ANOMALY_LABELS = {
 };
 
 // Load summary + first page after processing completes or threshold changes.
+function defaultReviewBucket() {
+  const s = reviewSummary || {};
+  if ((s.anomaly_count || 0) > 0) return 'anomalies';
+  const b = s.buckets || {};
+  if ((b.needs_review || 0) > 0) return 'needs_review';
+  if ((b.no_match || 0) > 0) return 'no_match';
+  return 'all';
+}
 async function loadReviewConsole() {
   await refreshSummary();
-  activeBucket = 'all';
+  activeBucket = defaultReviewBucket();
   reviewPage = 0;
   renderFilterChips();
   await loadReviewPage();
@@ -1007,18 +1151,22 @@ function renderReviewKpis() {
   const pct = (n) => total ? Math.round((n / total) * 100) : 0;
   const kpis = [
     { cls: 'info', val: total.toLocaleString(), label: 'Rows Processed' },
-    { cls: 'ok',   val: (b.auto_fixable||0).toLocaleString(), label: 'Auto-fixable', sub: pct(b.auto_fixable||0)+'% · auto-applied' },
-    { cls: 'warn', val: (b.needs_review||0).toLocaleString(), label: 'Needs Review', sub: pct(b.needs_review||0)+'% of rows' },
+    { cls: 'ok',   val: (b.auto_fixable||0).toLocaleString(), label: 'Auto-fixable', sub: pct(b.auto_fixable||0)+'% - auto-applied' },
+    { cls: 'warn', val: (b.needs_review||0).toLocaleString(), label: 'Needs Review', sub: pct(b.needs_review||0)+'% of rows', bucket: 'needs_review' },
     { cls: 'info', val: (b.already_clean||0).toLocaleString(), label: 'Already Clean' },
     { cls: 'err',  val: (b.no_match||0).toLocaleString(), label: 'No Match' },
     { cls: 'ok',   val: (s.avg_confidence||0)+'%', label: 'Avg Confidence' },
     { cls: 'info', val: (s.fields_changeable||0).toLocaleString(), label: 'Field Corrections' },
-    { cls: (s.anomaly_count||0) ? 'err' : 'ok', val: (s.anomaly_count||0).toLocaleString(), label: '⚠ Flagged', sub: 'likely wrong — check' },
+    { cls: (s.anomaly_count||0) ? 'err' : 'ok', val: (s.anomaly_count||0).toLocaleString(), label: '! Flagged', sub: 'likely wrong - check', bucket: 'anomalies' },
   ];
-  document.getElementById('reviewKpis').innerHTML = kpis.map(k => `
-    <div class="kpi-card ${k.cls}"><div class="kbar"></div>
+  // A KPI with a `bucket` and a non-zero count launches Focus Review for it.
+  document.getElementById('reviewKpis').innerHTML = kpis.map(k => {
+    const live = k.bucket && parseInt(String(k.val).replace(/,/g,'')) > 0;
+    return `
+    <div class="kpi-card ${k.cls}${live ? ' clickable' : ''}"${live ? ` onclick="openFocus('${k.bucket}')"` : ''}><div class="kbar"></div>
       <div class="kv">${k.val}</div><div class="kl">${k.label}</div>
-      ${k.sub ? `<div class="ksub">${k.sub}</div>` : ''}</div>`).join('');
+      ${k.sub ? `<div class="ksub">${k.sub}</div>` : ''}</div>`;
+  }).join('');
 }
 
 function renderHistogram() {
@@ -1028,7 +1176,7 @@ function renderHistogram() {
   document.getElementById('confHistogram').innerHTML = hist.map((c, i) => {
     const h = Math.round((c / max) * 100);
     const cls = i >= thBin ? 'above' : 'below';
-    return `<div class="hbar ${cls}" style="height:${Math.max(2,h)}%" title="${i*10}–${i*10+10}%: ${c} rows"></div>`;
+    return `<div class="hbar ${cls}" style="height:${Math.max(2,h)}%" title="${i*10}-${i*10+10}%: ${c} rows"></div>`;
   }).join('');
 }
 
@@ -1043,9 +1191,9 @@ function renderFilterChips() {
     return `<span class="chip-f ${activeBucket===key?'on':''}" onclick="setBucket('${key}')">
       <span class="dot ${m.dot}"></span>${m.label} <span class="cnt">${count.toLocaleString()}</span></span>`;
   }).join('');
-  // Orthogonal anomaly filter — separated, red-accented.
+  // Orthogonal anomaly filter - separated, red-accented.
   html += `<span class="chip-f anom ${activeBucket==='anomalies'?'on':''}" onclick="setBucket('anomalies')"
-            style="margin-left:auto;">⚠ Anomalies <span class="cnt">${anomCount.toLocaleString()}</span></span>`;
+            style="margin-left:auto;">! Anomalies <span class="cnt">${anomCount.toLocaleString()}</span></span>`;
   document.getElementById('filterBar').innerHTML = html;
 }
 
@@ -1084,8 +1232,10 @@ async function loadReviewPage() {
   renderPager(data);
   const startN = data.total_matched ? reviewPage * reviewPageSize + 1 : 0;
   const endN = Math.min((reviewPage + 1) * reviewPageSize, data.total_matched);
-  document.getElementById('pageInfo').textContent = `${startN}–${endN} of ${data.total_matched.toLocaleString()}`;
+  document.getElementById('pageInfo').textContent = `${startN}-${endN} of ${data.total_matched.toLocaleString()}`;
   document.getElementById('bucketLabel').textContent = BUCKET_META[activeBucket].label;
+  const flb = document.getElementById('focusLaunchBtn');
+  if (flb) flb.textContent = ` Focus review${data.total_matched ? ` (${data.total_matched.toLocaleString()})` : ''}`;
 }
 
 function renderReviewTable(rows) {
@@ -1094,44 +1244,144 @@ function renderReviewTable(rows) {
   tbody.innerHTML = rows.map(r => {
     const conf = r.accuracy_percent || 0;
     const anoms = (r.anomalies || []).map(a =>
-      `<span class="anom-flag" title="Likely wrong match">⚠ ${ANOMALY_LABELS[a] || a}</span>`).join('');
-    const issues = (r.issues || []).map(i => `<span class="issue">• ${i}</span>`).join('');
-    const decision = rowDecisions[r.row_number] || 'pending';
+      `<span class="anom-flag" title="Likely wrong match">! ${ANOMALY_LABELS[a] || a}</span>`).join('');
+    const issues = (r.issues || [])
+      .filter(i => i !== 'suggestion_differs_from_input')
+      .map(i => `<span class="issue">- ${prettyIssue(i)}</span>`).join('');
+    const inheritedDecision = bucketDecisions[activeBucket] || bucketDecisions[r.bucket] || bucketDecisions.all;
+    const decision = rowDecisions[r.row_number] || inheritedDecision || 'pending';
     const m = BUCKET_META[r.bucket] || BUCKET_META.no_match;
+    const pendingLabel = r.bucket === 'auto_fixable' ? 'Auto apply' : 'Keep original';
     return `
     <tr id="row-${r.row_number}" data-row="${r.row_number}" class="${decision==='approve'?'approved':decision==='reject'?'rejected':''}">
       <td>#${r.row_number}</td>
       <td><span class="bucket-tag ${r.bucket}">${m.label}</span></td>
-      <td>${renderMergedCorrections(r.input_fields, r.field_changes)}</td>
+      <td>${renderCorrectionsCompact(r)}</td>
       <td>${conf}%</td>
       <td><div class="issues-list">${anoms}${issues || (anoms ? '' : '-')}</div></td>
       <td>
         <select onchange="setRowDecision(${r.row_number}, this.value)">
-          <option value="pending" ${decision === 'pending' ? 'selected' : ''}>Auto (default)</option>
-          <option value="approve" ${decision === 'approve' ? 'selected' : ''}>✓ Approve</option>
-          <option value="reject" ${decision === 'reject' ? 'selected' : ''}>✗ Reject</option>
+          <option value="pending" ${decision === 'pending' ? 'selected' : ''}>${pendingLabel}</option>
+          <option value="approve" ${decision === 'approve' ? 'selected' : ''}>Approve</option>
+          <option value="reject" ${decision === 'reject' ? 'selected' : ''}>Reject</option>
         </select>
       </td>
     </tr>`;
   }).join('');
+  // New page renders collapsed - keep the toggle label in sync.
+  if (allExpanded) toggleAllRows(true);
+}
+
+// Compact corrections cell: one short line per row (count + preview of new
+// values). The full field-by-field diff is rendered hidden and revealed on
+// demand - so a 50-row page stays ~50 lines tall instead of ~300, killing the
+// endless scroll on large files.
+function renderCorrectionsCompact(r) {
+  const changes = r.field_changes || [];
+  const n = changes.length;
+  const suggested = (r.full_verified_address || changes.map(c => c.to).filter(Boolean).join(', ')).trim();
+  const input = (r.query || (r.input_fields || []).map(f => f.value).filter(Boolean).join(', ')).trim();
+  if (!n) return `<div class="cc-summary muted">No changes - already clean</div>`;
+  const preview = changes.slice(0, 3)
+    .map(c => `<span class="cc-to">${escapeHtml(c.column)}: ${escapeHtml(c.to || '(empty)')}</span>`)
+    .join('<span class="cc-sep">-</span>');
+  const more = n > 3 ? `<span class="cc-more">+${n - 3}</span>` : '';
+  return `
+    <div class="cc-wrap" title="${escapeHtml(suggested)}">
+      <button class="cc-toggle" onclick="toggleRowDetail(${r.row_number}, event)" aria-expanded="false">
+        <span class="cc-chev">></span>
+        <span class="cc-count">${n} ${n === 1 ? 'field' : 'fields'}</span>
+        <span class="cc-preview">${preview}${more}</span>
+      </button>
+      <div class="cc-address">
+        <div class="cc-line input"><span class="lbl">Input</span><span class="val">${escapeHtml(input || '-')}</span></div>
+        <div class="cc-line suggested"><span class="lbl">AI fix</span><span class="val">${escapeHtml(suggested || '-')}</span></div>
+      </div>
+      <div class="cc-detail" id="ccd-${r.row_number}" hidden>
+        ${renderMergedCorrections(r.input_fields, r.field_changes)}
+      </div>
+    </div>`;
+}
+
+function toggleRowDetail(rowNum, ev) {
+  if (ev) ev.stopPropagation();
+  const d = document.getElementById('ccd-' + rowNum);
+  if (!d) return;
+  const wasOpen = !d.hasAttribute('hidden');
+  if (wasOpen) d.setAttribute('hidden', '');
+  else d.removeAttribute('hidden');
+  const btn = d.parentElement.querySelector('.cc-toggle');
+  if (btn) {
+    btn.setAttribute('aria-expanded', String(!wasOpen));
+    const chev = btn.querySelector('.cc-chev');
+    if (chev) chev.textContent = wasOpen ? '>' : 'v';
+  }
+}
+
+// Expand/collapse every row on the current page at once.
+let allExpanded = false;
+function toggleAllRows(expand) {
+  document.querySelectorAll('#reviewTableBody .cc-detail').forEach(d => {
+    if (expand) d.removeAttribute('hidden'); else d.setAttribute('hidden', '');
+  });
+  document.querySelectorAll('#reviewTableBody .cc-toggle').forEach(btn => {
+    btn.setAttribute('aria-expanded', String(expand));
+    const chev = btn.querySelector('.cc-chev');
+    if (chev) chev.textContent = expand ? 'v' : '>';
+  });
+}
+
+function toggleExpandAll() {
+  allExpanded = !allExpanded;
+  toggleAllRows(allExpanded);
+  const btn = document.getElementById('expandAllBtn');
+  if (btn) btn.textContent = allExpanded ? '- Collapse all' : '+ Expand all';
 }
 
 function renderPager(data) {
   const pages = data.total_pages || 1;
   const el = document.getElementById('pager');
-  if (pages <= 1) { el.innerHTML = ''; return; }
+  // Rows-per-page selector is always useful; paging controls only when needed.
+  const sizeSel = `
+    <span class="pgsize">
+      Rows / page
+      <select onchange="setPageSize(this.value)">
+        ${[25, 50, 100, 200].map(s =>
+          `<option value="${s}" ${reviewPageSize === s ? 'selected' : ''}>${s}</option>`).join('')}
+      </select>
+    </span>`;
+  if (pages <= 1) { el.innerHTML = sizeSel; return; }
   el.innerHTML = `
-    <button onclick="gotoPage(0)" ${reviewPage===0?'disabled':''}>« First</button>
-    <button onclick="gotoPage(${reviewPage-1})" ${reviewPage===0?'disabled':''}>‹ Prev</button>
-    <span class="pinfo">Page ${reviewPage+1} of ${pages}</span>
-    <button onclick="gotoPage(${reviewPage+1})" ${reviewPage>=pages-1?'disabled':''}>Next ›</button>
-    <button onclick="gotoPage(${pages-1})" ${reviewPage>=pages-1?'disabled':''}>Last »</button>`;
+    ${sizeSel}
+    <button onclick="gotoPage(0)" ${reviewPage===0?'disabled':''}><< First</button>
+    <button onclick="gotoPage(${reviewPage-1})" ${reviewPage===0?'disabled':''}>< Prev</button>
+    <span class="pinfo">Page
+      <input class="pgjump" type="number" min="1" max="${pages}" value="${reviewPage+1}"
+             onchange="jumpToPage(this.value, ${pages})"
+             onkeydown="if(event.key==='Enter')jumpToPage(this.value, ${pages})">
+      of ${pages}</span>
+    <button onclick="gotoPage(${reviewPage+1})" ${reviewPage>=pages-1?'disabled':''}>Next ></button>
+    <button onclick="gotoPage(${pages-1})" ${reviewPage>=pages-1?'disabled':''}>Last >></button>`;
 }
 
 async function gotoPage(p) { reviewPage = p; await loadReviewPage(); }
 
+function jumpToPage(v, pages) {
+  let p = parseInt(v, 10);
+  if (isNaN(p)) return;
+  p = Math.min(Math.max(1, p), pages) - 1;   // clamp to [0, pages-1]
+  gotoPage(p);
+}
+
+async function setPageSize(v) {
+  reviewPageSize = parseInt(v, 10) || 50;
+  reviewPage = 0;                              // avoid landing past the last page
+  await loadReviewPage();
+}
+
 function setRowDecision(rowNum, decision) {
-  rowDecisions[rowNum] = decision;
+  if (decision === 'pending') delete rowDecisions[rowNum];
+  else rowDecisions[rowNum] = decision;
   const tr = document.getElementById('row-' + rowNum);
   if (tr) {
     tr.classList.remove('approved', 'rejected');
@@ -1141,21 +1391,15 @@ function setRowDecision(rowNum, decision) {
   updateDecisionSummary();
 }
 
-// Bulk-decide every row in the current filter (server-side row-number list).
+// Bulk-decide the current filter as a server-side rule. This scales to lakhs
+// of rows because we do not materialize every row number in the browser.
 async function bulkDecide(decision) {
-  const resp = await fetch('/v2/address_cleanse/review_page', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      session_id: sessionId, threshold: reviewThreshold / 100,
-      bucket: activeBucket, page: 0, page_size: 1000000,
-    }),
-  });
-  const data = await resp.json();
-  if (!resp.ok) { showError('err3', data.error || 'Bulk action failed'); return; }
-  (data.rows || []).forEach(r => {
-    if (decision === 'pending') delete rowDecisions[r.row_number];
-    else rowDecisions[r.row_number] = decision;
-  });
+  if (activeBucket === 'all') {
+    showError('err3', 'Choose a focused bucket before bulk approving or rejecting.');
+    return;
+  }
+  if (decision === 'pending') delete bucketDecisions[activeBucket];
+  else bucketDecisions[activeBucket] = decision;
   await loadReviewPage();
   updateDecisionSummary();
 }
@@ -1163,10 +1407,165 @@ async function bulkDecide(decision) {
 function updateDecisionSummary() {
   const approved = Object.values(rowDecisions).filter(v => v === 'approve').length;
   const rejected = Object.values(rowDecisions).filter(v => v === 'reject').length;
+  const ruleApproved = Object.entries(bucketDecisions).filter(([k, v]) => v === 'approve').map(([k]) => BUCKET_META[k]?.label || k);
+  const ruleRejected = Object.entries(bucketDecisions).filter(([k, v]) => v === 'reject').map(([k]) => BUCKET_META[k]?.label || k);
   const auto = (reviewSummary && reviewSummary.buckets && reviewSummary.buckets.auto_fixable) || 0;
   document.getElementById('decisionSummary').innerHTML =
-    `<b>${auto.toLocaleString()}</b> auto-applied · <b>${approved}</b> manually approved · <b>${rejected}</b> rejected`;
+    `<b>${auto.toLocaleString()}</b> safe rows auto-applied · <b>${approved}</b> row approvals · <b>${rejected}</b> row rejects` +
+    (ruleApproved.length ? ` · approve buckets: <b>${ruleApproved.join(', ')}</b>` : '') +
+    (ruleRejected.length ? ` · reject buckets: <b>${ruleRejected.join(', ')}</b>` : '');
 }
+
+// ========== Focus Review : full-screen rapid triage ==========
+// Loads every row in a bucket once, then lets the user blast through them
+// one big card at a time with huge buttons + keyboard shortcuts. Decisions
+// write straight into rowDecisions, so the existing submit/stats flow is unchanged.
+let focusRows = [];
+let focusIdx = 0;
+
+async function openFocus(bucket) {
+  const target = bucket || activeBucket;
+  const launch = document.getElementById('focusLaunchBtn');
+  if (launch) launch.disabled = true;
+  try {
+    const resp = await fetch('/v2/address_cleanse/review_page', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: sessionId, threshold: reviewThreshold / 100,
+        bucket: target, page: 0, page_size: 1000000,
+      }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { showError('err3', data.error || 'Could not load rows'); return; }
+    focusRows = data.rows || [];
+    if (!focusRows.length) { showError('err3', 'No rows to review in this filter.'); return; }
+    // Keep chips/table in sync with whatever bucket we're focusing.
+    if (target !== activeBucket) { activeBucket = target; renderFilterChips(); }
+    focusIdx = 0;
+    const fm = document.getElementById('focusMode');
+    fm.classList.add('open');
+    fm.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    renderFocusCard();
+  } finally {
+    if (launch) launch.disabled = false;
+  }
+}
+
+function closeFocus() {
+  const fm = document.getElementById('focusMode');
+  fm.classList.remove('open');
+  fm.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = '';
+  // Reflect everything decided in focus mode back into the table + counters.
+  loadReviewPage();
+  updateDecisionSummary();
+}
+
+function renderFocusCard() {
+  const total = focusRows.length;
+  const decided = focusRows.filter(x => ['approve','reject'].includes(rowDecisions[x.row_number])).length;
+  document.getElementById('focusProgBar').style.width = (total ? decided / total * 100 : 0) + '%';
+
+  if (focusIdx >= total) { renderFocusDone(decided); return; }
+
+  const r = focusRows[focusIdx];
+  const m = BUCKET_META[r.bucket] || BUCKET_META.no_match;
+  const tag = document.getElementById('focusBucketTag');
+  tag.className = 'bucket-tag ' + r.bucket;
+  tag.textContent = m.label;
+  document.getElementById('focusCount').textContent = `Row ${focusIdx + 1} of ${total} - ${decided} decided`;
+
+  const conf = r.accuracy_percent || 0;
+  const ringC = conf >= 80 ? '#35c46b' : conf >= 60 ? '#ffb454' : 'var(--red)';
+  const anoms = (r.anomalies || []).map(a =>
+    `<span class="anom-flag">! ${ANOMALY_LABELS[a] || a}</span>`).join('');
+  const issues = (r.issues || [])
+    .filter(i => i !== 'suggestion_differs_from_input')
+    .map(i => `<span class="fissue">- ${escapeHtml(prettyIssue(i))}</span>`).join('');
+  const dec = rowDecisions[r.row_number];
+  const decPill = dec === 'approve' ? `<span class="focus-decided a">Approved</span>`
+                : dec === 'reject'  ? `<span class="focus-decided r">Rejected</span>` : '';
+
+  document.getElementById('focusContent').innerHTML = `
+    <div class="focus-body">
+      <div class="focus-rownum">Original row #${r.row_number}</div>
+      ${renderMergedCorrections(r.input_fields, r.field_changes)}
+      <div class="focus-meta">
+        <div class="conf-ring" style="--p:${conf};--ring-c:${ringC}"><b>${conf}%</b></div>
+        <div>
+          <div class="conf-lbl">Confidence</div>
+          <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">${anoms || '<span class="conf-lbl">No anomalies flagged</span>'}</div>
+        </div>
+        <div style="margin-left:auto;text-align:right;">${decPill}<div style="margin-top:4px;">${issues}</div></div>
+      </div>
+    </div>
+    <div class="focus-foot">
+      <button class="fbtn reject" onclick="focusDecide('reject')">Reject <span class="kbd">R</span></button>
+      <button class="fbtn approve" onclick="focusDecide('approve')">Approve <span class="kbd">A</span></button>
+    </div>
+    <div class="focus-nav">
+      <button onclick="focusNav(-1)" ${focusIdx === 0 ? 'disabled' : ''}><- Prev</button>
+      <button onclick="focusNav(1)">Skip / Next -></button>
+    </div>`;
+}
+
+function renderFocusDone(decided) {
+  const approved = focusRows.filter(x => rowDecisions[x.row_number] === 'approve').length;
+  const rejected = focusRows.filter(x => rowDecisions[x.row_number] === 'reject').length;
+  const skipped = focusRows.length - approved - rejected;
+  document.getElementById('focusProgBar').style.width = '100%';
+  document.getElementById('focusCount').textContent = `${focusRows.length} reviewed`;
+  document.getElementById('focusContent').innerHTML = `
+    <div class="focus-body" style="text-align:center;padding:40px 24px;">
+      <div style="font-size:46px;line-height:1;margin-bottom:12px;"></div>
+      <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px;">All caught up!</div>
+      <div style="font-size:13px;color:var(--text-2);margin-bottom:20px;">You went through every row in this filter.</div>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+        <span class="focus-decided a"> ${approved} approved</span>
+        <span class="focus-decided r">X ${rejected} rejected</span>
+        <span class="focus-decided" style="color:var(--text-2);background:var(--surface-2);">Auto ${skipped} left on auto</span>
+      </div>
+    </div>
+    <div class="focus-foot">
+      <button class="fbtn" style="color:var(--text);background:var(--surface);" onclick="focusNav(-1)"><- Back to last row</button>
+      <button class="fbtn approve" onclick="closeFocus()">Done</button>
+    </div>`;
+}
+
+function focusDecide(decision) {
+  const r = focusRows[focusIdx];
+  if (!r) return;
+  rowDecisions[r.row_number] = decision;
+  const card = document.getElementById('focusCard');
+  card.classList.remove('flash-ok', 'flash-no');
+  void card.offsetWidth;               // reflow so the flash animation restarts
+  card.classList.add(decision === 'approve' ? 'flash-ok' : 'flash-no');
+  focusIdx++;
+  renderFocusCard();
+}
+
+function focusNav(delta) {
+  const n = focusIdx + delta;
+  if (n < 0 || n > focusRows.length) return;
+  focusIdx = n;
+  renderFocusCard();
+}
+
+// Keyboard shortcuts - only active while the overlay is open.
+document.addEventListener('keydown', (e) => {
+  const fm = document.getElementById('focusMode');
+  if (!fm || !fm.classList.contains('open')) return;
+  switch (e.key.toLowerCase()) {
+    case 'a':          e.preventDefault(); focusDecide('approve'); break;
+    case 'r':          e.preventDefault(); focusDecide('reject');  break;
+    case 'arrowright':
+    case 's':
+    case ' ':          e.preventDefault(); focusNav(1);  break;
+    case 'arrowleft':  e.preventDefault(); focusNav(-1); break;
+    case 'escape':     e.preventDefault(); closeFocus(); break;
+  }
+});
 
 document.getElementById('btnNext3').addEventListener('click', async () => {
   const approved = Object.entries(rowDecisions).filter(([k, v]) => v === 'approve').map(([k, v]) => parseInt(k));
@@ -1183,6 +1582,7 @@ document.getElementById('btnNext3').addEventListener('click', async () => {
         approved_rows: approved,
         rejected_rows: rejected,
         // Auto-approve threshold: rows in the auto-fixable bucket get applied
+        bucket_decisions: bucketDecisions,
         // automatically unless explicitly rejected. Rows outside the processed
         // scope pass through unchanged (handled server-side).
         threshold: reviewThreshold / 100,
@@ -1254,11 +1654,11 @@ function renderStatistics(s) {
   const subEl = document.querySelector('.stats-sub');
   if (subEl) {
     subEl.textContent = passthrough > 0
-      ? `AI processed ${processed.toLocaleString()} of ${fileTotal.toLocaleString()} rows — the other ${passthrough.toLocaleString()} pass through unchanged.`
+      ? `AI processed ${processed.toLocaleString()} of ${fileTotal.toLocaleString()} rows - the other ${passthrough.toLocaleString()} pass through unchanged.`
       : `Full audit of all ${fileTotal.toLocaleString()} processed rows.`;
   }
 
-  // ── KPI cards ──
+  // -- KPI cards --
   const kpis = [
     { cls: 'info', val: fileTotal.toLocaleString(), label: 'Rows in File' },
     { cls: 'info', val: processed.toLocaleString(), label: 'AI Processed', sub: passthrough > 0 ? `${passthrough.toLocaleString()} passed through` : 'whole file' },
@@ -1278,19 +1678,19 @@ function renderStatistics(s) {
       ${k.sub ? `<div class="ksub">${k.sub}</div>` : ''}
     </div>`).join('');
 
-  // ── Corrections by column ──
+  // -- Corrections by column --
   renderBars('colBreakdown', s.changes_by_column || [], 'ok',
     'No corrections were applied.');
 
-  // ── AI action breakdown ──
+  // -- AI action breakdown --
   const actions = (s.action_breakdown || []).map(([k, v]) => [ACTION_LABELS[k] || k, v]);
   renderBars('actionBreakdown', actions, 'info', 'No actions recorded.');
 
-  // ── Data-quality issues ──
+  // -- Data-quality issues --
   const issues = (s.issues_breakdown || []).map(([k, v]) => [prettyIssue(k), v]);
-  renderBars('issuesBreakdown', issues, 'warn', 'No data-quality issues detected. 🎉');
+  renderBars('issuesBreakdown', issues, 'warn', 'No data-quality issues detected. ');
 
-  // ── Geocoding & confidence meta ──
+  // -- Geocoding & confidence meta --
   const geoPct = pctProc(s.geocoded || 0);
   document.getElementById('qualityMeta').innerHTML = `
     <div class="ring-wrap">
@@ -1301,7 +1701,7 @@ function renderStatistics(s) {
       </div>
     </div>
     <div class="meta-row"><span class="ml">Average match confidence</span><span class="mv">${s.avg_confidence || 0}%</span></div>
-    <div class="meta-row"><span class="ml">⚠ Rows flagged as anomalies</span><span class="mv">${(s.rows_with_anomaly||0).toLocaleString()}</span></div>
+    <div class="meta-row"><span class="ml">! Rows flagged as anomalies</span><span class="mv">${(s.rows_with_anomaly||0).toLocaleString()}</span></div>
     ${passthrough ? `<div class="meta-row"><span class="ml">Rows passed through (not processed)</span><span class="mv">${passthrough.toLocaleString()}</span></div>` : ''}
     <div class="meta-row"><span class="ml">Processed rows left unchanged</span><span class="mv">${(s.unchanged||0).toLocaleString()}</span></div>
     <div class="meta-row"><span class="ml">Total field-level corrections</span><span class="mv">${(s.fields_corrected||0).toLocaleString()}</span></div>`;
@@ -1373,6 +1773,7 @@ document.getElementById('btnDownload').addEventListener('click', async () => {
       body: JSON.stringify({
         session_id: sessionId, approved_rows: approved, rejected_rows: rejected,
         threshold: reviewThreshold / 100, include_columns: include,
+        bucket_decisions: bucketDecisions,
         save_to_history: true,
       }),
     });

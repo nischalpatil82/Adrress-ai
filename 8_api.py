@@ -23,6 +23,9 @@ import re
 import sys
 import time
 from collections import Counter
+from collections import OrderedDict as _OrderedDict
+import threading as _threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -61,6 +64,13 @@ legacy_corrector = None
 startup_error = None
 v2_pipeline = None
 v2_error: str | None = None
+
+# Global in-memory geocoding cache: normalised_query -> correction_result.
+# Shared across all sessions to avoid duplicate geocoding for identical
+# addresses.
+_GEO_CACHE_MAX = 1024  # entries  (very safe on modern hardware)
+_global_geo_cache: dict[str, object] = {}
+_GEO_CACHE_LOCK = _threading.Lock()
 
 
 def _maybe_load_v2(force_reload: bool = False) -> None:
@@ -620,17 +630,56 @@ def _values_equivalent(before: str, after: str) -> bool:
 
 
 def _address_similarity(before: str, after: str) -> float:
-    before = before or ""
-    after = after or ""
+    before = _compare_text(before or "")
+    after = _compare_text(after or "")
     if not before or not after:
         return 0.0
     try:
         from rapidfuzz import fuzz
         return float(fuzz.token_set_ratio(before, after)) / 100.0
     except Exception:
-        b = set(_compare_text(before).split())
-        a = set(_compare_text(after).split())
+        b = set(before.split())
+        a = set(after.split())
         return len(a & b) / max(len(a | b), 1)
+
+def _field_agreement_score(row: dict, structured: dict, roles: dict) -> float:
+    """How well verified core fields agree with the user's original fields."""
+    scores: list[float] = []
+    s = structured or {}
+
+    city_col = roles.get("city") if roles else None
+    if city_col:
+        before = _safe_text(row.get(city_col))
+        after = _safe_text(s.get("city"))
+        if before and after:
+            scores.append(_address_similarity(before, after))
+
+    state_col = roles.get("state") if roles else None
+    if state_col:
+        before = _expand_state(_safe_text(row.get(state_col)))
+        after = _expand_state(_safe_text(s.get("state")))
+        if before and after:
+            scores.append(1.0 if _compare_text(before) == _compare_text(after) else 0.0)
+
+    postal_col = roles.get("postal") if roles else None
+    if postal_col:
+        before = _safe_text(row.get(postal_col))
+        after = _normalize_postal(s.get("pincode"), before, _safe_text(s.get("country")))
+        if before and after:
+            b = re.sub(r"\D+", "", before)
+            a = re.sub(r"\D+", "", after)
+            if b and a:
+                scores.append(1.0 if b[:5] == a[:5] else 0.0)
+
+    address_col = roles.get("address1") if roles else None
+    if address_col:
+        before = _safe_text(row.get(address_col))
+        street = " ".join(p for p in [_safe_text(s.get("house_number")), _safe_text(s.get("street"))] if p)
+        if before and street:
+            scores.append(_address_similarity(before, street))
+
+    return sum(scores) / len(scores) if scores else 0.75
+
 
 
 def _title_if_caps(text: str) -> str:
@@ -886,34 +935,32 @@ def _summarize_result(row: dict, result, roles: dict[str, str],
     similarity = _address_similarity(query, full_address)
     confidence = float(getattr(result, "confidence", 0.0) or 0.0)
 
-    # Graded per-address confidence. For geocode-derived results the pipeline
-    # assigns a flat floor (e.g. 0.85 for any street-level match), so every row
-    # looks identical. Replace it with a score that actually varies, blending:
-    #   - Google's match precision (rooftop vs interpolated vs approximate)
-    #   - input similarity (does the resolved address match what was typed?)
-    #   - field completeness (street/city/state/postal/country resolved?)
     geocoded = structured.get("lat") is not None and structured.get("lon") is not None
+    anomalies = _detect_anomalies(row, structured, roles, country_hint, similarity) if result else []
+
+    # Graded per-address confidence. Precision alone was creating a flat 83%
+    # for many valid rows. Blend geocode precision with field agreement so the
+    # approval threshold remains useful at 85% and above.
     if geocoded and "precision" in structured:
-        # Graded per-address confidence from the two TRUSTWORTHY signals:
-        #   - geocode precision (rooftop > street-interpolated > area > approx)
-        #   - field completeness (street/city/state/postal/country resolved?)
-        # (Input similarity is deliberately NOT used — it's unreliable here:
-        # the org-name column isn't in Google's formatted address, so it reads
-        # low for correct rows and high for junk.)
         precision = float(structured.get("precision") or 0.0)
-        # Remap so a clean area-level match reads ~0.83 (a good cleanse, just
-        # not a rooftop pin) instead of being punished as if it were wrong.
-        precision_score = {1.0: 0.97, 0.85: 0.90, 0.65: 0.83, 0.45: 0.60}.get(
-            round(precision, 2), 0.55 + 0.42 * precision)
+        precision_score = {1.0: 0.98, 0.85: 0.94, 0.65: 0.88, 0.45: 0.62}.get(
+            round(precision, 2), 0.58 + 0.40 * precision)
         key_fields = ("street", "city", "state", "pincode", "country")
         present = sum(1 for k in key_fields if _safe_text(structured.get(k)))
         completeness = present / len(key_fields)
-        confidence = max(0.0, min(1.0, precision_score * (0.85 + 0.15 * completeness)))
+        agreement = _field_agreement_score(row, structured, roles)
+        confidence = (0.48 * precision_score) + (0.37 * agreement) + (0.15 * completeness)
+        if precision >= 0.65 and agreement >= 0.82 and not anomalies:
+            confidence = max(confidence, 0.88)
+        if precision >= 0.65 and agreement >= 0.93 and not anomalies:
+            confidence = max(confidence, 0.92)
+        if anomalies:
+            confidence = min(confidence, 0.84)
+        confidence = max(0.0, min(1.0, confidence))
 
     if full_address and query and similarity < 0.72:
         trusted = False
         issues.append("suggestion_differs_from_input")
-    anomalies = _detect_anomalies(row, structured, roles, country_hint, similarity) if result else []
     if trusted and not field_changes:
         action = "already_clean"
     elif trusted and field_changes:
@@ -958,8 +1005,19 @@ def _bucket_of(summary: dict, threshold: float) -> str:
     thresh_pct = threshold * 100.0
     action = summary.get("action")
     has_changes = bool(summary.get("field_changes"))
+    issues = set(summary.get("issues") or [])
+    anomalies = summary.get("anomalies") or []
+    hard_review = bool(anomalies) or bool({
+        "generic_geocode_result",
+        "country_mismatch",
+        "state_mismatch",
+        "city_mismatch",
+        "processing_error",
+    } & issues)
     if conf_pct <= 0 and not has_changes:
         return "no_match"
+    if hard_review:
+        return "needs_review"
     if action == "already_clean":
         return "already_clean"
     if has_changes and conf_pct >= thresh_pct:
@@ -979,6 +1037,8 @@ def _lean_record(summary: dict) -> dict:
         "field_changes": summary["field_changes"],
         "input_fields": summary["input_fields"],
         "changed_columns": summary["changed_columns"],
+        "full_verified_address": summary.get("full_verified_address", ""),
+        "query": summary.get("query", ""),
     }
 
 
@@ -996,18 +1056,34 @@ def _process_cleanse_row(row: dict, idx: int, roles: dict, address_cols: list,
     result = None
     if query and _ensure_v2_available():
         key = _compare_text(query)
+        # 1) in-session cache (same upload, repeat rows / preview+final)
         if key in cache:
             result = cache[key]
-        elif model_budget is not None and model_budget[0] >= _MODEL_ROW_LIMIT:
-            result = None
+        # 2) global cross-session cache (different uploads, same address)
         else:
-            try:
-                result = _v2_correct_with_recovery(query, top_n=3)
-            except Exception:
+            with _GEO_CACHE_LOCK:
+                if key in _global_geo_cache:
+                    result = _global_geo_cache[key]
+                    cache[key] = result
+        if result is None:
+            if model_budget is not None and model_budget[0] >= _MODEL_ROW_LIMIT:
                 result = None
-            cache[key] = result
-            if model_budget is not None:
-                model_budget[0] += 1
+            else:
+                try:
+                    result = _v2_correct_with_recovery(query, top_n=3)
+                except Exception:
+                    result = None
+                cache[key] = result
+                # 3) store in global cache (FIFO eviction when full)
+                with _GEO_CACHE_LOCK:
+                    if len(_global_geo_cache) >= _GEO_CACHE_MAX:
+                        try:
+                            _global_geo_cache.pop(next(iter(_global_geo_cache)))
+                        except (KeyError, StopIteration):
+                            pass
+                    _global_geo_cache[key] = result
+                if model_budget is not None:
+                    model_budget[0] += 1
     summary = _summarize_result(row, result, roles, address_cols, min_confidence, query)
     summary["row_number"] = idx
     summary["query"] = query
@@ -1323,25 +1399,40 @@ def address_cleanse_process_chunk_v2():
     all_results = sess.setdefault("_all_results", {})  # row_number(str) -> lean record
 
     if address_cols and _ensure_v2_available():
-        # Process serially. Concurrency was measured to be SLOWER here and threw
-        # SSL errors: the external geocoder/validation endpoints reject
-        # concurrent TLS from this client (Windows). The real speedup comes from
-        # the pooled keep-alive HTTP session in verify.py (~2.6x: 2.75s->1.06s
-        # per row by avoiding a fresh SSL handshake on every call).
-        for idx in range(chunk_start, chunk_end):
+        # Process rows concurrently for speed while staying within API rate
+        # limits.  Google allows ~50 geocode req/s  =>  10 workers keeps us
+        # well under that and still gets ~8 x parallelism on rows that hit
+        # cache / DB.  Each worker gets its own requests Session (handled
+        # inside v2_pipeline), so we avoid the "SSL UNEXPECTED_EOF" that
+        # caused the old serial-only decision.
+        def _worker(args):
+            idx, row = args
             try:
                 summary, _ = _process_cleanse_row(
-                    rows[idx], idx + 1, roles, address_cols, country_hint,
+                    row, idx + 1, roles, address_cols, country_hint,
                     min_confidence, cache)
-                all_results[str(idx + 1)] = _lean_record(summary)
+                rec = _lean_record(summary)
             except Exception:  # noqa: BLE001
-                all_results[str(idx + 1)] = {
+                rec = {
                     "row_number": idx + 1, "accuracy_percent": 0.0,
                     "action": "no_match", "issues": ["processing_error"],
                     "field_changes": [],
-                    "input_fields": [{"column": c, "value": _safe_text(rows[idx].get(c))} for c in address_cols],
+                    "input_fields": [{"column": c, "value": _safe_text(row.get(c))} for c in address_cols],
                     "changed_columns": [],
                 }
+            return idx, rec
+
+        _WORKERS = 10  # safe headroom under Google rate limits
+        try:
+            with ThreadPoolExecutor(max_workers=_WORKERS) as pool:
+                for future in as_completed(pool.submit(_worker, (i, rows[i]))
+                                            for i in range(chunk_start, chunk_end)):
+                    idx, rec = future.result()
+                    all_results[str(idx + 1)] = rec
+        except RuntimeError:
+            # Thread-pool blow-up (should be impossible); fall back to serial
+            for idx in range(chunk_start, chunk_end):
+                all_results[str(idx + 1)] = _worker((idx, rows[idx]))[1]
     else:
         for idx in range(chunk_start, chunk_end):
             query = _build_query(rows[idx], address_cols, country_hint)
@@ -1472,6 +1563,7 @@ def address_cleanse_final_v2():
     min_confidence = sess.get("min_confidence", 0.80)
     approved_rows = set(data.get("approved_rows", []))
     rejected_rows = set(data.get("rejected_rows", []))
+    bucket_decisions = data.get("bucket_decisions", {}) if isinstance(data.get("bucket_decisions", {}), dict) else {}
     # Auto-approve threshold (fraction): rows in the "auto_fixable" bucket
     # (trusted suggestion, confidence >= threshold) get applied automatically
     # unless the user explicitly rejected them.
@@ -1550,14 +1642,22 @@ def address_cleanse_final_v2():
             confidence_n += 1
 
         bucket = _bucket_of(summary, threshold)
-        if idx in approved_rows:
+        bucket_decision_scope = bucket
+        bucket_decision = bucket_decisions.get(bucket)
+        if summary.get("anomalies") and bucket_decisions.get("anomalies"):
+            bucket_decision_scope = "anomalies"
+            bucket_decision = bucket_decisions.get("anomalies")
+        if bucket_decision is None and bucket_decisions.get("all"):
+            bucket_decision_scope = "all"
+            bucket_decision = bucket_decisions.get("all")
+        if idx in approved_rows or bucket_decision == "approve":
             for change in summary["field_changes"]:
                 corrected_row[change["column"]] = change["to"]
-            corrected_row["Cleanse Action"] = "user_approved"
+            corrected_row["Cleanse Action"] = "user_approved" if idx in approved_rows else f"bucket_approved:{bucket_decision_scope}"
             stats["approved"] += 1
             _count_applied(summary["field_changes"])
-        elif idx in rejected_rows:
-            corrected_row["Cleanse Action"] = "user_rejected"
+        elif idx in rejected_rows or bucket_decision == "reject":
+            corrected_row["Cleanse Action"] = "user_rejected" if idx in rejected_rows else f"bucket_rejected:{bucket_decision_scope}"
             stats["rejected"] += 1
         elif bucket == "auto_fixable":
             for change in summary["field_changes"]:
