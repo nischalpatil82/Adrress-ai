@@ -239,6 +239,9 @@
   .btn-resolve-city:hover {
     background: rgba(53,196,107,.20); border-color: #35c46b; color: #fff;
   }
+  .val-unchanged {
+    color: var(--text); padding: 2px 6px; font-weight: 500;
+  }
   .chip-f .cnt { font-weight: 700; }
   .chip-f .dot { width: 8px; height: 8px; border-radius: 50%; }
   .chip-f .dot.auto { background: #35c46b; }
@@ -1429,32 +1432,50 @@ function renderCardHtml(r) {
   
   // Build body changes list
   let bodyHtml = '';
-  if (changes.length === 0) {
+  if (changes.length === 0 && (r.input_fields || []).length === 0) {
     bodyHtml = '<div class="no-changes-msg">' +
       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:#35c46b;flex:none;"><polyline points="20 6 9 17 4 12"></polyline></svg>' +
       'Address is already clean (no changes suggested)' +
     '</div>';
   } else {
+    const changeMap = {};
+    changes.forEach(function(ch) {
+      changeMap[ch.column] = ch;
+    });
+    
     bodyHtml = '<div class="col-changes-list">' +
-      changes.map(function(ch) {
-        const colDec = getColumnDecision(r.row_number, ch.column, r.bucket);
-        const approveBtnClass = colDec === 'approve' || (colDec !== 'keep' && colDec !== 'approve') ? 'col-btn approve active' : 'col-btn approve';
-        const keepBtnClass = colDec === 'keep' ? 'col-btn keep active' : 'col-btn keep';
-        const currentVal = (colDec !== 'keep' && colDec !== 'approve') ? colDec : (ch.to || '');
-        
-        return '<div class="col-change-row">' +
-          '<div class="col-name" title="' + escapeHtml(ch.column) + '">' + escapeHtml(ch.column) + '</div>' +
-          '<div class="col-diff">' +
-            '<span class="diff-val-old" title="' + escapeHtml(ch.from || '(empty)') + '">' + escapeHtml(ch.from || '(empty)') + '</span>' +
-            '<span class="diff-val-arrow">&rarr;</span>' +
-            '<input type="text" class="col-edit-input" placeholder="Enter value..." value="' + escapeHtml(currentVal) + '" ' +
-              'oninput="onColumnEdit(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', this.value, \'' + r.bucket + '\')">' +
-          '</div>' +
-          '<div class="col-action-grp">' +
-            '<button class="' + approveBtnClass + '" onclick="setColumnDecision(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', \'approve\', \'' + r.bucket + '\')">Approve</button>' +
-            '<button class="' + keepBtnClass + '" onclick="setColumnDecision(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', \'keep\', \'' + r.bucket + '\')">Keep Original</button>' +
-          '</div>' +
-        '</div>';
+      (r.input_fields || []).map(function(f) {
+        const ch = changeMap[f.column];
+        if (ch) {
+          const colDec = getColumnDecision(r.row_number, ch.column, r.bucket);
+          const approveBtnClass = colDec === 'approve' || (colDec !== 'keep' && colDec !== 'approve') ? 'col-btn approve active' : 'col-btn approve';
+          const keepBtnClass = colDec === 'keep' ? 'col-btn keep active' : 'col-btn keep';
+          const currentVal = (colDec !== 'keep' && colDec !== 'approve') ? colDec : (ch.to || '');
+          
+          return '<div class="col-change-row">' +
+            '<div class="col-name" title="' + escapeHtml(ch.column) + '">' + escapeHtml(ch.column) + '</div>' +
+            '<div class="col-diff">' +
+              '<span class="diff-val-old" title="' + escapeHtml(ch.from || '(empty)') + '">' + escapeHtml(ch.from || '(empty)') + '</span>' +
+              '<span class="diff-val-arrow">&rarr;</span>' +
+              '<input type="text" class="col-edit-input" placeholder="Enter value..." value="' + escapeHtml(currentVal) + '" ' +
+                'oninput="onColumnEdit(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', this.value, \'' + r.bucket + '\')">' +
+            '</div>' +
+            '<div class="col-action-grp">' +
+              '<button class="' + approveBtnClass + '" onclick="setColumnDecision(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', \'approve\', \'' + r.bucket + '\')">Approve</button>' +
+              '<button class="' + keepBtnClass + '" onclick="setColumnDecision(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', \'keep\', \'' + r.bucket + '\')">Keep Original</button>' +
+            '</div>' +
+          '</div>';
+        } else {
+          return '<div class="col-change-row unchanged">' +
+            '<div class="col-name" title="' + escapeHtml(f.column) + '">' + escapeHtml(f.column) + '</div>' +
+            '<div class="col-diff">' +
+              '<span class="val-unchanged" title="' + escapeHtml(f.value || '(empty)') + '">' + escapeHtml(f.value || '(empty)') + '</span>' +
+            '</div>' +
+            '<div class="col-action-grp" style="visibility: hidden;">' +
+              '<button class="col-btn">Approve</button>' +
+            '</div>' +
+          '</div>';
+        }
       }).join('') +
     '</div>';
   }
@@ -1913,32 +1934,50 @@ function renderFocusCard() {
   const changes = getRowChangesUnion(r);
   
   let bodyHtml = '';
-  if (changes.length === 0) {
+  if (changes.length === 0 && (r.input_fields || []).length === 0) {
     bodyHtml = '<div class="no-changes-msg">' +
       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:#35c46b;flex:none;"><polyline points="20 6 9 17 4 12"></polyline></svg>' +
       'Address is already clean (no changes suggested)' +
     '</div>';
   } else {
+    const changeMap = {};
+    changes.forEach(function(ch) {
+      changeMap[ch.column] = ch;
+    });
+    
     bodyHtml = '<div class="col-changes-list">' +
-      changes.map(function(ch) {
-        const colDec = getColumnDecision(r.row_number, ch.column, r.bucket);
-        const approveBtnClass = colDec === 'approve' || (colDec !== 'keep' && colDec !== 'approve') ? 'col-btn approve active' : 'col-btn approve';
-        const keepBtnClass = colDec === 'keep' ? 'col-btn keep active' : 'col-btn keep';
-        const currentVal = (colDec !== 'keep' && colDec !== 'approve') ? colDec : (ch.to || '');
-        
-        return '<div class="col-change-row">' +
-          '<div class="col-name" title="' + escapeHtml(ch.column) + '">' + escapeHtml(ch.column) + '</div>' +
-          '<div class="col-diff">' +
-            '<span class="diff-val-old" title="' + escapeHtml(ch.from || '(empty)') + '">' + escapeHtml(ch.from || '(empty)') + '</span>' +
-            '<span class="diff-val-arrow">&rarr;</span>' +
-            '<input type="text" class="col-edit-input" placeholder="Enter value..." value="' + escapeHtml(currentVal) + '" ' +
-              'oninput="onColumnEdit(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', this.value, \'' + r.bucket + '\')">' +
-          '</div>' +
-          '<div class="col-action-grp">' +
-            '<button class="' + approveBtnClass + '" onclick="setColumnDecision(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', \'approve\', \'' + r.bucket + '\')">Approve</button>' +
-            '<button class="' + keepBtnClass + '" onclick="setColumnDecision(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', \'keep\', \'' + r.bucket + '\')">Keep Original</button>' +
-          '</div>' +
-        '</div>';
+      (r.input_fields || []).map(function(f) {
+        const ch = changeMap[f.column];
+        if (ch) {
+          const colDec = getColumnDecision(r.row_number, ch.column, r.bucket);
+          const approveBtnClass = colDec === 'approve' || (colDec !== 'keep' && colDec !== 'approve') ? 'col-btn approve active' : 'col-btn approve';
+          const keepBtnClass = colDec === 'keep' ? 'col-btn keep active' : 'col-btn keep';
+          const currentVal = (colDec !== 'keep' && colDec !== 'approve') ? colDec : (ch.to || '');
+          
+          return '<div class="col-change-row">' +
+            '<div class="col-name" title="' + escapeHtml(ch.column) + '">' + escapeHtml(ch.column) + '</div>' +
+            '<div class="col-diff">' +
+              '<span class="diff-val-old" title="' + escapeHtml(ch.from || '(empty)') + '">' + escapeHtml(ch.from || '(empty)') + '</span>' +
+              '<span class="diff-val-arrow">&rarr;</span>' +
+              '<input type="text" class="col-edit-input" placeholder="Enter value..." value="' + escapeHtml(currentVal) + '" ' +
+                'oninput="onColumnEdit(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', this.value, \'' + r.bucket + '\')">' +
+            '</div>' +
+            '<div class="col-action-grp">' +
+              '<button class="' + approveBtnClass + '" onclick="setColumnDecision(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', \'approve\', \'' + r.bucket + '\')">Approve</button>' +
+              '<button class="' + keepBtnClass + '" onclick="setColumnDecision(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', \'keep\', \'' + r.bucket + '\')">Keep Original</button>' +
+            '</div>' +
+          '</div>';
+        } else {
+          return '<div class="col-change-row unchanged">' +
+            '<div class="col-name" title="' + escapeHtml(f.column) + '">' + escapeHtml(f.column) + '</div>' +
+            '<div class="col-diff">' +
+              '<span class="val-unchanged" title="' + escapeHtml(f.value || '(empty)') + '">' + escapeHtml(f.value || '(empty)') + '</span>' +
+            '</div>' +
+            '<div class="col-action-grp" style="visibility: hidden;">' +
+              '<button class="col-btn">Approve</button>' +
+            '</div>' +
+          '</div>';
+        }
       }).join('') +
     '</div>';
   }
