@@ -1672,6 +1672,30 @@ function resolveStateTo(rowNum, resolvedState, bucket) {
   resolveFieldTo(rowNum, 'state', resolvedState, bucket);
 }
 
+function setRowDecision(rowNum, decision) {
+  const rowObj = findRowObject(rowNum);
+  if (!rowObj) return;
+  
+  if (!fieldDecisions[rowNum]) fieldDecisions[rowNum] = {};
+  
+  (rowObj.field_changes || []).forEach(function(ch) {
+    if (decision === 'approve') {
+      fieldDecisions[rowNum][ch.column] = 'approve';
+    } else if (decision === 'reject') {
+      fieldDecisions[rowNum][ch.column] = 'keep';
+    }
+  });
+  
+  syncRowDecisionFromFields(rowNum, rowObj.field_changes, rowObj.bucket);
+  
+  const fm = document.getElementById('focusMode');
+  if (fm && fm.classList.contains('open')) {
+    renderFocusCard();
+  } else {
+    renderCardInline(rowNum, rowObj);
+  }
+}
+
 function syncRowDecisionFromFields(rowNum, fieldChanges, bucket) {
   const rowObj = findRowObject(rowNum);
   if (!rowObj) return;
