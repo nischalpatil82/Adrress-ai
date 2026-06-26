@@ -892,7 +892,8 @@ def _detect_anomalies(row: dict, structured: dict, roles: dict,
     in_state = _expand_state(_safe_text(row.get(state_col))) if state_col else ""
     res_state = _expand_state(_safe_text(s.get("state")))
     if in_state and res_state and _compare_text(in_state) != _compare_text(res_state):
-        anomalies.append("state_mismatch")
+        resolved_state_name = s.get("state") or ""
+        anomalies.append(f"state_mismatch:{resolved_state_name}")
 
     return anomalies
 

@@ -1466,6 +1466,11 @@ function renderCardHtml(r) {
       return '<span class="anom-flag" title="Likely wrong match">! City differs (resolved as ' + escapeHtml(resolvedCity) + ')</span>' +
              '<button type="button" class="btn-resolve-city" onclick="resolveCityTo(' + r.row_number + ', \'' + escapeHtmlJs(resolvedCity) + '\', \'' + r.bucket + '\')">Resolve to ' + escapeHtml(resolvedCity) + '</button>';
     }
+    if (a.indexOf('state_mismatch:') === 0) {
+      const resolvedState = a.split(':')[1];
+      return '<span class="anom-flag" title="Likely wrong match">! State differs (resolved as ' + escapeHtml(resolvedState) + ')</span>' +
+             '<button type="button" class="btn-resolve-city" onclick="resolveStateTo(' + r.row_number + ', \'' + escapeHtmlJs(resolvedState) + '\', \'' + r.bucket + '\')">Resolve to ' + escapeHtml(resolvedState) + '</button>';
+    }
     return '<span class="anom-flag" title="Likely wrong match">! ' + (ANOMALY_LABELS[a] || a) + '</span>';
   }).join('');
   const issues = (r.issues || [])
@@ -1621,10 +1626,10 @@ function getRowChangesUnion(r) {
   return changes;
 }
 
-function resolveCityTo(rowNum, resolvedCity, bucket) {
-  const cityColName = roles.city || 'CITY';
+function resolveFieldTo(rowNum, fieldRole, value, bucket) {
+  const colName = roles[fieldRole] || fieldRole.toUpperCase();
   if (!fieldDecisions[rowNum]) fieldDecisions[rowNum] = {};
-  fieldDecisions[rowNum][cityColName] = resolvedCity;
+  fieldDecisions[rowNum][colName] = value;
   
   const rowObj = findRowObject(rowNum);
   if (rowObj) {
@@ -1636,6 +1641,14 @@ function resolveCityTo(rowNum, resolvedCity, bucket) {
       renderCardInline(rowNum, rowObj);
     }
   }
+}
+
+function resolveCityTo(rowNum, resolvedCity, bucket) {
+  resolveFieldTo(rowNum, 'city', resolvedCity, bucket);
+}
+
+function resolveStateTo(rowNum, resolvedState, bucket) {
+  resolveFieldTo(rowNum, 'state', resolvedState, bucket);
 }
 
 function syncRowDecisionFromFields(rowNum, fieldChanges, bucket) {
@@ -1882,6 +1895,11 @@ function renderFocusCard() {
       const resolvedCity = a.split(':')[1];
       return '<span class="anom-flag">! City differs (resolved as ' + escapeHtml(resolvedCity) + ')</span>' +
              '<button type="button" class="btn-resolve-city" onclick="resolveCityTo(' + r.row_number + ', \'' + escapeHtmlJs(resolvedCity) + '\', \'' + r.bucket + '\')">Resolve to ' + escapeHtml(resolvedCity) + '</button>';
+    }
+    if (a.indexOf('state_mismatch:') === 0) {
+      const resolvedState = a.split(':')[1];
+      return '<span class="anom-flag">! State differs (resolved as ' + escapeHtml(resolvedState) + ')</span>' +
+             '<button type="button" class="btn-resolve-city" onclick="resolveStateTo(' + r.row_number + ', \'' + escapeHtmlJs(resolvedState) + '\', \'' + r.bucket + '\')">Resolve to ' + escapeHtml(resolvedState) + '</button>';
     }
     return '<span class="anom-flag">! ' + (ANOMALY_LABELS[a] || a) + '</span>';
   }).join('');
