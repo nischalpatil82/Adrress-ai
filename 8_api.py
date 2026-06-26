@@ -389,10 +389,8 @@ _TRUSTED_STATUSES = {
     "verified", "high_confidence", "found_in_database", "generated",
 }
 
-# Max rows the model will process in one cleanse run. Default high enough to
-# cover whole files; override with the env var for cost control. The previous
-# default of 50 silently truncated large files.
-_MODEL_ROW_LIMIT = int(os.getenv("ADDRESS_CLEANSE_MODEL_ROW_LIMIT", "5000"))
+_MODEL_ROW_LIMIT = int(os.getenv("ADDRESS_CLEANSE_MODEL_ROW_LIMIT", "1000000"))
+_FILE_ROW_LIMIT = int(os.getenv("ADDRESS_CLEANSE_FILE_ROW_LIMIT", "1000000"))
 
 # Street-suffix + directional + unit abbreviations -> full words. Used to
 # standardize geocoder output (which abbreviates: "St", "Rd", "Tpke", "Hwy")
@@ -1188,8 +1186,8 @@ def address_cleanse_preview_v2():
         return jsonify({"error": f"Failed to parse file: {exc}"}), 400
 
     original_count = len(rows)
-    if len(rows) > 1000:
-        rows = rows[:1000]
+    if len(rows) > _FILE_ROW_LIMIT:
+        rows = rows[:_FILE_ROW_LIMIT]
 
     roles = _suggest_column_roles(headers, rows)
     address_cols = _filtered_address_columns(headers, roles)
@@ -1894,8 +1892,8 @@ def address_cleanse_v2():
     except Exception as exc:  # noqa: BLE001
         return jsonify({"error": f"Failed to parse file: {exc}"}), 400
 
-    if len(rows) > 1000:
-        rows = rows[:1000]
+    if len(rows) > _FILE_ROW_LIMIT:
+        rows = rows[:_FILE_ROW_LIMIT]
 
     address_cols = request.form.getlist("address_columns")
     if not address_cols:
