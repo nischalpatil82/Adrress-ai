@@ -230,6 +230,15 @@
     background: rgba(239,68,68,.10); border: 1px solid rgba(239,68,68,.30);
     border-radius: 4px; padding: 1px 6px; margin: 0 4px 3px 0; white-space: nowrap;
   }
+  .btn-resolve-city {
+    display: inline-flex; align-items: center; font-size: 10.5px; font-weight: 600; color: #35c46b;
+    background: rgba(53,196,107,.10); border: 1px solid rgba(53,196,107,.30);
+    border-radius: 4px; padding: 1px 6px; margin: 0 4px 3px 0; white-space: nowrap;
+    cursor: pointer; transition: all .15s ease;
+  }
+  .btn-resolve-city:hover {
+    background: rgba(53,196,107,.20); border-color: #35c46b; color: #fff;
+  }
   .chip-f .cnt { font-weight: 700; }
   .chip-f .dot { width: 8px; height: 8px; border-radius: 50%; }
   .chip-f .dot.auto { background: #35c46b; }
@@ -533,6 +542,142 @@
   .focus-nav button:hover:not(:disabled) { color: var(--text); background: var(--surface-2); }
   .focus-nav button:disabled { opacity: .35; cursor: not-allowed; }
 
+  /* -- Enterprise exception cards -- */
+  .review-list { display: grid; gap: 10px; padding: 10px; max-height: calc(100vh - 190px); overflow: auto; }
+  .review-empty { text-align: center; color: var(--text-2); padding: 28px; border: 1px dashed var(--border); border-radius: 8px; background: var(--surface-2); }
+  .review-card { border: 1px solid var(--border); border-radius: 8px; background: rgba(18,18,20,.92); overflow: hidden; }
+  .review-card.approved { border-color: rgba(53,196,107,.42); background: rgba(20,38,28,.55); }
+  .review-card.rejected { border-color: rgba(239,68,68,.42); background: rgba(42,18,20,.55); }
+  .review-card-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .review-row-id { font-weight: 750; color: var(--text); min-width: 52px; }
+  .review-head-spacer { flex: 1; }
+  .confidence-pill { display: inline-flex; align-items: center; gap: 7px; color: var(--text); font-size: 12px; font-weight: 700; }
+  .conf-track-sm { width: 72px; height: 6px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; }
+  .conf-fill-sm { height: 100%; background: #35c46b; border-radius: 999px; }
+  
+  .review-card-body { padding: 12px; }
+  .card-actions-head { display: flex; gap: 6px; margin-right: 12px; }
+  .card-action-btn { border: 1px solid var(--border); border-radius: 5px; background: var(--surface-2); color: var(--text-2); padding: 4px 10px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.15s ease; }
+  .card-action-btn:hover { border-color: var(--border-strong); background: var(--surface); color: var(--text); }
+  .card-action-btn.approve.active { border-color: rgba(53,196,107,.45); color: #35c46b; background: rgba(53,196,107,.12); }
+  .card-action-btn.keep.active { border-color: rgba(255,180,84,.45); color: #ffb454; background: rgba(255,180,84,.10); }
+  .card-action-btn.reject.active { border-color: rgba(239,68,68,.45); color: var(--red); background: rgba(239,68,68,.12); }
+
+  .col-changes-list { display: flex; flex-direction: column; gap: 4px; }
+  .col-change-row { display: grid; grid-template-columns: 140px 1fr auto; align-items: center; gap: 16px; padding: 8px 12px; border-bottom: 1px dashed var(--border); transition: background 0.2s ease; border-radius: 4px; }
+  .col-change-row:last-child { border-bottom: none; }
+  .col-change-row:hover { background: rgba(255,255,255,0.02); }
+  .col-name { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .col-diff { display: flex; align-items: center; gap: 8px; font-size: 12.5px; overflow: hidden; }
+  .diff-val-old { color: var(--text-3); text-decoration: line-through; background: rgba(239, 68, 68, 0.08); padding: 2px 6px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 250px; }
+  .diff-val-arrow { color: var(--text-3); font-weight: bold; }
+  .diff-val-new { color: #35c46b; font-weight: 600; background: rgba(53, 196, 107, 0.08); padding: 2px 6px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 250px; }
+  .col-edit-input {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: #35c46b;
+    font-weight: 600;
+    padding: 3px 8px;
+    font-size: 12px;
+    width: 100%;
+    max-width: 250px;
+    transition: all 0.15s ease;
+  }
+  .col-edit-input:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--border-strong);
+  }
+  .col-edit-input:focus {
+    outline: none;
+    border-color: #35c46b;
+    background: rgba(53, 196, 107, 0.08);
+    box-shadow: 0 0 0 2px rgba(53, 196, 107, 0.2);
+  }
+  .col-action-grp { display: inline-flex; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; background: var(--surface); }
+  .col-btn { border: none; background: none; color: var(--text-2); padding: 5px 12px; font-size: 10.5px; font-weight: 600; cursor: pointer; transition: all 0.15s ease; border-right: 1px solid var(--border); }
+  .col-btn:last-child { border-right: none; }
+  .col-btn:hover { background: var(--surface-2); color: var(--text); }
+  .col-btn.approve.active { background: rgba(53, 196, 107, 0.15); color: #35c46b; font-weight: 700; }
+  .col-btn.keep.active { background: rgba(255, 180, 84, 0.15); color: #ffb454; font-weight: 700; }
+  .no-changes-msg { font-size: 12px; color: var(--text-2); font-style: italic; padding: 8px 12px; display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.01); border-radius: 4px; }
+  .issue-summary { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; padding: 0 12px 4px; }
+
+  /* -- Smart dashboard -- */
+  .dashboard-banner { border: 1px solid var(--border); border-radius: 10px; background: rgba(18,18,20,.92); padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; margin-bottom: 12px; }
+  .db-head { display: flex; align-items: center; justify-content: space-between; }
+  .db-title { font-size: 15px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .db-title svg { color: #35c46b; }
+  .db-body { border: 1px solid rgba(53,196,107,.25); border-radius: 8px; background: rgba(53,196,107,.04); padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .db-body.has-exceptions { border-color: var(--border); background: var(--surface-2); }
+  .db-info { display: flex; flex-direction: column; gap: 4px; }
+  .db-info-t { font-size: 13.5px; font-weight: 700; color: var(--text); }
+  .db-info-d { font-size: 11.5px; color: var(--text-2); }
+  .db-actions { display: flex; gap: 10px; align-items: center; }
+  .time-est { font-size: 11.5px; color: var(--text-3); display: flex; align-items: center; gap: 4px; }
+  /* -- Collapsible Toggles -- */
+  details.kpi-details, details.advanced-settings {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.01);
+    margin-bottom: 12px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+  }
+  details.kpi-details[open], details.advanced-settings[open] {
+    background: rgba(255, 255, 255, 0.02);
+    border-color: var(--border-strong);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+  details.kpi-details summary, details.advanced-settings summary {
+    list-style: none;
+    padding: 10px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+    user-select: none;
+    background: var(--surface-2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.15s ease, color 0.15s ease;
+    border-bottom: 1px solid transparent;
+  }
+  details.kpi-details[open] summary, details.advanced-settings[open] summary {
+    border-bottom-color: var(--border);
+  }
+  details.kpi-details summary::-webkit-details-marker,
+  details.advanced-settings summary::-webkit-details-marker {
+    display: none;
+  }
+  details.kpi-details summary:hover, details.advanced-settings summary:hover {
+    background: var(--surface);
+    color: var(--text);
+  }
+  details.kpi-details summary::before, details.advanced-settings summary::before {
+    content: '▶';
+    font-size: 9px;
+    color: var(--text-3);
+    transition: transform 0.2s ease;
+    display: inline-block;
+  }
+  details.kpi-details[open] summary::before, details.advanced-settings[open] summary::before {
+    transform: rotate(90deg);
+  }
+  details.kpi-details .kpi-grid {
+    margin: 14px;
+  }
+  details.advanced-settings .card {
+    margin: 14px;
+    border: none;
+    background: none;
+    padding: 0;
+  }
+  details.advanced-settings .card-body {
+    padding: 0;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .focus-overlay.open, .focus-body, .focus-card.flash-ok, .focus-card.flash-no { animation: none; }
   }
@@ -652,67 +797,57 @@
 
   <!-- ========== Screen 3: Enterprise AI Review Console ========== -->
   <div class="wizard-screen" id="screen3">
+    <!-- Smart Dashboard Banner -->
+    <div class="dashboard-banner" id="smartDashboard"></div>
 
-    <!-- KPI dashboard -->
-    <div class="kpi-grid" id="reviewKpis" style="margin-bottom:12px;"></div>
+    <!-- KPI dashboard (collapsible/advanced) -->
+    <details class="kpi-details">
+      <summary>📊 View KPI Dashboard & Analytics</summary>
+      <div class="kpi-grid" id="reviewKpis"></div>
+    </details>
 
     <!-- Threshold + confidence histogram -->
-    <div class="card" style="margin-bottom:12px;">
-      <div class="card-body">
-        <div class="thresh-row">
-          <div>
-            <div style="font-size:13px;font-weight:600;color:var(--text);">Auto-approve confidence threshold</div>
-            <div style="font-size:11px;color:var(--text-3);margin-top:2px;">Only rows with no hard warnings and confidence above this threshold are auto-applied. Flagged rows stay in the exception queue.</div>
+    <details class="advanced-settings">
+      <summary>⚙ Advanced Settings (Confidence Threshold)</summary>
+      <div class="card">
+        <div class="card-body">
+          <div class="thresh-row">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text);">Auto-approve confidence threshold</div>
+              <div style="font-size:11px;color:var(--text-3);margin-top:2px;">Only rows with confidence above this threshold are auto-applied. Flagged rows stay in the exception queue.</div>
+            </div>
+            <div class="thresh-control">
+              <input type="range" id="approveThreshold" min="0" max="100" step="1" value="80" oninput="onThresholdInput(this.value)">
+              <span class="thresh-val"><b id="threshVal">80</b>%</span>
+            </div>
           </div>
-          <div class="thresh-control">
-            <input type="range" id="approveThreshold" min="0" max="100" step="1" value="80" oninput="onThresholdInput(this.value)">
-            <span class="thresh-val"><b id="threshVal">80</b>%</span>
-          </div>
+          <div class="histogram" id="confHistogram" title="Confidence distribution"></div>
+          <div class="histo-axis"><span>0%</span><span>50%</span><span>100%</span></div>
         </div>
-        <div class="histogram" id="confHistogram" title="Confidence distribution"></div>
-        <div class="histo-axis"><span>0%</span><span>50%</span><span>100%</span></div>
       </div>
-    </div>
+    </details>
 
     <!-- Filter chips -->
     <div class="filter-bar" id="filterBar"></div>
 
-    <!-- Bulk actions -->
-    <div class="bulk-bar">
+    <!-- Queue toolbar -->
+    <div class="bulk-bar" style="margin-bottom:10px;">
       <div style="font-size:12px;color:var(--text-2);">
-        Exception queue <b id="pageInfo">0</b> · <span id="bucketLabel">All</span>
+        Exception queue: <span id="bucketLabel">All</span> (<b id="pageInfo">0</b> rows)
       </div>
       <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
-        <button class="btn-secondary" id="expandAllBtn" onclick="toggleExpandAll()">+ Expand all</button>
         <button class="btn-primary focus-launch" id="focusLaunchBtn" onclick="openFocus()">Focus review</button>
-        <button class="btn-secondary" onclick="bulkDecide('approve')">Approve this filter</button>
-        <button class="btn-secondary" onclick="bulkDecide('reject')">Reject this filter</button>
-        <button class="btn-secondary" onclick="bulkDecide('pending')">Reset this filter</button>
       </div>
     </div>
 
-    <!-- Review Table (server-paginated) -->
-    <div class="card" style="overflow:auto;max-height:calc(100vh - 170px);">
-      <table class="review-table" id="reviewTable">
-        <thead>
-          <tr>
-            <th>Row</th>
-            <th>Bucket</th>
-            <th>Corrections <span style="font-weight:400;color:var(--text-3);">(red -> green = changed - white = unchanged)</span></th>
-            <th>Confidence</th>
-            <th>Issues</th>
-            <th style="width:120px;">Decision</th>
-          </tr>
-        </thead>
-        <tbody id="reviewTableBody"></tbody>
-      </table>
-    </div>
+    <!-- Exception Cards Queue (instead of table) -->
+    <div class="review-list" id="reviewTableBody"></div>
 
     <!-- Pagination -->
     <div class="pager" id="pager"></div>
 
     <!-- Continue bar -->
-    <div class="batch-bar">
+    <div class="batch-bar" style="margin-top:14px;">
       <div style="font-size:12px;color:var(--text-2);">
         <span id="decisionSummary">Safe rows are handled automatically. Review only exceptions or override by bucket.</span>
       </div>
@@ -831,6 +966,8 @@ let activeBucket = 'all';
 let reviewPage = 0;
 let reviewPageSize = 50;
 let reviewSummary = null;        // last /review_summary payload
+let fieldDecisions = {};         // { [rowNum]: { [colName]: 'approve' | 'keep' } }
+let pageRows = [];               // Cache of current page rows
 // Small chunks keep the progress bar moving smoothly. Each row takes ~1s
 // (pooled keep-alive HTTP to the geocoder), so a chunk of 10 updates the bar
 // roughly every ~10s with row count + live ETA.
@@ -1143,6 +1280,7 @@ async function refreshSummary() {
   renderReviewKpis();
   renderHistogram();
   renderFilterChips();
+  renderSmartDashboard();
 }
 
 function renderReviewKpis() {
@@ -1228,7 +1366,8 @@ async function loadReviewPage() {
   });
   const data = await resp.json();
   if (!resp.ok) throw new Error(data.error || 'Page load failed');
-  renderReviewTable(data.rows || []);
+  pageRows = data.rows || [];
+  renderReviewTable(pageRows);
   renderPager(data);
   const startN = data.total_matched ? reviewPage * reviewPageSize + 1 : 0;
   const endN = Math.min((reviewPage + 1) * reviewPageSize, data.total_matched);
@@ -1239,103 +1378,369 @@ async function loadReviewPage() {
 }
 
 function renderReviewTable(rows) {
-  const tbody = document.getElementById('reviewTableBody');
-  if (!rows.length) { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-2);padding:24px;">No rows in this filter.</td></tr>`; return; }
-  tbody.innerHTML = rows.map(r => {
-    const conf = r.accuracy_percent || 0;
-    const anoms = (r.anomalies || []).map(a =>
-      `<span class="anom-flag" title="Likely wrong match">! ${ANOMALY_LABELS[a] || a}</span>`).join('');
-    const issues = (r.issues || [])
-      .filter(i => i !== 'suggestion_differs_from_input')
-      .map(i => `<span class="issue">- ${prettyIssue(i)}</span>`).join('');
-    const inheritedDecision = bucketDecisions[activeBucket] || bucketDecisions[r.bucket] || bucketDecisions.all;
-    const decision = rowDecisions[r.row_number] || inheritedDecision || 'pending';
-    const m = BUCKET_META[r.bucket] || BUCKET_META.no_match;
-    const pendingLabel = r.bucket === 'auto_fixable' ? 'Auto apply' : 'Keep original';
-    return `
-    <tr id="row-${r.row_number}" data-row="${r.row_number}" class="${decision==='approve'?'approved':decision==='reject'?'rejected':''}">
-      <td>#${r.row_number}</td>
-      <td><span class="bucket-tag ${r.bucket}">${m.label}</span></td>
-      <td>${renderCorrectionsCompact(r)}</td>
-      <td>${conf}%</td>
-      <td><div class="issues-list">${anoms}${issues || (anoms ? '' : '-')}</div></td>
-      <td>
-        <select onchange="setRowDecision(${r.row_number}, this.value)">
-          <option value="pending" ${decision === 'pending' ? 'selected' : ''}>${pendingLabel}</option>
-          <option value="approve" ${decision === 'approve' ? 'selected' : ''}>Approve</option>
-          <option value="reject" ${decision === 'reject' ? 'selected' : ''}>Reject</option>
-        </select>
-      </td>
-    </tr>`;
+  const container = document.getElementById('reviewTableBody');
+  if (!rows.length) {
+    container.innerHTML = '<div class="review-empty">No rows in this filter.</div>';
+    return;
+  }
+  container.innerHTML = rows.map(function(r) { return renderCardHtml(r); }).join('');
+}
+
+function renderCardHtml(r) {
+  const changes = getRowChangesUnion(r);
+  const m = BUCKET_META[r.bucket] || BUCKET_META.no_match;
+  
+  // Resolve card decision class
+  const inheritedDecision = bucketDecisions[activeBucket] || bucketDecisions[r.bucket] || bucketDecisions.all;
+  const decision = rowDecisions[r.row_number] || inheritedDecision || 'pending';
+  
+  let cardClass = '';
+  if (decision === 'approve') cardClass = 'approved';
+  else if (decision === 'reject') cardClass = 'rejected';
+  
+  // Build header elements
+  const conf = r.accuracy_percent || 0;
+  const confColor = conf >= 80 ? '#35c46b' : conf >= 60 ? '#ffb454' : 'var(--red)';
+  const confPillHtml = '<div class="confidence-pill">' +
+    '<span>Confidence: <b>' + conf + '%</b></span>' +
+    '<div class="conf-track-sm">' +
+      '<div class="conf-fill-sm" style="width:' + conf + '%;background:' + confColor + ';"></div>' +
+    '</div>' +
+  '</div>';
+  
+  let bulkActionsHtml = '';
+  if (changes.length > 0) {
+    let allApprove = true;
+    let allKeep = true;
+    changes.forEach(function(ch) {
+      const dec = getColumnDecision(r.row_number, ch.column, r.bucket);
+      if (dec !== 'approve') allApprove = false;
+      if (dec !== 'keep') allKeep = false;
+    });
+    
+    const approveAllClass = allApprove ? 'card-action-btn approve active' : 'card-action-btn';
+    const keepAllClass = allKeep ? 'card-action-btn keep active' : 'card-action-btn';
+    
+    bulkActionsHtml = '<div class="card-actions-head">' +
+      '<button class="' + approveAllClass + '" onclick="setRowDecision(' + r.row_number + ', \'approve\')">Approve All</button>' +
+      '<button class="' + keepAllClass + '" onclick="setRowDecision(' + r.row_number + ', \'reject\')">Keep All</button>' +
+    '</div>';
+  }
+  
+  // Build body changes list
+  let bodyHtml = '';
+  if (changes.length === 0) {
+    bodyHtml = '<div class="no-changes-msg">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:#35c46b;flex:none;"><polyline points="20 6 9 17 4 12"></polyline></svg>' +
+      'Address is already clean (no changes suggested)' +
+    '</div>';
+  } else {
+    bodyHtml = '<div class="col-changes-list">' +
+      changes.map(function(ch) {
+        const colDec = getColumnDecision(r.row_number, ch.column, r.bucket);
+        const approveBtnClass = colDec === 'approve' || (colDec !== 'keep' && colDec !== 'approve') ? 'col-btn approve active' : 'col-btn approve';
+        const keepBtnClass = colDec === 'keep' ? 'col-btn keep active' : 'col-btn keep';
+        const currentVal = (colDec !== 'keep' && colDec !== 'approve') ? colDec : (ch.to || '');
+        
+        return '<div class="col-change-row">' +
+          '<div class="col-name" title="' + escapeHtml(ch.column) + '">' + escapeHtml(ch.column) + '</div>' +
+          '<div class="col-diff">' +
+            '<span class="diff-val-old" title="' + escapeHtml(ch.from || '(empty)') + '">' + escapeHtml(ch.from || '(empty)') + '</span>' +
+            '<span class="diff-val-arrow">&rarr;</span>' +
+            '<input type="text" class="col-edit-input" placeholder="Enter value..." value="' + escapeHtml(currentVal) + '" ' +
+              'oninput="onColumnEdit(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', this.value, \'' + r.bucket + '\')">' +
+          '</div>' +
+          '<div class="col-action-grp">' +
+            '<button class="' + approveBtnClass + '" onclick="setColumnDecision(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', \'approve\', \'' + r.bucket + '\')">Approve</button>' +
+            '<button class="' + keepBtnClass + '" onclick="setColumnDecision(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', \'keep\', \'' + r.bucket + '\')">Keep Original</button>' +
+          '</div>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  }
+  
+  // Build issues & anomalies footer
+  const anoms = (r.anomalies || []).map(function(a) {
+    if (a.indexOf('city_mismatch:') === 0) {
+      const resolvedCity = a.split(':')[1];
+      return '<span class="anom-flag" title="Likely wrong match">! City differs (resolved as ' + escapeHtml(resolvedCity) + ')</span>' +
+             '<button type="button" class="btn-resolve-city" onclick="resolveCityTo(' + r.row_number + ', \'' + escapeHtmlJs(resolvedCity) + '\', \'' + r.bucket + '\')">Resolve to ' + escapeHtml(resolvedCity) + '</button>';
+    }
+    return '<span class="anom-flag" title="Likely wrong match">! ' + (ANOMALY_LABELS[a] || a) + '</span>';
   }).join('');
-  // New page renders collapsed - keep the toggle label in sync.
-  if (allExpanded) toggleAllRows(true);
+  const issues = (r.issues || [])
+    .filter(function(i) { return i !== 'suggestion_differs_from_input'; })
+    .map(function(i) { return '<span class="issue">- ' + prettyIssue(i) + '</span>'; }).join('');
+  
+  let footerHtml = '';
+  if (anoms || issues) {
+    footerHtml = '<div class="issue-summary">' + anoms + issues + '</div>';
+  }
+  
+  return '<div id="row-' + r.row_number + '" data-row="' + r.row_number + '" class="review-card ' + cardClass + '">' +
+    '<div class="review-card-head">' +
+      '<span class="review-row-id">Row #' + r.row_number + '</span>' +
+      '<span class="bucket-tag ' + r.bucket + '">' + m.label + '</span>' +
+      confPillHtml +
+      '<div class="review-head-spacer"></div>' +
+      bulkActionsHtml +
+    '</div>' +
+    '<div class="review-card-body">' +
+      bodyHtml +
+      footerHtml +
+    '</div>' +
+  '</div>';
 }
 
-// Compact corrections cell: one short line per row (count + preview of new
-// values). The full field-by-field diff is rendered hidden and revealed on
-// demand - so a 50-row page stays ~50 lines tall instead of ~300, killing the
-// endless scroll on large files.
-function renderCorrectionsCompact(r) {
-  const changes = r.field_changes || [];
-  const n = changes.length;
-  const suggested = (r.full_verified_address || changes.map(c => c.to).filter(Boolean).join(', ')).trim();
-  const input = (r.query || (r.input_fields || []).map(f => f.value).filter(Boolean).join(', ')).trim();
-  if (!n) return `<div class="cc-summary muted">No changes - already clean</div>`;
-  const preview = changes.slice(0, 3)
-    .map(c => `<span class="cc-to">${escapeHtml(c.column)}: ${escapeHtml(c.to || '(empty)')}</span>`)
-    .join('<span class="cc-sep">-</span>');
-  const more = n > 3 ? `<span class="cc-more">+${n - 3}</span>` : '';
-  return `
-    <div class="cc-wrap" title="${escapeHtml(suggested)}">
-      <button class="cc-toggle" onclick="toggleRowDetail(${r.row_number}, event)" aria-expanded="false">
-        <span class="cc-chev">></span>
-        <span class="cc-count">${n} ${n === 1 ? 'field' : 'fields'}</span>
-        <span class="cc-preview">${preview}${more}</span>
-      </button>
-      <div class="cc-address">
-        <div class="cc-line input"><span class="lbl">Input</span><span class="val">${escapeHtml(input || '-')}</span></div>
-        <div class="cc-line suggested"><span class="lbl">AI fix</span><span class="val">${escapeHtml(suggested || '-')}</span></div>
-      </div>
-      <div class="cc-detail" id="ccd-${r.row_number}" hidden>
-        ${renderMergedCorrections(r.input_fields, r.field_changes)}
-      </div>
-    </div>`;
-}
-
-function toggleRowDetail(rowNum, ev) {
-  if (ev) ev.stopPropagation();
-  const d = document.getElementById('ccd-' + rowNum);
-  if (!d) return;
-  const wasOpen = !d.hasAttribute('hidden');
-  if (wasOpen) d.setAttribute('hidden', '');
-  else d.removeAttribute('hidden');
-  const btn = d.parentElement.querySelector('.cc-toggle');
-  if (btn) {
-    btn.setAttribute('aria-expanded', String(!wasOpen));
-    const chev = btn.querySelector('.cc-chev');
-    if (chev) chev.textContent = wasOpen ? '>' : 'v';
+function renderCardInline(rowNum, r) {
+  const card = document.getElementById('row-' + rowNum);
+  if (card) {
+    card.outerHTML = renderCardHtml(r);
   }
 }
 
-// Expand/collapse every row on the current page at once.
-let allExpanded = false;
-function toggleAllRows(expand) {
-  document.querySelectorAll('#reviewTableBody .cc-detail').forEach(d => {
-    if (expand) d.removeAttribute('hidden'); else d.setAttribute('hidden', '');
-  });
-  document.querySelectorAll('#reviewTableBody .cc-toggle').forEach(btn => {
-    btn.setAttribute('aria-expanded', String(expand));
-    const chev = btn.querySelector('.cc-chev');
-    if (chev) chev.textContent = expand ? 'v' : '>';
-  });
+function onColumnEdit(rowNum, colName, value, bucket) {
+  if (!fieldDecisions[rowNum]) fieldDecisions[rowNum] = {};
+  
+  const rowObj = findRowObject(rowNum);
+  if (!rowObj) return;
+  const ch = rowObj.field_changes.find(function(c) { return c.column === colName; });
+  if (!ch) return;
+  
+  if (value === ch.from) {
+    fieldDecisions[rowNum][colName] = 'keep';
+  } else if (value === ch.to) {
+    fieldDecisions[rowNum][colName] = 'approve';
+  } else {
+    fieldDecisions[rowNum][colName] = value;
+  }
+  
+  syncRowDecisionFromFields(rowNum, rowObj.field_changes, bucket);
+  updateCardActionStatesInline(rowNum, colName, bucket, rowObj);
 }
 
-function toggleExpandAll() {
-  allExpanded = !allExpanded;
-  toggleAllRows(allExpanded);
-  const btn = document.getElementById('expandAllBtn');
-  if (btn) btn.textContent = allExpanded ? '- Collapse all' : '+ Expand all';
+function updateCardActionStatesInline(rowNum, colName, bucket, rowObj) {
+  const card = document.getElementById('row-' + rowNum);
+  if (!card) return;
+  
+  const colDec = getColumnDecision(rowNum, colName, bucket);
+  const rowElements = card.querySelectorAll('.col-change-row');
+  let targetRowEl = null;
+  rowElements.forEach(function(el) {
+    const nameEl = el.querySelector('.col-name');
+    if (nameEl && nameEl.getAttribute('title') === colName) {
+      targetRowEl = el;
+    }
+  });
+  
+  if (targetRowEl) {
+    const approveBtn = targetRowEl.querySelector('.col-btn.approve');
+    const keepBtn = targetRowEl.querySelector('.col-btn.keep');
+    
+    if (approveBtn && keepBtn) {
+      approveBtn.classList.remove('active');
+      keepBtn.classList.remove('active');
+      
+      if (colDec === 'keep') {
+        keepBtn.classList.add('active');
+      } else {
+        approveBtn.classList.add('active');
+      }
+    }
+  }
+  
+  const changes = rowObj.field_changes || [];
+  let allApprove = true;
+  let allKeep = true;
+  changes.forEach(function(ch) {
+    const dec = getColumnDecision(rowNum, ch.column, bucket);
+    if (dec === 'keep') allApprove = false;
+    else allKeep = false;
+  });
+  
+  const approveAllBtn = card.querySelector('.card-action-btn.approve');
+  const keepAllBtn = card.querySelector('.card-action-btn.keep');
+  if (approveAllBtn && keepAllBtn) {
+    approveAllBtn.classList.toggle('active', allApprove);
+    keepAllBtn.classList.toggle('active', allKeep);
+  }
+}
+
+function getColumnDecision(rowNum, colName, bucket) {
+  if (fieldDecisions[rowNum] && fieldDecisions[rowNum][colName]) {
+    return fieldDecisions[rowNum][colName];
+  }
+  const rowDec = rowDecisions[rowNum];
+  if (rowDec === 'approve') return 'approve';
+  if (rowDec === 'reject') return 'keep';
+  
+  const inheritedDecision = bucketDecisions[activeBucket] || bucketDecisions[bucket] || bucketDecisions.all;
+  if (inheritedDecision === 'approve') return 'approve';
+  if (inheritedDecision === 'reject') return 'keep';
+  
+  return bucket === 'auto_fixable' ? 'approve' : 'keep';
+}
+
+function setColumnDecision(rowNum, colName, decision, bucket) {
+  if (!fieldDecisions[rowNum]) fieldDecisions[rowNum] = {};
+  fieldDecisions[rowNum][colName] = decision;
+  
+  const rowObj = findRowObject(rowNum);
+  if (rowObj) {
+    syncRowDecisionFromFields(rowNum, rowObj.field_changes, bucket);
+    const fm = document.getElementById('focusMode');
+    if (fm && fm.classList.contains('open')) {
+      renderFocusCard();
+    } else {
+      renderCardInline(rowNum, rowObj);
+    }
+  }
+}
+
+function getRowChangesUnion(r) {
+  const changes = [];
+  const addedCols = new Set();
+  (r.field_changes || []).forEach(function(ch) {
+    changes.push(ch);
+    addedCols.add(ch.column);
+  });
+  const rowManualDecs = fieldDecisions[r.row_number] || {};
+  Object.keys(rowManualDecs).forEach(function(colName) {
+    const val = rowManualDecs[colName];
+    if (val !== 'approve' && val !== 'keep' && !addedCols.has(colName)) {
+      const inputF = (r.input_fields || []).find(function(f) { return f.column === colName; });
+      const originalVal = inputF ? inputF.value : '';
+      changes.push({
+        column: colName,
+        from: originalVal,
+        to: val
+      });
+      addedCols.add(colName);
+    }
+  });
+  return changes;
+}
+
+function resolveCityTo(rowNum, resolvedCity, bucket) {
+  const cityColName = roles.city || 'CITY';
+  if (!fieldDecisions[rowNum]) fieldDecisions[rowNum] = {};
+  fieldDecisions[rowNum][cityColName] = resolvedCity;
+  
+  const rowObj = findRowObject(rowNum);
+  if (rowObj) {
+    syncRowDecisionFromFields(rowNum, rowObj.field_changes, bucket);
+    const fm = document.getElementById('focusMode');
+    if (fm && fm.classList.contains('open')) {
+      renderFocusCard();
+    } else {
+      renderCardInline(rowNum, rowObj);
+    }
+  }
+}
+
+function syncRowDecisionFromFields(rowNum, fieldChanges, bucket) {
+  const rowObj = findRowObject(rowNum);
+  if (!rowObj) return;
+  
+  const unionChanges = getRowChangesUnion(rowObj);
+  if (unionChanges.length === 0) {
+    return;
+  }
+  let hasApprove = false;
+  let allKeep = true;
+  unionChanges.forEach(function(ch) {
+    const dec = getColumnDecision(rowNum, ch.column, bucket);
+    if (dec !== 'keep') {
+      hasApprove = true;
+      allKeep = false;
+    }
+  });
+  
+  const rowHasExplicit = fieldDecisions[rowNum] && Object.keys(fieldDecisions[rowNum]).length > 0;
+  if (!rowHasExplicit) {
+    delete rowDecisions[rowNum];
+  } else {
+    if (hasApprove) {
+      rowDecisions[rowNum] = 'approve';
+    } else if (allKeep) {
+      rowDecisions[rowNum] = 'reject';
+    } else {
+      rowDecisions[rowNum] = 'pending';
+    }
+  }
+  
+  updateDecisionSummary();
+}
+
+function findRowObject(rowNum) {
+  const fm = document.getElementById('focusMode');
+  const isFocusOpen = fm && fm.classList.contains('open');
+  if (isFocusOpen) {
+    return focusRows.find(function(r) { return r.row_number === rowNum; });
+  }
+  return pageRows.find(function(r) { return r.row_number === rowNum; });
+}
+
+function escapeHtmlJs(str) {
+  if (!str) return '';
+  return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function renderSmartDashboard() {
+  const s = reviewSummary || {};
+  const b = s.buckets || {};
+  const auto = b.auto_fixable || 0;
+  const review = b.needs_review || 0;
+  const nomatch = b.no_match || 0;
+  const clean = b.already_clean || 0;
+  const anomalies = s.anomaly_count || 0;
+  const total = s.total || 0;
+  
+  const exceptionCount = review + nomatch + anomalies;
+  
+  let bodyClass = 'db-body';
+  let titleText = '';
+  let descText = '';
+  let actionsHtml = '';
+  
+  if (exceptionCount > 0) {
+    bodyClass += ' has-exceptions';
+    titleText = exceptionCount.toLocaleString() + ' exception' + (exceptionCount === 1 ? '' : 's') + ' require human review';
+    descText = 'AI is highly confident in ' + auto.toLocaleString() + ' corrections (' + Math.round(auto/total*100) + '% of file).';
+    actionsHtml = '<div class="db-actions">' +
+      '<span class="time-est">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:2px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' +
+        'Est. review time: ~' + Math.max(1, Math.round(exceptionCount * 3 / 60)) + ' min' +
+      '</span>' +
+      '<button class="btn-primary" onclick="acceptAllAndSkip()">Accept All & Skip</button>' +
+    '</div>';
+  } else {
+    titleText = 'Ready to compile: 0 exceptions found';
+    descText = 'All ' + total.toLocaleString() + ' addresses are auto-resolved or already clean. No manual review needed.';
+    actionsHtml = '<div class="db-actions">' +
+      '<button class="btn-primary" onclick="acceptAllAndSkip()">Proceed to Export</button>' +
+    '</div>';
+  }
+  
+  document.getElementById('smartDashboard').innerHTML =
+    '<div class="db-head">' +
+      '<div class="db-title">' +
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>' +
+        'AI Data Cleansing Run Complete' +
+      '</div>' +
+    '</div>' +
+    '<div class="' + bodyClass + '">' +
+      '<div class="db-info">' +
+        '<div class="db-info-t">' + titleText + '</div>' +
+        '<div class="db-info-d">' + descText + '</div>' +
+      '</div>' +
+      actionsHtml +
+    '</div>';
+}
+
+async function acceptAllAndSkip() {
+  const btn = document.getElementById('btnNext3');
+  if (btn) btn.click();
 }
 
 function renderPager(data) {
@@ -1379,18 +1784,6 @@ async function setPageSize(v) {
   await loadReviewPage();
 }
 
-function setRowDecision(rowNum, decision) {
-  if (decision === 'pending') delete rowDecisions[rowNum];
-  else rowDecisions[rowNum] = decision;
-  const tr = document.getElementById('row-' + rowNum);
-  if (tr) {
-    tr.classList.remove('approved', 'rejected');
-    if (decision === 'approve') tr.classList.add('approved');
-    if (decision === 'reject') tr.classList.add('rejected');
-  }
-  updateDecisionSummary();
-}
-
 // Bulk-decide the current filter as a server-side rule. This scales to lakhs
 // of rows because we do not materialize every row number in the browser.
 async function bulkDecide(decision) {
@@ -1405,15 +1798,19 @@ async function bulkDecide(decision) {
 }
 
 function updateDecisionSummary() {
-  const approved = Object.values(rowDecisions).filter(v => v === 'approve').length;
-  const rejected = Object.values(rowDecisions).filter(v => v === 'reject').length;
-  const ruleApproved = Object.entries(bucketDecisions).filter(([k, v]) => v === 'approve').map(([k]) => BUCKET_META[k]?.label || k);
-  const ruleRejected = Object.entries(bucketDecisions).filter(([k, v]) => v === 'reject').map(([k]) => BUCKET_META[k]?.label || k);
+  const approved = Object.values(rowDecisions).filter(function(v) { return v === 'approve'; }).length;
+  const rejected = Object.values(rowDecisions).filter(function(v) { return v === 'reject'; }).length;
+  const ruleApproved = Object.entries(bucketDecisions)
+    .filter(function(entry) { return entry[1] === 'approve'; })
+    .map(function(entry) { return (BUCKET_META[entry[0]] && BUCKET_META[entry[0]].label) || entry[0]; });
+  const ruleRejected = Object.entries(bucketDecisions)
+    .filter(function(entry) { return entry[1] === 'reject'; })
+    .map(function(entry) { return (BUCKET_META[entry[0]] && BUCKET_META[entry[0]].label) || entry[0]; });
   const auto = (reviewSummary && reviewSummary.buckets && reviewSummary.buckets.auto_fixable) || 0;
   document.getElementById('decisionSummary').innerHTML =
-    `<b>${auto.toLocaleString()}</b> safe rows auto-applied · <b>${approved}</b> row approvals · <b>${rejected}</b> row rejects` +
-    (ruleApproved.length ? ` · approve buckets: <b>${ruleApproved.join(', ')}</b>` : '') +
-    (ruleRejected.length ? ` · reject buckets: <b>${ruleRejected.join(', ')}</b>` : '');
+    '<b>' + auto.toLocaleString() + '</b> safe rows auto-applied · <b>' + approved + '</b> row approvals · <b>' + rejected + '</b> row rejects' +
+    (ruleApproved.length ? ' · approve buckets: <b>' + ruleApproved.join(', ') + '</b>' : '') +
+    (ruleRejected.length ? ' · reject buckets: <b>' + ruleRejected.join(', ') + '</b>' : '');
 }
 
 // ========== Focus Review : full-screen rapid triage ==========
@@ -1464,7 +1861,9 @@ function closeFocus() {
 
 function renderFocusCard() {
   const total = focusRows.length;
-  const decided = focusRows.filter(x => ['approve','reject'].includes(rowDecisions[x.row_number])).length;
+  const decided = focusRows.filter(function(x) {
+    return ['approve','reject'].includes(rowDecisions[x.row_number]);
+  }).length;
   document.getElementById('focusProgBar').style.width = (total ? decided / total * 100 : 0) + '%';
 
   if (focusIdx >= total) { renderFocusDone(decided); return; }
@@ -1474,63 +1873,102 @@ function renderFocusCard() {
   const tag = document.getElementById('focusBucketTag');
   tag.className = 'bucket-tag ' + r.bucket;
   tag.textContent = m.label;
-  document.getElementById('focusCount').textContent = `Row ${focusIdx + 1} of ${total} - ${decided} decided`;
+  document.getElementById('focusCount').textContent = 'Row ' + (focusIdx + 1) + ' of ' + total + ' - ' + decided + ' decided';
 
   const conf = r.accuracy_percent || 0;
   const ringC = conf >= 80 ? '#35c46b' : conf >= 60 ? '#ffb454' : 'var(--red)';
-  const anoms = (r.anomalies || []).map(a =>
-    `<span class="anom-flag">! ${ANOMALY_LABELS[a] || a}</span>`).join('');
+  const anoms = (r.anomalies || []).map(function(a) {
+    if (a.indexOf('city_mismatch:') === 0) {
+      const resolvedCity = a.split(':')[1];
+      return '<span class="anom-flag">! City differs (resolved as ' + escapeHtml(resolvedCity) + ')</span>' +
+             '<button type="button" class="btn-resolve-city" onclick="resolveCityTo(' + r.row_number + ', \'' + escapeHtmlJs(resolvedCity) + '\', \'' + r.bucket + '\')">Resolve to ' + escapeHtml(resolvedCity) + '</button>';
+    }
+    return '<span class="anom-flag">! ' + (ANOMALY_LABELS[a] || a) + '</span>';
+  }).join('');
   const issues = (r.issues || [])
-    .filter(i => i !== 'suggestion_differs_from_input')
-    .map(i => `<span class="fissue">- ${escapeHtml(prettyIssue(i))}</span>`).join('');
+    .filter(function(i) { return i !== 'suggestion_differs_from_input'; })
+    .map(function(i) { return '<span class="fissue">- ' + escapeHtml(prettyIssue(i)) + '</span>'; }).join('');
   const dec = rowDecisions[r.row_number];
-  const decPill = dec === 'approve' ? `<span class="focus-decided a">Approved</span>`
-                : dec === 'reject'  ? `<span class="focus-decided r">Rejected</span>` : '';
+  const decPill = dec === 'approve' ? '<span class="focus-decided a">Approved</span>'
+                : dec === 'reject'  ? '<span class="focus-decided r">Rejected</span>' : '';
 
-  document.getElementById('focusContent').innerHTML = `
-    <div class="focus-body">
-      <div class="focus-rownum">Original row #${r.row_number}</div>
-      ${renderMergedCorrections(r.input_fields, r.field_changes)}
-      <div class="focus-meta">
-        <div class="conf-ring" style="--p:${conf};--ring-c:${ringC}"><b>${conf}%</b></div>
-        <div>
-          <div class="conf-lbl">Confidence</div>
-          <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">${anoms || '<span class="conf-lbl">No anomalies flagged</span>'}</div>
-        </div>
-        <div style="margin-left:auto;text-align:right;">${decPill}<div style="margin-top:4px;">${issues}</div></div>
-      </div>
-    </div>
-    <div class="focus-foot">
-      <button class="fbtn reject" onclick="focusDecide('reject')">Reject <span class="kbd">R</span></button>
-      <button class="fbtn approve" onclick="focusDecide('approve')">Approve <span class="kbd">A</span></button>
-    </div>
-    <div class="focus-nav">
-      <button onclick="focusNav(-1)" ${focusIdx === 0 ? 'disabled' : ''}><- Prev</button>
-      <button onclick="focusNav(1)">Skip / Next -></button>
-    </div>`;
+  const changes = getRowChangesUnion(r);
+  
+  let bodyHtml = '';
+  if (changes.length === 0) {
+    bodyHtml = '<div class="no-changes-msg">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:#35c46b;flex:none;"><polyline points="20 6 9 17 4 12"></polyline></svg>' +
+      'Address is already clean (no changes suggested)' +
+    '</div>';
+  } else {
+    bodyHtml = '<div class="col-changes-list">' +
+      changes.map(function(ch) {
+        const colDec = getColumnDecision(r.row_number, ch.column, r.bucket);
+        const approveBtnClass = colDec === 'approve' || (colDec !== 'keep' && colDec !== 'approve') ? 'col-btn approve active' : 'col-btn approve';
+        const keepBtnClass = colDec === 'keep' ? 'col-btn keep active' : 'col-btn keep';
+        const currentVal = (colDec !== 'keep' && colDec !== 'approve') ? colDec : (ch.to || '');
+        
+        return '<div class="col-change-row">' +
+          '<div class="col-name" title="' + escapeHtml(ch.column) + '">' + escapeHtml(ch.column) + '</div>' +
+          '<div class="col-diff">' +
+            '<span class="diff-val-old" title="' + escapeHtml(ch.from || '(empty)') + '">' + escapeHtml(ch.from || '(empty)') + '</span>' +
+            '<span class="diff-val-arrow">&rarr;</span>' +
+            '<input type="text" class="col-edit-input" placeholder="Enter value..." value="' + escapeHtml(currentVal) + '" ' +
+              'oninput="onColumnEdit(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', this.value, \'' + r.bucket + '\')">' +
+          '</div>' +
+          '<div class="col-action-grp">' +
+            '<button class="' + approveBtnClass + '" onclick="setColumnDecision(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', \'approve\', \'' + r.bucket + '\')">Approve</button>' +
+            '<button class="' + keepBtnClass + '" onclick="setColumnDecision(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', \'keep\', \'' + r.bucket + '\')">Keep Original</button>' +
+          '</div>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  }
+
+  document.getElementById('focusContent').innerHTML =
+    '<div class="focus-body">' +
+      '<div class="focus-rownum">Original row #' + r.row_number + '</div>' +
+      bodyHtml +
+      '<div class="focus-meta">' +
+        '<div class="conf-ring" style="--p:' + conf + ';--ring-c:' + ringC + '"><b>' + conf + '%</b></div>' +
+        '<div>' +
+          '<div class="conf-lbl">Confidence</div>' +
+          '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">' + (anoms || '<span class="conf-lbl">No anomalies flagged</span>') + '</div>' +
+        '</div>' +
+        '<div style="margin-left:auto;text-align:right;">' + decPill + '<div style="margin-top:4px;">' + issues + '</div></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="focus-foot">' +
+      '<button class="fbtn reject" onclick="focusDecide(\'reject\')">Keep All <span class="kbd">R</span></button>' +
+      '<button class="fbtn approve" onclick="focusDecide(\'approve\')">Approve All <span class="kbd">A</span></button>' +
+    '</div>' +
+    '<div class="focus-nav">' +
+      '<button onclick="focusNav(-1)" ' + (focusIdx === 0 ? 'disabled' : '') + '><- Prev</button>' +
+      '<button onclick="focusNav(1)">Skip / Next -></button>' +
+    '</div>';
 }
 
 function renderFocusDone(decided) {
-  const approved = focusRows.filter(x => rowDecisions[x.row_number] === 'approve').length;
-  const rejected = focusRows.filter(x => rowDecisions[x.row_number] === 'reject').length;
+  const approved = focusRows.filter(function(x) { return rowDecisions[x.row_number] === 'approve'; }).length;
+  const rejected = focusRows.filter(function(x) { return rowDecisions[x.row_number] === 'reject'; }).length;
   const skipped = focusRows.length - approved - rejected;
   document.getElementById('focusProgBar').style.width = '100%';
-  document.getElementById('focusCount').textContent = `${focusRows.length} reviewed`;
-  document.getElementById('focusContent').innerHTML = `
-    <div class="focus-body" style="text-align:center;padding:40px 24px;">
-      <div style="font-size:46px;line-height:1;margin-bottom:12px;"></div>
-      <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px;">All caught up!</div>
-      <div style="font-size:13px;color:var(--text-2);margin-bottom:20px;">You went through every row in this filter.</div>
-      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-        <span class="focus-decided a"> ${approved} approved</span>
-        <span class="focus-decided r">X ${rejected} rejected</span>
-        <span class="focus-decided" style="color:var(--text-2);background:var(--surface-2);">Auto ${skipped} left on auto</span>
-      </div>
-    </div>
-    <div class="focus-foot">
-      <button class="fbtn" style="color:var(--text);background:var(--surface);" onclick="focusNav(-1)"><- Back to last row</button>
-      <button class="fbtn approve" onclick="closeFocus()">Done</button>
-    </div>`;
+  document.getElementById('focusCount').textContent = focusRows.length + ' reviewed';
+  document.getElementById('focusContent').innerHTML =
+    '<div class="focus-body" style="text-align:center;padding:40px 24px;">' +
+      '<div style="font-size:46px;line-height:1;margin-bottom:12px;"></div>' +
+      '<div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:6px;">All caught up!</div>' +
+      '<div style="font-size:13px;color:var(--text-2);margin-bottom:20px;">You went through every row in this filter.</div>' +
+      '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">' +
+        '<span class="focus-decided a"> ' + approved + ' approved</span>' +
+        '<span class="focus-decided r">X ' + rejected + ' rejected</span>' +
+        '<span class="focus-decided" style="color:var(--text-2);background:var(--surface-2);">Auto ' + skipped + ' left on auto</span>' +
+      '</div>' +
+    '</div>' +
+    '<div class="focus-foot">' +
+      '<button class="fbtn" style="color:var(--text);background:var(--surface);" onclick="focusNav(-1)"><- Back to last row</button>' +
+      '<button class="fbtn approve" onclick="closeFocus()">Done</button>' +
+    '</div>';
 }
 
 function focusDecide(decision) {
@@ -1581,6 +2019,7 @@ document.getElementById('btnNext3').addEventListener('click', async () => {
         session_id: sessionId,
         approved_rows: approved,
         rejected_rows: rejected,
+        field_decisions: fieldDecisions,
         // Auto-approve threshold: rows in the auto-fixable bucket get applied
         bucket_decisions: bucketDecisions,
         // automatically unless explicitly rejected. Rows outside the processed
@@ -1772,6 +2211,7 @@ document.getElementById('btnDownload').addEventListener('click', async () => {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         session_id: sessionId, approved_rows: approved, rejected_rows: rejected,
+        field_decisions: fieldDecisions,
         threshold: reviewThreshold / 100, include_columns: include,
         bucket_decisions: bucketDecisions,
         save_to_history: true,

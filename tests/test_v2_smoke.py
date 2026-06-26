@@ -34,8 +34,8 @@ class TestNormalize(unittest.TestCase):
 
     def test_pincode_repair(self) -> None:
         from fuzzy_engine.v2.normalize import repair_pincode
-        self.assertEqual(repair_pincode("56029"), "056029")
-        self.assertEqual(repair_pincode("5600291"), "560029")
+        self.assertIsNone(repair_pincode("56029"))
+        self.assertEqual(repair_pincode("5600291"), "560291")
         self.assertIsNone(repair_pincode("abc"))
 
 

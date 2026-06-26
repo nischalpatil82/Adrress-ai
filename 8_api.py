@@ -884,7 +884,8 @@ def _detect_anomalies(row: dict, structured: dict, roles: dict,
     in_city = _compare_text(_safe_text(row.get(city_col))) if city_col else ""
     res_city = _compare_text(_safe_text(s.get("city")))
     if in_city and res_city and in_city != res_city and _address_similarity(in_city, res_city) < 0.6:
-        anomalies.append("city_mismatch")
+        resolved_city_name = s.get("city") or ""
+        anomalies.append(f"city_mismatch:{resolved_city_name}")
 
     # Resolved state differs from the user's (after expanding CT->Connecticut).
     state_col = roles.get("state")
@@ -1564,6 +1565,7 @@ def address_cleanse_final_v2():
     approved_rows = set(data.get("approved_rows", []))
     rejected_rows = set(data.get("rejected_rows", []))
     bucket_decisions = data.get("bucket_decisions", {}) if isinstance(data.get("bucket_decisions", {}), dict) else {}
+    field_decisions = data.get("field_decisions", {}) if isinstance(data.get("field_decisions", {}), dict) else {}
     # Auto-approve threshold (fraction): rows in the "auto_fixable" bucket
     # (trusted suggestion, confidence >= threshold) get applied automatically
     # unless the user explicitly rejected them.
@@ -1650,24 +1652,66 @@ def address_cleanse_final_v2():
         if bucket_decision is None and bucket_decisions.get("all"):
             bucket_decision_scope = "all"
             bucket_decision = bucket_decisions.get("all")
-        if idx in approved_rows or bucket_decision == "approve":
-            for change in summary["field_changes"]:
+        applied_changes = []
+        row_field_decisions = field_decisions.get(str(idx), {})
+        
+        for change in summary["field_changes"]:
+            col_decision = row_field_decisions.get(change["column"])
+            
+            should_apply = False
+            # Check if user made custom edit, approve, keep, or fallback to row/bucket decisions
+            if col_decision not in (None, "approve", "keep"):
+                # Custom edit! Apply it
+                corrected_row[change["column"]] = col_decision
+                applied_changes.append(change)
+            elif col_decision == "approve":
+                should_apply = True
+            elif col_decision == "keep":
+                should_apply = False
+            else:
+                # Fallback to row/bucket decision
+                if idx in approved_rows or bucket_decision == "approve":
+                    should_apply = True
+                elif idx in rejected_rows or bucket_decision == "reject":
+                    should_apply = False
+                elif bucket == "auto_fixable":
+                    should_apply = True
+                else:
+                    should_apply = False
+            
+            if should_apply:
                 corrected_row[change["column"]] = change["to"]
-            corrected_row["Cleanse Action"] = "user_approved" if idx in approved_rows else f"bucket_approved:{bucket_decision_scope}"
-            stats["approved"] += 1
-            _count_applied(summary["field_changes"])
-        elif idx in rejected_rows or bucket_decision == "reject":
-            corrected_row["Cleanse Action"] = "user_rejected" if idx in rejected_rows else f"bucket_rejected:{bucket_decision_scope}"
-            stats["rejected"] += 1
-        elif bucket == "auto_fixable":
-            for change in summary["field_changes"]:
-                corrected_row[change["column"]] = change["to"]
-            corrected_row["Cleanse Action"] = "auto_corrected"
-            stats["auto_corrected"] += 1
-            _count_applied(summary["field_changes"])
+                applied_changes.append(change)
+
+        if not summary["field_changes"]:
+            if bucket == "auto_fixable":
+                corrected_row["Cleanse Action"] = "auto_corrected"
+                stats["auto_corrected"] += 1
+            else:
+                corrected_row["Cleanse Action"] = "needs_review_unchanged"
+                stats["unchanged"] += 1
         else:
-            corrected_row["Cleanse Action"] = "needs_review_unchanged"
-            stats["unchanged"] += 1
+            if applied_changes:
+                _count_applied(applied_changes)
+                if idx in approved_rows or str(idx) in field_decisions:
+                    corrected_row["Cleanse Action"] = "user_approved"
+                    stats["approved"] += 1
+                elif bucket_decision == "approve":
+                    corrected_row["Cleanse Action"] = f"bucket_approved:{bucket_decision_scope}"
+                    stats["approved"] += 1
+                else:
+                    corrected_row["Cleanse Action"] = "auto_corrected"
+                    stats["auto_corrected"] += 1
+            else:
+                if idx in rejected_rows or str(idx) in field_decisions:
+                    corrected_row["Cleanse Action"] = "user_rejected"
+                    stats["rejected"] += 1
+                elif bucket_decision == "reject":
+                    corrected_row["Cleanse Action"] = f"bucket_rejected:{bucket_decision_scope}"
+                    stats["rejected"] += 1
+                else:
+                    corrected_row["Cleanse Action"] = "needs_review_unchanged"
+                    stats["unchanged"] += 1
 
         corrected_row["Cleanse Status"] = summary["status"]
         corrected_row["Cleanse Confidence %"] = summary["accuracy_percent"]
