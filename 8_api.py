@@ -1719,6 +1719,7 @@ def address_cleanse_final_v2():
         corrected_row["Input Similarity %"] = summary["input_similarity_percent"]
         corrected_row["Latitude"] = structured.get("lat") if structured.get("lat") is not None else ""
         corrected_row["Longitude"] = structured.get("lon") if structured.get("lon") is not None else ""
+        corrected_row["Resolved Pincode"] = structured.get("pincode") or ""
         corrected_row["Full Verified Address"] = summary["full_verified_address"]
         corrected_row["Original Address Query"] = query
         corrected_row["Row Number"] = idx
@@ -1729,14 +1730,14 @@ def address_cleanse_final_v2():
     # All enrichment columns we can append, in display order.
     ALL_EXTRA_COLUMNS = [
         "Cleanse Action", "Cleanse Status", "Cleanse Confidence %",
-        "Input Similarity %", "Latitude", "Longitude", "Full Verified Address",
+        "Input Similarity %", "Latitude", "Longitude", "Resolved Pincode", "Full Verified Address",
         "Original Address Query", "Row Number",
     ]
     # Default selection when the client doesn't specify: Status / Original Query
     # / Row Number are OFF by default (the rest on).
     DEFAULT_EXTRA_COLUMNS = [
         "Cleanse Action", "Cleanse Confidence %", "Input Similarity %",
-        "Latitude", "Longitude", "Full Verified Address",
+        "Latitude", "Longitude", "Resolved Pincode", "Full Verified Address",
     ]
     if isinstance(requested_cols, list):
         chosen = [c for c in ALL_EXTRA_COLUMNS if c in set(requested_cols)]
