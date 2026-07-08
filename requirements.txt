@@ -1,8 +1,8 @@
 # Address AI — requirements
-# Install with: pip install -r requirements.txt
+--extra-index-url https://download.pytorch.org/whl/cpu
 
 # Core ML
-torch>=2.0.0
+torch
 transformers>=4.41.0,<5.0.0
 sentencepiece>=0.1.99
 sentence-transformers>=2.2.2
