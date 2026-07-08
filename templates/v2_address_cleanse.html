@@ -136,22 +136,32 @@
       transform: rotate(90deg);
       padding: 8px 0;
     }
+    .db-skip-note {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+    }
+    .db-skip-note > div {
+      padding-left: 0 !important;
+    }
   }
 
   .colsel-box {
     flex: 1;
     display: flex;
     flex-direction: column;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
+    background: var(--glass);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
     border-radius: 10px;
     overflow: hidden;
   }
   
   .colsel-box-header {
     padding: 8px 12px;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
+    background: rgba(0,0,0,0.15);
+    border-bottom: 1px solid var(--glass-border);
   }
   
   .colsel-box-title {
@@ -708,10 +718,15 @@
   .fbtn.reject:hover { filter: brightness(1.15); }
   .fbtn.approve { color: #08160d; background: #35c46b; border-color: #35c46b; }
   .fbtn.approve:hover { filter: brightness(1.07); }
-  .focus-nav { display: flex; align-items: center; justify-content: center; gap: 18px; padding: 9px; }
-  .focus-nav button { background: none; border: none; color: var(--text-2); cursor: pointer; font-size: 12px; padding: 4px 10px; border-radius: 6px; }
-  .focus-nav button:hover:not(:disabled) { color: var(--text); background: var(--surface-2); }
+  .focus-nav { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--border); background: var(--surface-2); }
+  .focus-nav button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: var(--surface); border: 1px solid var(--border); color: var(--text); cursor: pointer; font-size: 14px; font-weight: 600; padding: 10px 16px; border-radius: 8px; transition: all 0.15s; }
+  .focus-nav button:hover:not(:disabled) { color: var(--text); background: var(--surface-2); border-color: var(--border-strong); }
   .focus-nav button:disabled { opacity: .35; cursor: not-allowed; }
+  .focus-nav button.reject { color: var(--red); background: var(--red-soft); border-color: var(--red-soft-2); }
+  .focus-nav button.reject:hover:not(:disabled) { background: rgba(255, 77, 77, 0.15); border-color: var(--red); }
+  .focus-nav button.approve { color: #35c46b; background: rgba(53, 196, 107, 0.08); border-color: rgba(53, 196, 107, 0.25); }
+  .focus-nav button.approve:hover:not(:disabled) { color: #fff; background: #35c46b; border-color: #35c46b; }
+  .focus-nav button .kbd { font-size: 10px; font-weight: 700; opacity: .75; border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; margin-left: 4px; }
 
   /* -- Enterprise exception cards -- */
   .review-list { display: grid; gap: 10px; padding: 10px; max-height: calc(100vh - 190px); overflow: auto; }
@@ -817,9 +832,9 @@
   .state-approved .cell-dot { background: #35c46b; }
 
   /* Kept original — suggestion declined; original is the outcome */
-  .cell-changed.state-kept { background: transparent !important; }
-  .cell-changed.state-kept:hover { background: rgba(255,255,255,.02) !important; }
-  .state-kept .cell-val-txt { color: var(--text-2); }
+  .cell-changed.state-kept { background: rgba(239,68,68,.04) !important; }
+  .cell-changed.state-kept:hover { background: rgba(239,68,68,.08) !important; }
+  .state-kept .cell-val-txt { color: var(--text-3); text-decoration: line-through; text-decoration-color: rgba(239,68,68,.45); }
   .state-kept .cell-dot { background: var(--text-3); }
 
   /* Edited — custom value entered by the reviewer */
@@ -877,9 +892,9 @@
   /* Single "Apply" toggle. Active (green) = AI value applied; inactive = kept. */
   .apply-btn {
     box-sizing: border-box;
-    width: 56px;
+    min-width: 62px; width: auto;
     font-size: 10px; font-weight: 700; white-space: nowrap; line-height: 1;
-    padding: 5px 6px; border-radius: 999px; cursor: pointer;
+    padding: 5px 8px; border-radius: 999px; cursor: pointer;
     border: 1px solid var(--border-strong); background: var(--surface-2);
     color: var(--text-3); transition: all .15s ease;
   }
@@ -1183,12 +1198,12 @@
   .db-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .db-title { font-size: 15px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; }
   .db-title svg { color: #35c46b; }
-  .db-body { border: 1px solid rgba(53,196,107,.25); border-radius: 8px; background: rgba(53,196,107,.04); padding: 14px 16px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+  .db-body { border: 1px solid rgba(53,196,107,.25); border-radius: 8px; background: rgba(53,196,107,.04); padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
   .db-body.has-exceptions { border-color: var(--glass-border); background: rgba(255,255,255,.02); }
-  .db-info { display: flex; flex-direction: column; gap: 4px; }
+  .db-info { display: flex; flex-direction: column; gap: 4px; width: 100%; }
   .db-info-t { font-size: 13.5px; font-weight: 700; color: var(--text); }
   .db-info-d { font-size: 11.5px; color: var(--text-2); }
-  .db-skip-note { align-self: flex-start; margin-top: 8px; font-size: 11.5px; line-height: 1.55; color: var(--text-2); background: rgba(255,255,255,.02); border: 1px solid var(--glass-border); border-left: 3px solid #ffb454; border-radius: 6px; padding: 8px 11px; max-width: 680px; }
+  .db-skip-note { display: flex; align-items: center; justify-content: space-between; gap: 20px; width: 100%; box-sizing: border-box; margin-top: 8px; font-size: 11.5px; line-height: 1.55; color: var(--text-2); background: rgba(255,255,255,.02); border: 1px solid var(--glass-border); border-left: 3px solid #ffb454; border-radius: 6px; padding: 12px 16px; }
   .db-skip-note b { color: var(--text); font-weight: 700; }
   .db-skip-note .dn-line { display: block; }
   .db-skip-note .dn-line + .dn-line { margin-top: 5px; }
@@ -2203,10 +2218,10 @@ function renderTableRowHtml(r) {
         if (getColumnDecision(r.row_number, ch.column, r.bucket) === 'keep') applying = false;
       });
       applyBtnHtml =
-        '<button class="apply-btn ' + (applying ? 'active' : 'kept') + '" ' +
+        '<button class="apply-btn ' + (applying ? 'kept' : 'active') + '" ' +
           'onclick="setRowDecision(' + r.row_number + ', \'' + (applying ? 'reject' : 'approve') + '\')" ' +
           'title="' + (applying ? 'Applying the AI value — click to keep the original' : 'Keeping the original — click to apply the AI value') + '">' +
-          (applying ? '✓ Apply' : '↩ Keep') + '</button>';
+          (applying ? '↩ Keep' : '✓ Apply') + '</button>';
     }
     // The row itself is no longer click-to-open, so cells can be clicked/selected
     // without launching Focus. This dedicated button is the way into Focus review.
@@ -2252,6 +2267,8 @@ function renderTableRowHtml(r) {
       let state, primaryVal;
       if (rawExplicit && rawExplicit !== 'approve' && rawExplicit !== 'keep') {
         state = 'edited';    primaryVal = rawExplicit;          // custom value (blue)
+      } else if (rawExplicit === 'keep') {
+        state = 'kept';      primaryVal = ch.from || '';        // explicitly rejected — show original
       } else if (colDec === 'approve' && greenOk) {
         state = 'approved';  primaryVal = ch.to || '';          // applied (green)
       } else {
@@ -2562,7 +2579,15 @@ function getColumnDecision(rowNum, colName, bucket) {
 
 function setColumnDecision(rowNum, colName, decision, bucket) {
   if (!fieldDecisions[rowNum]) fieldDecisions[rowNum] = {};
-  fieldDecisions[rowNum][colName] = decision;
+  
+  const existing = fieldDecisions[rowNum][colName];
+  const isCustom = existing && existing !== 'approve' && existing !== 'keep';
+  
+  if (decision === 'approve' && isCustom) {
+    // Keep the custom value as is, do not overwrite it with 'approve'
+  } else {
+    fieldDecisions[rowNum][colName] = decision;
+  }
   
   const rowObj = findRowObject(rowNum);
   if (rowObj) {
@@ -2735,14 +2760,17 @@ function renderSmartDashboard() {
     descText = 'AI is highly confident in ' + auto.toLocaleString() + ' corrections (' + Math.round(auto/total*100) + '% of file).' + breakdown;
     // Spell out exactly what gets applied vs. left alone if the user skips review.
     skipNote = '<div class="db-skip-note">' +
-        '<div class="dn-line"><span class="dn-acc">✓ Accept:</span> the <b>' + auto.toLocaleString() + '</b> confident AI corrections are applied to your file.</div>' +
-        '<div class="dn-line"><span class="dn-skip">⤼ Skip:</span> the <b>' + exceptionCount.toLocaleString() + '</b> flagged rows are left <b>unchanged</b> (original values kept). To decide any of them yourself, use <b>Focus review</b> below first.</div>' +
+        '<div style="flex: 1; text-align: left;">' +
+          '<div class="dn-line"><span class="dn-acc">Apply:</span> the <b>' + auto.toLocaleString() + '</b> confident AI corrections are applied to your file.</div>' +
+          '<div class="dn-line"><span class="dn-skip">⤼ Skip:</span> the <b>' + exceptionCount.toLocaleString() + '</b> flagged rows are left <b>unchanged</b> (original values kept). To decide any of them yourself, use <b>Focus review</b> below first.</div>' +
+        '</div>' +
+        '<div style="flex-shrink: 0; padding-left: 10px;">' +
+          '<button class="btn-secondary" onclick="acceptAllAndSkip()" title="Apply the ' + auto.toLocaleString() + ' AI corrections and leave the ' + exceptionCount.toLocaleString() + ' flagged rows unchanged">' +
+            'Apply ' + auto.toLocaleString() + ' &amp; skip ' + exceptionCount.toLocaleString() +
+          '</button>' +
+        '</div>' +
       '</div>';
-    actionsHtml = '<div class="db-actions">' +
-      '<button class="btn-secondary" onclick="acceptAllAndSkip()" title="Apply the ' + auto.toLocaleString() + ' AI corrections and leave the ' + exceptionCount.toLocaleString() + ' flagged rows unchanged">' +
-        'Apply ' + auto.toLocaleString() + ' &amp; skip ' + exceptionCount.toLocaleString() +
-      '</button>' +
-    '</div>';
+    actionsHtml = '';
   } else {
     titleText = 'Ready to compile: 0 exceptions found';
     descText = 'All ' + total.toLocaleString() + ' addresses are auto-resolved or already clean. No manual review needed.';
@@ -2975,12 +3003,10 @@ function renderFocusCard() {
         '<div style="margin-left:auto;text-align:right;">' + decPill + '<div style="margin-top:4px;">' + issues + '</div></div>' +
       '</div>' +
     '</div>' +
-    '<div class="focus-foot">' +
-      '<button class="fbtn reject" onclick="focusDecide(\'reject\')">Keep All <span class="kbd">R</span></button>' +
-      '<button class="fbtn approve" onclick="focusDecide(\'approve\')">Approve All <span class="kbd">A</span></button>' +
-    '</div>' +
     '<div class="focus-nav">' +
       '<button onclick="focusNav(-1)" ' + (focusIdx === 0 ? 'disabled' : '') + '>← Prev</button>' +
+      '<button class="reject" onclick="focusDecide(\'reject\')">Keep All <span class="kbd">R</span></button>' +
+      '<button class="approve" onclick="focusDecide(\'approve\')">Approve All <span class="kbd">A</span></button>' +
       '<button onclick="focusNav(1)">Skip / Next →</button>' +
     '</div>';
 
@@ -3022,6 +3048,10 @@ function focusDecide(decision) {
     // Approve/Keep All revert it to the AI suggestion.
     const isCustom = existing && existing !== 'approve' && existing !== 'keep';
     if (isCustom) return;
+    // Also preserve explicit per-field decisions: if the user already ticked
+    // keep or approve on an individual field, Approve All / Keep All should
+    // NOT overwrite that decision.
+    if (existing === 'approve' || existing === 'keep') return;
     if (decision === 'approve') {
       fieldDecisions[r.row_number][ch.column] = 'approve';
     } else if (decision === 'reject') {
