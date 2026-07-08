@@ -26,3 +26,22 @@ models/*.backup
 # DB / local storage
 *.sqlite
 *.db
+*.sqlite-shm
+*.sqlite-wal
+
+# Runtime logs
+*.log
+
+# Local scratch / test artifacts (not part of the app)
+sid.txt
+my_changes.diff
+fix_encoding.py
+fix_html.py
+us_*.json
+test_csv_cleanse.py
+test_concurrency_speedup.py
+templates/v2_address_clean
+
+# Large runtime-generated indexes (regenerated locally; not shipped)
+models/embeddings.npy
+models/faiss.index

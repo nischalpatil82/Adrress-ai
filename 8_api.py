@@ -460,6 +460,27 @@ def _expand_state(value: str) -> str:
     return _US_STATE_NAMES.get(v.upper(), value)
 
 
+# Reverse lookup: full state name (lowercased) -> 2-letter code.
+_US_STATE_NAME_TO_CODE = {name.lower(): code for code, name in _US_STATE_NAMES.items()}
+
+
+def _state_code(value: str) -> str:
+    """Normalize any US state to its uniform 2-letter code.
+
+    "New Jersey" -> "NJ", "nj" -> "NJ", "NY" -> "NY". Non-US / unknown values
+    are returned title-cased and unchanged so international data still works.
+    """
+    v = (value or "").strip()
+    if not v:
+        return v
+    if v.upper() in _US_STATE_CODES:
+        return v.upper()
+    code = _US_STATE_NAME_TO_CODE.get(v.lower())
+    if code:
+        return code
+    return _title_if_caps(v)
+
+
 def _read_upload(uploaded) -> tuple[list[str], list[dict], bytes]:
     fname = (uploaded.filename or "").lower()
     raw_bytes = uploaded.stream.read()
@@ -777,7 +798,11 @@ def _corrected_field(role: str, structured: dict, original: str,
         return _title_if_caps(_safe_text(s.get("country")) or original)
 
     if role == "state":
-        return _title_if_caps(_expand_state(_safe_text(s.get("state")) or original))
+        # Always output a uniform 2-letter code. Google is inconsistent — it may
+        # return "NY" (short) or "New Jersey" (long) — so normalize both to the
+        # code (New Jersey -> NJ, NY -> NY). Prefer Google's verified state;
+        # fall back to the original only when Google returned nothing.
+        return _state_code(_safe_text(s.get("state")) or original)
 
     if role == "city":
         geo = _safe_text(s.get("city"))
@@ -890,7 +915,8 @@ def _detect_anomalies(row: dict, structured: dict, roles: dict,
     in_state = _expand_state(_safe_text(row.get(state_col))) if state_col else ""
     res_state = _expand_state(_safe_text(s.get("state")))
     if in_state and res_state and _compare_text(in_state) != _compare_text(res_state):
-        resolved_state_name = s.get("state") or ""
+        # Surface the resolved state as its uniform 2-letter code (matches output).
+        resolved_state_name = _state_code(s.get("state") or "")
         anomalies.append(f"state_mismatch:{resolved_state_name}")
 
     return anomalies
@@ -1668,15 +1694,13 @@ def address_cleanse_final_v2():
             elif col_decision == "keep":
                 should_apply = False
             else:
-                # Fallback to row/bucket decision
-                if idx in approved_rows or bucket_decision == "approve":
-                    should_apply = True
-                elif idx in rejected_rows or bucket_decision == "reject":
+                # Fallback to row/bucket decision. Default = APPLY the
+                # Google-verified value for every bucket (matches the UI's
+                # "Apply" default); only an explicit reject/keep prevents it.
+                if idx in rejected_rows or bucket_decision == "reject":
                     should_apply = False
-                elif bucket == "auto_fixable":
-                    should_apply = True
                 else:
-                    should_apply = False
+                    should_apply = True
             
             if should_apply:
                 corrected_row[change["column"]] = change["to"]

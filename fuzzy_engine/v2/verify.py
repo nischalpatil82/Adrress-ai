@@ -244,11 +244,17 @@ class GoogleGeocoder:
         return _parse_google_result(data["results"][0])
 
 
+# Types for which we prefer the abbreviated short_name (e.g. "NY" not "New York")
+_SHORT_NAME_TYPES = {"administrative_area_level_1", "country"}
+
 def _parse_google_result(res: dict) -> GeocodeResult:
     comp_index: dict[str, str] = {}
     for c in res.get("address_components", []):
         for t in c.get("types", []):
-            comp_index.setdefault(t, c.get("long_name") or c.get("short_name") or "")
+            if t in _SHORT_NAME_TYPES:
+                comp_index.setdefault(t, c.get("short_name") or c.get("long_name") or "")
+            else:
+                comp_index.setdefault(t, c.get("long_name") or c.get("short_name") or "")
     geom = res.get("geometry", {})
     loc = geom.get("location", {})
     return GeocodeResult(
@@ -352,7 +358,10 @@ class GooglePlacesGeocoder:
         comp_index: dict[str, str] = {}
         for c in place.get("addressComponents", []):
             for t in c.get("types", []):
-                comp_index.setdefault(t, c.get("longText") or c.get("shortText") or "")
+                if t in _SHORT_NAME_TYPES:
+                    comp_index.setdefault(t, c.get("shortText") or c.get("longText") or "")
+                else:
+                    comp_index.setdefault(t, c.get("longText") or c.get("shortText") or "")
 
         # Build formatted address: prefix POI/business name when present
         # so the user sees e.g. "Nexus Vega City Mall, Bannerghatta Rd, ..."

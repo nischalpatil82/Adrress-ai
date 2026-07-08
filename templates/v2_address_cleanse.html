@@ -120,24 +120,181 @@
     transition: width .35s cubic-bezier(.2,.8,.2,1);
   }
 
-  /* -- Column mapping -- */
-  .colmap-grid {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  /* -- Column selection dual-box container -- */
+  .colsel-container {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
   }
-  @media (max-width: 980px) { .colmap-grid { grid-template-columns: 1fr 1fr; } }
-  @media (max-width: 640px) { .colmap-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 768px) {
+    .colsel-container {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .colsel-flow-indicator {
+      transform: rotate(90deg);
+      padding: 8px 0;
+    }
+  }
 
-  /* Column selection (checkbox list) */
-  .colsel-item {
-    display: flex; align-items: center; gap: 9px; cursor: pointer;
-    padding: 11px 13px; border: 1px solid var(--border); border-radius: 8px;
-    background: var(--surface); font-size: 12.5px; color: var(--text);
-    transition: border-color .15s, background .15s; user-select: none;
+  .colsel-box {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
   }
-  .colsel-item:hover { border-color: var(--red-soft-2); }
-  .colsel-item.on { border-color: var(--red); background: var(--red-soft); }
-  .colsel-item input { width: 15px; height: 15px; accent-color: var(--red); cursor: pointer; }
-  .colsel-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  
+  .colsel-box-header {
+    padding: 8px 12px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  
+  .colsel-box-title {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .colsel-box-title .badge {
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 1.5px 6px;
+    border-radius: 20px;
+    background: var(--border-strong);
+    color: var(--text-2);
+  }
+  
+  .colsel-box-title .badge-success {
+    background: rgba(53, 196, 107, 0.15);
+    color: #35c46b;
+  }
+  
+  .colsel-box-sub {
+    font-size: 10.5px;
+    color: var(--text-3);
+    margin-top: 1px;
+  }
+  
+  .colsel-box-body {
+    height: 190px;
+    overflow-y: auto;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  /* Scrollbar styling for scrollable containers */
+  .scrollable::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scrollable::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollable::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+  }
+  .scrollable::-webkit-scrollbar-thumb:hover {
+    background: var(--border-strong);
+  }
+
+  /* List items in the left box */
+  .colsel-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    font-size: 12px;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .colsel-list-item:hover {
+    border-color: var(--red-soft-2);
+    background: var(--red-soft);
+  }
+  .colsel-list-item.selected {
+    border-color: var(--red);
+    background: rgba(255, 77, 77, 0.05);
+  }
+  
+  /* Checkbox inside left item */
+  .colsel-list-item input[type="checkbox"] {
+    width: 13px;
+    height: 13px;
+    accent-color: var(--red);
+    cursor: pointer;
+    pointer-events: none; /* Let clicking the list item handle it */
+  }
+
+  .colsel-flow-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-3);
+  }
+  .colsel-flow-indicator svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Right box items (selected columns) */
+  .colsel-selected-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border: 1px solid var(--red-soft-2);
+    border-radius: 6px;
+    background: var(--red-soft);
+    font-size: 12px;
+    color: var(--text);
+    font-weight: 500;
+    transition: all 0.15s ease;
+  }
+  .colsel-selected-item:hover {
+    border-color: var(--red);
+    box-shadow: 0 0 8px rgba(255, 77, 77, 0.1);
+  }
+  
+  .colsel-selected-item-remove {
+    background: transparent;
+    border: none;
+    color: var(--text-3);
+    font-size: 15px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s ease;
+  }
+  .colsel-selected-item-remove:hover {
+    color: var(--red);
+  }
+  
+  .colsel-empty-msg {
+    margin: auto;
+    font-size: 12px;
+    color: var(--text-3);
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
+  }
 
   .colmap-card {
     display: flex; flex-direction: column; gap: 6px;
@@ -224,6 +381,8 @@
   .chip-f.on { background: var(--red-soft); border-color: var(--red); color: var(--text); }
   .chip-f.anom { border-color: rgba(239,68,68,.4); color: var(--red); }
   .chip-f.anom.on { background: var(--red); color: #fff; border-color: var(--red); }
+  .chip-f.zero { opacity: .4; }
+  .chip-f.zero:hover { opacity: .75; }
 
   .anom-flag {
     display: inline-block; font-size: 10.5px; font-weight: 600; color: var(--red);
@@ -250,7 +409,7 @@
   .chip-f .dot.nomatch { background: var(--text-3); }
   .chip-f .dot.all { background: var(--red); }
 
-  .bulk-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; }
+  .bulk-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; background: var(--glass); backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); border-radius: 8px; margin-bottom: 8px; }
   .bulk-bar button { font-size: 11.5px; padding: 6px 11px; }
 
   .bucket-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
@@ -258,6 +417,12 @@
   .bucket-tag.needs_review { color: #ffb454; background: rgba(255,180,84,.1); border: 1px solid rgba(255,180,84,.28); }
   .bucket-tag.already_clean { color: #4f8cff; background: rgba(79,140,255,.1); border: 1px solid rgba(79,140,255,.28); }
   .bucket-tag.no_match { color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); }
+
+  /* Status legend for the exception table */
+  .review-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-bottom: 10px; padding: 8px 12px; background: var(--glass); backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); border-radius: 8px; }
+  .review-legend .rl-title { font-size: 11px; font-weight: 600; color: var(--text-2); margin-right: 2px; }
+  .rl-item { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-2); font-weight: 500; }
+  .rl-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 
   .pager { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; }
   .pager button { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 12px; cursor: pointer; }
@@ -360,7 +525,8 @@
   .batch-bar {
     position: sticky; bottom: 0;
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    padding: 12px 16px; background: var(--surface-2); border: 1px solid var(--border);
+    padding: 12px 16px; background: var(--glass); backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
     border-radius: 8px; margin-top: 12px;
   }
 
@@ -388,7 +554,7 @@
   .kpi-card {
     position: relative; overflow: hidden;
     padding: 16px 16px 14px; border-radius: 11px;
-    background: var(--surface-2); border: 1px solid var(--border);
+    background: var(--glass); backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border);
   }
   .kpi-card .kv { font-size: 26px; font-weight: 700; color: var(--text); line-height: 1; }
   .kpi-card .kl { font-size: 10.5px; color: var(--text-2); margin-top: 7px; text-transform: uppercase; letter-spacing: .5px; }
@@ -403,7 +569,7 @@
   @media (max-width: 980px) { .stats-cols { grid-template-columns: 1fr; } }
 
   .bar-list { display: flex; flex-direction: column; gap: 11px; }
-  .bar-row { display: grid; grid-template-columns: 168px 1fr 44px; gap: 10px; align-items: center; }
+  .bar-row { display: grid; grid-template-columns: 168px 1fr 88px; gap: 10px; align-items: center; }
   .bar-row .bl {
     font-size: 10.5px; color: var(--text-2); text-transform: uppercase; letter-spacing: .3px;
     line-height: 1.25; word-break: break-word;
@@ -417,7 +583,8 @@
   .bar-fill.ok   { background: linear-gradient(90deg, #5fd98a, #35c46b); }
   .bar-fill.warn { background: linear-gradient(90deg, #ffd089, #ffb454); }
   .bar-fill.info { background: linear-gradient(90deg, #7fb0ff, #4f8cff); }
-  .bar-row .bv { font-size: 12px; font-weight: 600; color: var(--text); text-align: right; }
+  .bar-row .bv { font-size: 12px; font-weight: 600; color: var(--text); text-align: right; white-space: nowrap; }
+  .bar-row .bv .bpct { font-size: 10.5px; font-weight: 600; color: var(--text-3); margin-left: 3px; }
   .bar-empty { font-size: 12px; color: var(--text-2); font-style: italic; padding: 4px 0; }
 
   .meta-list { display: flex; flex-direction: column; gap: 14px; }
@@ -457,7 +624,7 @@
 
   .nav-buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
 
-  .card { border-radius: 10px; background: var(--glass-soft); border: 1px solid var(--glass-border); overflow: hidden; }
+  .card { border-radius: 10px; background: var(--glass-soft); backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border); overflow: hidden; }
   .card-head { padding: 14px 16px; border-bottom: 1px solid var(--border); }
   .card-title { font-size: 14px; font-weight: 600; color: var(--text); }
   .card-body { padding: 16px; }
@@ -509,7 +676,8 @@
   #focusContent { display: flex; flex-direction: column; min-height: 0; }
   .focus-body { padding: 22px 24px; overflow: auto; animation: cardSwap .22s ease; }
   @keyframes cardSwap { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-  .focus-rownum { font-size: 11.5px; color: var(--text-3); margin-bottom: 14px; }
+  .focus-rownum { font-size: 11.5px; color: var(--text-3); margin-bottom: 10px; }
+  .focus-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin-bottom: 14px; padding: 7px 11px; background: rgba(255,255,255,.02); border: 1px solid var(--glass-border); border-radius: 7px; }
 
   /* enlarged corrections inside the focus card */
   .focus-body .col-changes { max-width: none; gap: 8px; }
@@ -547,6 +715,189 @@
 
   /* -- Enterprise exception cards -- */
   .review-list { display: grid; gap: 10px; padding: 10px; max-height: calc(100vh - 190px); overflow: auto; }
+  
+  /* -- Table-based Exception Console styling -- */
+  .review-table-container {
+    width: 100%;
+    background: var(--glass);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  
+  .review-table-el {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-size: 12px;
+    color: var(--text);
+  }
+  
+  .review-table-el th, .review-table-el td {
+    padding: 8px 9px;
+    border: 1px solid var(--border);
+    text-align: left;
+    vertical-align: top;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+  }
+  .review-table-el .rownum-td { color: var(--text-2); font-variant-numeric: tabular-nums; }
+  .review-table-el .actions-td {
+    vertical-align: middle;
+    padding: 6px 4px;
+  }
+  
+  .review-table-el th {
+    background: var(--surface);
+    color: var(--text-2);
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  
+  .review-table-el tbody tr.review-row { transition: background 0.15s ease; }
+  .review-table-el tr {
+    transition: background 0.15s ease;
+  }
+
+  .review-table-el tbody tr.review-row:hover td {
+    background: rgba(255, 255, 255, 0.02);
+  }
+  
+  .review-table-el tr.approved td {
+    background: rgba(53, 196, 107, 0.04);
+  }
+  
+  .review-table-el tr.rejected td {
+    background: rgba(239, 68, 68, 0.04);
+  }
+
+  /* Subtle settle animation — plays on load and whenever a row re-renders
+     after a decision (renderCardInline swaps the row), giving gentle feedback. */
+  @keyframes rowSettle { from { opacity: .35; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
+  .review-table-el tbody tr { animation: rowSettle .16s ease; }
+  @media (prefers-reduced-motion: reduce) {
+    .review-table-el tbody tr, .cell-changed { animation: none !important; transition: none !important; }
+  }
+
+  /* Cell level styling — status-driven & scannable.
+     Every changed cell shows the CLEANED value as primary text (never struck
+     through). A colored left-accent + dot encodes the decision state so the
+     table can be scanned at a glance. Original value lives in the popover. */
+  .cell-changed {
+    position: relative;
+    transition: background 0.18s ease, border-color 0.18s ease;
+  }
+
+  .cell-primary {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    font-weight: 500;
+    min-width: 0;
+    line-height: 1.35;
+  }
+  .cell-val-txt { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
+  .cell-warn { flex: none; display: inline-flex; align-items: center; color: #ffb454; margin-top: 1px; }
+  .cell-warn svg { display: block; }
+
+  /* Suggested (default) — AI's cleaned value, awaiting review */
+  .cell-changed.state-suggested { background: rgba(255,180,84,.05) !important; }
+  .cell-changed.state-suggested:hover { background: rgba(255,180,84,.11) !important; }
+  .state-suggested .cell-val-txt { color: var(--text); }
+  .state-suggested .cell-dot { background: #ffb454; box-shadow: 0 0 0 3px rgba(255,180,84,.16); }
+
+  /* Approved — cleaned value will be applied */
+  .cell-changed.state-approved { background: rgba(53,196,107,.06) !important; }
+  .cell-changed.state-approved:hover { background: rgba(53,196,107,.12) !important; }
+  .state-approved .cell-val-txt { color: #35c46b; }
+  .state-approved .cell-dot { background: #35c46b; }
+
+  /* Kept original — suggestion declined; original is the outcome */
+  .cell-changed.state-kept { background: transparent !important; }
+  .cell-changed.state-kept:hover { background: rgba(255,255,255,.02) !important; }
+  .state-kept .cell-val-txt { color: var(--text-2); }
+  .state-kept .cell-dot { background: var(--text-3); }
+
+  /* Edited — custom value entered by the reviewer */
+  .cell-changed.state-edited { background: rgba(79,140,255,.06) !important; }
+  .cell-changed.state-edited:hover { background: rgba(79,140,255,.12) !important; }
+  .state-edited .cell-val-txt { color: #4f8cff; }
+  .state-edited .cell-dot { background: #4f8cff; }
+
+  /* Unchanged — calm so the changes pop */
+  .cell-unchanged { color: var(--text-2); }
+
+  .cell-edit-trigger {
+    font-size: 10px;
+    color: var(--text-3);
+    opacity: 0.35;
+    flex: none;
+    transition: opacity 0.15s ease, color 0.15s ease;
+  }
+  .cell-changed:hover .cell-edit-trigger { opacity: 1; color: var(--text); }
+
+  /* Cell popover chrome */
+  .cpop-head { font-size: 9px; color: var(--text-3); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; display: flex; justify-content: space-between; align-items: center; }
+  .cpop-close { color: var(--red); cursor: pointer; }
+  .cpop-actions { display: flex; gap: 6px; justify-content: flex-end; border-top: 1px solid var(--border); padding-top: 6px; margin-top: 4px; }
+
+  /* Cell Details Popover */
+  .cell-popover {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    width: 280px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    padding: 10px;
+    box-sizing: border-box;
+    display: none;
+    cursor: default;
+    white-space: normal;
+  }
+  
+  .cell-changed.active-popover .cell-popover {
+    display: block;
+  }
+  
+  .row-actions-cell {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    justify-content: center;
+  }
+  /* Single "Apply" toggle. Active (green) = AI value applied; inactive = kept. */
+  .apply-btn {
+    box-sizing: border-box;
+    width: 56px;
+    font-size: 10px; font-weight: 700; white-space: nowrap; line-height: 1;
+    padding: 5px 6px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--border-strong); background: var(--surface-2);
+    color: var(--text-3); transition: all .15s ease;
+  }
+  .apply-btn:hover { color: var(--text); border-color: #35c46b; }
+  .apply-btn.active { color: #fff; background: #35c46b; border-color: #2da35a; }
+  .apply-btn.active:hover { background: #2da35a; color: #fff; }
+  .apply-btn.kept { color: var(--text-2); background: rgba(255,255,255,.03); border-color: var(--border-strong); }
+  .apply-btn.kept:hover { color: #35c46b; border-color: #35c46b; }
+  /* Secondary "Edit" action — opens Focus review. Muted so Apply stays primary. */
+  .edit-btn {
+    box-sizing: border-box;
+    width: 42px;
+    font-size: 10px; font-weight: 700; white-space: nowrap; line-height: 1;
+    padding: 5px 6px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--border-strong); background: var(--surface-2);
+    color: var(--text-3); transition: all .15s ease;
+  }
+  .edit-btn:hover { color: #4f8cff; border-color: #4f8cff; }
   .review-empty { text-align: center; color: var(--text-2); padding: 28px; border: 1px dashed var(--border); border-radius: 8px; background: var(--surface-2); }
   .review-card { border: 1px solid var(--border); border-radius: 8px; background: rgba(18,18,20,.92); overflow: hidden; }
   .review-card.approved { border-color: rgba(53,196,107,.42); background: rgba(20,38,28,.55); }
@@ -567,62 +918,290 @@
   .card-action-btn.reject.active { border-color: rgba(239,68,68,.45); color: var(--red); background: rgba(239,68,68,.12); }
 
   .col-changes-list { display: flex; flex-direction: column; gap: 4px; }
-  .col-change-row { display: grid; grid-template-columns: 140px 1fr auto; align-items: center; gap: 16px; padding: 8px 12px; border-bottom: 1px dashed var(--border); transition: background 0.2s ease; border-radius: 4px; }
+  .col-change-row {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 12px;
+    border-bottom: 1px dashed var(--border);
+    transition: background 0.2s ease;
+    border-radius: 4px;
+  }
   .col-change-row:last-child { border-bottom: none; }
   .col-change-row:hover { background: rgba(255,255,255,0.02); }
-  .col-name { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .col-diff { display: flex; align-items: center; gap: 8px; font-size: 12.5px; overflow: hidden; }
-  .diff-val-old { color: var(--text-3); text-decoration: line-through; background: rgba(239, 68, 68, 0.08); padding: 2px 6px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 250px; }
-  .diff-val-arrow { color: var(--text-3); font-weight: bold; }
-  .diff-val-new { color: #35c46b; font-weight: 600; background: rgba(53, 196, 107, 0.08); padding: 2px 6px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 250px; }
-  .col-edit-input {
+  
+  .col-name {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 140px;
+    flex-shrink: 0;
+  }
+
+  .col-summary-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 12px;
+  }
+  
+  .col-val-preview {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12.5px;
+    cursor: pointer;
+    overflow: hidden;
+  }
+  
+  .col-val-preview .preview-suggest {
+    color: #35c46b;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    background: rgba(53, 196, 107, 0.08);
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(53, 196, 107, 0.15);
+  }
+  
+  .col-val-preview .preview-keep {
+    color: var(--text-3);
+    font-weight: 500;
+    text-decoration: line-through;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  
+  .col-val-preview .edit-badge {
+    color: var(--text-3);
+    font-size: 11px;
+    opacity: 0.3;
+    transition: opacity 0.15s ease;
+  }
+  
+  .col-val-preview:hover .edit-badge {
+    opacity: 1;
+    color: var(--red);
+  }
+
+  /* Focus Review: inline old -> new comparison (both always visible) */
+  .col-oldnew {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex-wrap: wrap;
+    font-size: 12.5px;
+  }
+  .cmp-old {
+    color: var(--text-3);
+    text-decoration: line-through;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--border);
+    padding: 3px 9px;
+    border-radius: 5px;
+    overflow-wrap: anywhere;
+    max-width: 46%;
+    transition: color .15s ease, text-decoration .15s ease, border-color .15s ease;
+  }
+  .cmp-arrow { color: var(--text-3); flex: none; font-size: 13px; }
+  .cmp-new {
+    flex: 1;
+    min-width: 150px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    border-radius: 5px;
+    padding: 6px 10px;
+    color: var(--text);
+    font-size: 12.5px;
+    font-weight: 500;
+    font-family: inherit;
+    line-height: 1.4;
+    outline: none;
+    resize: none;
+    overflow: hidden;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    box-sizing: border-box;
+    transition: border-color .15s ease, color .15s ease, background .15s ease, opacity .15s ease;
+  }
+  .cmp-new:focus { border-color: #4f8cff; }
+
+  /* Decision tinting — the winning value is emphasised, but BOTH stay visible */
+  .dec-suggested .cmp-new { border-color: rgba(255, 180, 84, .55); }
+  .dec-approve .cmp-new { border-color: #35c46b; color: #35c46b; background: rgba(53, 196, 107, .08); }
+  .dec-edited .cmp-new { border-color: #4f8cff; color: #4f8cff; }
+  .dec-keep .cmp-new { opacity: .5; }
+  .dec-keep .cmp-old { text-decoration: none; color: var(--text); border-color: var(--border-strong); }
+
+  /* Compact Circular Action Buttons */
+  .col-action-grp {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  
+  .col-btn-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-2);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: all 0.15s ease;
+    padding: 0;
+    line-height: 1;
+  }
+  
+  .col-btn-icon.approve-btn:hover, .col-btn-icon.approve-btn.active {
+    background: #35c46b;
+    border-color: #2da35a;
+    color: #fff;
+    box-shadow: 0 0 6px rgba(53, 196, 107, 0.2);
+  }
+  
+  .col-btn-icon.reject-btn:hover, .col-btn-icon.reject-btn.active {
+    background: rgba(239, 68, 68, 0.12);
+    border-color: var(--red);
+    color: var(--red);
+    box-shadow: none;
+  }
+
+  /* Inline Expansion Details */
+  .col-detail-panel {
+    display: none;
+    margin-top: 10px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    width: 100%;
+    box-sizing: border-box;
+    animation: slideDown 0.2s ease-out;
+  }
+  
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .col-change-row.expanded .col-detail-panel {
+    display: block;
+  }
+  
+  .col-change-row.expanded {
+    background: rgba(255, 255, 255, 0.015);
+    border-bottom: 1px solid var(--border);
+  }
+  
+  .col-diff {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+  }
+  
+  .diff-block {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+  
+  .diff-label {
+    font-size: 9px;
+    color: var(--text-3);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .diff-val-old {
+    font-size: 12px;
+    color: var(--text-2);
+    text-decoration: line-through;
+    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border);
     border-radius: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .col-edit-input {
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 12px;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface);
     color: #35c46b;
     font-weight: 600;
-    padding: 3px 8px;
-    font-size: 12px;
-    width: 100%;
-    max-width: 250px;
-    transition: all 0.15s ease;
-  }
-  .col-edit-input:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: var(--border-strong);
   }
   .col-edit-input:focus {
-    outline: none;
     border-color: #35c46b;
+    outline: none;
     background: rgba(53, 196, 107, 0.08);
     box-shadow: 0 0 0 2px rgba(53, 196, 107, 0.2);
   }
-  .col-action-grp { display: inline-flex; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; background: var(--surface); }
-  .col-btn { border: none; background: none; color: var(--text-2); padding: 5px 12px; font-size: 10.5px; font-weight: 600; cursor: pointer; transition: all 0.15s ease; border-right: 1px solid var(--border); }
-  .col-btn:last-child { border-right: none; }
-  .col-btn:hover { background: var(--surface-2); color: var(--text); }
+  
+  .val-unchanged {
+    color: var(--text-3);
+    font-size: 12px;
+    padding: 2px 8px;
+  }
   .col-btn.approve.active { background: rgba(53, 196, 107, 0.15); color: #35c46b; font-weight: 700; }
   .col-btn.keep.active { background: rgba(255, 180, 84, 0.15); color: #ffb454; font-weight: 700; }
   .no-changes-msg { font-size: 12px; color: var(--text-2); font-style: italic; padding: 8px 12px; display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.01); border-radius: 4px; }
   .issue-summary { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; padding: 0 12px 4px; }
 
   /* -- Smart dashboard -- */
-  .dashboard-banner { border: 1px solid var(--border); border-radius: 10px; background: rgba(18,18,20,.92); padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; margin-bottom: 12px; }
-  .db-head { display: flex; align-items: center; justify-content: space-between; }
+  .dashboard-banner { border: 1px solid var(--glass-border); border-radius: 10px; background: var(--glass); backdrop-filter: var(--glass-blur); padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; margin-bottom: 12px; }
+  .db-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .db-title { font-size: 15px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; }
   .db-title svg { color: #35c46b; }
-  .db-body { border: 1px solid rgba(53,196,107,.25); border-radius: 8px; background: rgba(53,196,107,.04); padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-  .db-body.has-exceptions { border-color: var(--border); background: var(--surface-2); }
+  .db-body { border: 1px solid rgba(53,196,107,.25); border-radius: 8px; background: rgba(53,196,107,.04); padding: 14px 16px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+  .db-body.has-exceptions { border-color: var(--glass-border); background: rgba(255,255,255,.02); }
   .db-info { display: flex; flex-direction: column; gap: 4px; }
   .db-info-t { font-size: 13.5px; font-weight: 700; color: var(--text); }
   .db-info-d { font-size: 11.5px; color: var(--text-2); }
-  .db-actions { display: flex; gap: 10px; align-items: center; }
+  .db-skip-note { align-self: flex-start; margin-top: 8px; font-size: 11.5px; line-height: 1.55; color: var(--text-2); background: rgba(255,255,255,.02); border: 1px solid var(--glass-border); border-left: 3px solid #ffb454; border-radius: 6px; padding: 8px 11px; max-width: 680px; }
+  .db-skip-note b { color: var(--text); font-weight: 700; }
+  .db-skip-note .dn-line { display: block; }
+  .db-skip-note .dn-line + .dn-line { margin-top: 5px; }
+  .db-skip-note .dn-acc { color: #35c46b; font-weight: 700; }
+  .db-skip-note .dn-skip { color: #ffb454; font-weight: 700; }
+  .db-actions { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
   .time-est { font-size: 11.5px; color: var(--text-3); display: flex; align-items: center; gap: 4px; }
   /* -- Collapsible Toggles -- */
   details.kpi-details, details.advanced-settings {
-    border: 1px solid var(--border);
+    border: 1px solid var(--glass-border);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.01);
+    background: var(--glass);
+    backdrop-filter: var(--glass-blur);
     margin-bottom: 12px;
     overflow: hidden;
     transition: all 0.2s ease;
@@ -640,7 +1219,7 @@
     color: var(--text);
     cursor: pointer;
     user-select: none;
-    background: var(--surface-2);
+    background: transparent;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -671,6 +1250,13 @@
   details.kpi-details .kpi-grid {
     margin: 14px;
   }
+  /* Compact overview cards on the AI Review screen (smaller than the full stats page) */
+  .kpi-grid-compact { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .kpi-grid-compact .kpi-card { padding: 10px 12px 9px; border-radius: 9px; }
+  .kpi-grid-compact .kpi-card .kv { font-size: 18px; }
+  .kpi-grid-compact .kpi-card .kl { font-size: 9.5px; margin-top: 4px; }
+  .kpi-grid-compact .kpi-card .ksub { font-size: 9.5px; margin-top: 2px; }
+  @media (max-width: 900px) { .kpi-grid-compact { grid-template-columns: 1fr 1fr; } }
   details.advanced-settings .card {
     margin: 14px;
     border: none;
@@ -731,19 +1317,64 @@
         </div>
       </div>
     </div>
-    <div class="nav-buttons"><button class="btn-primary" id="btnNext1" disabled>Next <span style="margin-left:4px;">-></span></button></div>
+    <div class="nav-buttons"><button class="btn-primary" id="btnNext1" disabled>Next <span style="margin-left:4px;">→</span></button></div>
     <div class="err" id="err1"></div>
   </div>
 
   <!-- ========== Screen 2: Column Mapping & Processing Scope ========== -->
   <div class="wizard-screen" id="screen2">
     <div class="card">
-      <div class="card-head"><div class="card-title"> Address Columns & Processing Scope</div></div>
+      <div class="card-head" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div class="card-title">Address Columns & Processing Scope</div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn-secondary" id="btnBack2" style="padding: 6px 12px; font-size:12px; height:34px;">← Back</button>
+          <button class="btn-primary" id="btnNext2" style="padding: 6px 14px; font-size:12px; height:34px;">Run AI Cleanse →</button>
+        </div>
+      </div>
       <div class="card-body">
-        <p style="font-size:12px;color:var(--text-2);margin-bottom:14px;">Tick the columns that make up the address, then choose how many rows the AI should process.</p>
+        <!-- Progress (hidden until processing starts) — sits directly under the Run AI Cleanse button -->
+        <div id="processBox" style="display:none;margin-bottom:18px;padding:12px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+            <div style="font-size:12px;font-weight:600;color:var(--text);">AI processing…</div>
+            <div style="font-size:12px;color:var(--text-2);"><b id="procDone">0</b> / <b id="procTotal">0</b> rows - <span id="procPct">0%</span></div>
+          </div>
+          <div class="proc-track"><div class="proc-fill" id="procFill"></div></div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:6px;" id="procNote">Starting…</div>
+        </div>
 
-        <!-- Column Mapping -->
-        <div class="colmap-grid" id="colmapGrid"></div>
+        <p style="font-size:12px;color:var(--text-2);margin-bottom:14px;">Select the columns that make up the address, then choose how many rows the AI should process.</p>
+
+        <!-- Column Mapping (Dual Box Layout) -->
+        <div class="colsel-container">
+          <!-- Left Box: Available Columns -->
+          <div class="colsel-box">
+            <div class="colsel-box-header">
+              <div class="colsel-box-title">Available Columns <span class="badge" id="availCount">0</span></div>
+              <div class="colsel-box-sub">Click columns to include in address</div>
+            </div>
+            <div class="colsel-box-body scrollable" id="availColsBox">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Middle Indicator (Flow Arrow) -->
+          <div class="colsel-flow-indicator" title="Include selected columns in cleanse">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </div>
+
+          <!-- Right Box: Selected Columns -->
+          <div class="colsel-box selected-box">
+            <div class="colsel-box-header">
+              <div class="colsel-box-title">Selected Address Columns <span class="badge badge-success" id="selCount">0</span></div>
+              <div class="colsel-box-sub">Active components for AI parsing</div>
+            </div>
+            <div class="colsel-box-body scrollable" id="selectedColsBox">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
 
         <!-- Processing scope -->
         <div style="margin-top:18px;">
@@ -774,26 +1405,28 @@
           </div>
         </div>
 
+        <!-- Confidence Threshold -->
+        <div style="margin-top:18px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;">Auto-approve confidence threshold</div>
+          <div class="card" style="background:var(--surface-2); border:1px solid var(--border);">
+            <div class="card-body" style="padding:10px 12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+              <div style="flex:1; min-width:240px;">
+                <p style="font-size:11px;color:var(--text-3);margin:0;line-height:1.4;">Only rows with confidence above this threshold are auto-applied. Flagged rows stay in the exception queue for manual review.</p>
+              </div>
+              <div style="display:flex; align-items:center; gap:10px; min-width:200px;">
+                <input type="range" id="approveThreshold" min="0" max="100" step="1" value="80" oninput="onThresholdInput(this.value)" style="width: 140px; accent-color: var(--red);">
+                <span style="font-size:13px; font-weight:600; color:var(--text); min-width:36px;"><b id="threshVal">80</b>%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Data Preview -->
         <div style="margin-top:18px;">
           <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;"> Data Preview (first 5 rows)</div>
           <div class="preview-table-wrap" id="dataPreviewTable"></div>
         </div>
-
-        <!-- Progress (hidden until processing starts) -->
-        <div id="processBox" style="display:none;margin-top:18px;">
-          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
-            <div style="font-size:12px;font-weight:600;color:var(--text);"> AI processing...</div>
-            <div style="font-size:12px;color:var(--text-2);"><b id="procDone">0</b> / <b id="procTotal">0</b> rows - <span id="procPct">0%</span></div>
-          </div>
-          <div class="proc-track"><div class="proc-fill" id="procFill"></div></div>
-          <div style="font-size:11px;color:var(--text-3);margin-top:6px;" id="procNote">Starting...</div>
-        </div>
       </div>
-    </div>
-    <div class="nav-buttons">
-      <button class="btn-secondary" id="btnBack2"><- Back</button>
-      <button class="btn-primary" id="btnNext2">Run AI Cleanse -></button>
     </div>
     <div class="err" id="err2"></div>
   </div>
@@ -803,44 +1436,24 @@
     <!-- Smart Dashboard Banner -->
     <div class="dashboard-banner" id="smartDashboard"></div>
 
-    <!-- KPI dashboard (collapsible/advanced) -->
-    <details class="kpi-details">
-      <summary>📊 View KPI Dashboard & Analytics</summary>
-      <div class="kpi-grid" id="reviewKpis"></div>
-    </details>
-
-    <!-- Threshold + confidence histogram -->
-    <details class="advanced-settings">
-      <summary>⚙ Advanced Settings (Confidence Threshold)</summary>
-      <div class="card">
-        <div class="card-body">
-          <div class="thresh-row">
-            <div>
-              <div style="font-size:13px;font-weight:600;color:var(--text);">Auto-approve confidence threshold</div>
-              <div style="font-size:11px;color:var(--text-3);margin-top:2px;">Only rows with confidence above this threshold are auto-applied. Flagged rows stay in the exception queue.</div>
-            </div>
-            <div class="thresh-control">
-              <input type="range" id="approveThreshold" min="0" max="100" step="1" value="80" oninput="onThresholdInput(this.value)">
-              <span class="thresh-val"><b id="threshVal">80</b>%</span>
-            </div>
-          </div>
-          <div class="histogram" id="confHistogram" title="Confidence distribution"></div>
-          <div class="histo-axis"><span>0%</span><span>50%</span><span>100%</span></div>
-        </div>
-      </div>
+    <!-- Cleanse overview (open by default) -->
+    <details class="kpi-details" open>
+      <summary>📊 Cleanse Overview</summary>
+      <div class="kpi-grid kpi-grid-compact" id="reviewKpis"></div>
     </details>
 
     <!-- Filter chips -->
     <div class="filter-bar" id="filterBar"></div>
 
-    <!-- Queue toolbar -->
-    <div class="bulk-bar" style="margin-bottom:10px;">
-      <div style="font-size:12px;color:var(--text-2);">
-        Exception queue: <span id="bucketLabel">All</span> (<b id="pageInfo">0</b> rows)
-      </div>
-      <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
-        <button class="btn-primary focus-launch" id="focusLaunchBtn" onclick="openFocus()">Focus review</button>
-      </div>
+    <!-- Status legend + Focus review launcher (single row) -->
+    <div class="review-legend" id="reviewLegend">
+      <span class="rl-title">Legend</span>
+      <span class="rl-item"><span class="rl-dot" style="background:#ffb454;"></span>Suggested — review</span>
+      <span class="rl-item"><span class="rl-dot" style="background:#35c46b;"></span>Approved</span>
+      <span class="rl-item"><span class="rl-dot" style="background:var(--text-3);"></span>Kept original</span>
+      <span class="rl-item"><span class="rl-dot" style="background:#4f8cff;"></span>Edited</span>
+      <span class="rl-item"><span class="rl-dot" style="background:var(--border-strong);"></span>Unchanged</span>
+      <button class="btn-primary focus-launch" id="focusLaunchBtn" onclick="openFocus()" style="margin-left:auto;">Focus review</button>
     </div>
 
     <!-- Exception Cards Queue (instead of table) -->
@@ -854,7 +1467,10 @@
       <div style="font-size:12px;color:var(--text-2);">
         <span id="decisionSummary">Safe rows are handled automatically. Review only exceptions or override by bucket.</span>
       </div>
-      <button class="btn-primary" id="btnNext3">View Statistics -></button>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <button class="btn-secondary" id="btnBack3">← Back</button>
+        <button class="btn-primary" id="btnNext3">View Statistics →</button>
+      </div>
     </div>
     <div class="err" id="err3"></div>
   </div>
@@ -863,10 +1479,9 @@
   <div class="wizard-screen" id="screen4">
     <div class="stats-head">
       <div>
-        <div class="stats-title"> Cleanse Statistics</div>
+        <div class="stats-title">Cleanse Statistics</div>
         <div class="stats-sub">A full audit of what the AI reviewed and what was applied to your file.</div>
       </div>
-      <button class="btn-secondary" id="btnBackStats"><- Back to review</button>
     </div>
 
     <!-- KPI cards -->
@@ -897,7 +1512,10 @@
 
     <div class="batch-bar">
       <div style="font-size:12px;color:var(--text-2);">Review complete - your cleansed file is ready to download.</div>
-      <button class="btn-primary" id="btnNext4">Continue to Download -></button>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <button class="btn-secondary" id="btnBackStats">← Back to review</button>
+        <button class="btn-primary" id="btnNext4">Continue to Download →</button>
+      </div>
     </div>
   </div>
 
@@ -921,7 +1539,7 @@
     </div>
 
     <div class="nav-buttons" style="justify-content:space-between; margin-top:14px;">
-      <button class="btn-secondary" id="btnBackDownload"><- Back to statistics</button>
+      <button class="btn-secondary" id="btnBackDownload">← Back to statistics</button>
       <button class="btn-primary" id="btnDownload">
         <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Download Cleansed File
@@ -971,6 +1589,7 @@ let reviewPageSize = 50;
 let reviewSummary = null;        // last /review_summary payload
 let fieldDecisions = {};         // { [rowNum]: { [colName]: 'approve' | 'keep' } }
 let pageRows = [];               // Cache of current page rows
+let lastRunStats = null;         // { rows, seconds, rate } from the last AI processing run
 // Small chunks keep the progress bar moving smoothly. Each row takes ~1s
 // (pooled keep-alive HTTP to the geocoder), so a chunk of 10 updates the bar
 // roughly every ~10s with row count + live ETA.
@@ -1052,20 +1671,58 @@ document.getElementById('btnNext1').addEventListener('click', async () => {
 
 // ========== Screen 2: Address Column Selection ==========
 function renderColumnMapping(headers, detectedRoles, addressCols) {
-  const container = document.getElementById('colmapGrid');
+  const availBox = document.getElementById('availColsBox');
   const checked = new Set(addressCols || []);
-  container.innerHTML = headers.map(h => {
+
+  availBox.innerHTML = headers.map(h => {
     const isOn = checked.has(h);
     return `
-      <label class="colsel-item ${isOn ? 'on' : ''}">
-        <input type="checkbox" class="colsel-cb" value="${escapeHtml(h)}" ${isOn ? 'checked' : ''} onchange="onColSelToggle(this)">
-        <span title="${escapeHtml(h)}">${escapeHtml(h)}</span>
-      </label>`;
+      <div class="colsel-list-item ${isOn ? 'selected' : ''}" data-col="${escapeHtml(h)}" onclick="toggleColumnSelection(this)">
+        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:8px;" title="${escapeHtml(h)}">${escapeHtml(h)}</span>
+        <input type="checkbox" class="colsel-cb" value="${escapeHtml(h)}" ${isOn ? 'checked' : ''}>
+      </div>`;
   }).join('');
+
+  updateSelectedColumnsUI();
 }
 
-function onColSelToggle(cb) {
-  cb.closest('.colsel-item').classList.toggle('on', cb.checked);
+function toggleColumnSelection(itemOrColName) {
+  let item;
+  if (typeof itemOrColName === 'string') {
+    item = document.querySelector(`.colsel-list-item[data-col="${escapeHtml(itemOrColName)}"]`);
+  } else {
+    item = itemOrColName;
+  }
+  if (!item) return;
+  const cb = item.querySelector('.colsel-cb');
+  if (!cb) return;
+
+  cb.checked = !cb.checked;
+  item.classList.toggle('selected', cb.checked);
+
+  updateSelectedColumnsUI();
+}
+
+function updateSelectedColumnsUI() {
+  const selectedBox = document.getElementById('selectedColsBox');
+  const checkedCheckboxes = [...document.querySelectorAll('.colsel-cb')].filter(cb => cb.checked);
+
+  document.getElementById('availCount').textContent = document.querySelectorAll('.colsel-cb').length;
+  document.getElementById('selCount').textContent = checkedCheckboxes.length;
+
+  if (checkedCheckboxes.length === 0) {
+    selectedBox.innerHTML = `<div class="colsel-empty-msg">No columns selected. Click columns on the left to include them in the address.</div>`;
+    return;
+  }
+
+  selectedBox.innerHTML = checkedCheckboxes.map(cb => {
+    const val = cb.value;
+    return `
+      <div class="colsel-selected-item">
+        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-right:8px;" title="${escapeHtml(val)}">${escapeHtml(val)}</span>
+        <button type="button" class="colsel-selected-item-remove" onclick="event.stopPropagation(); toggleColumnSelection('${escapeHtml(val)}')">×</button>
+      </div>`;
+  }).join('');
 }
 
 function renderDataPreview(rows, headers) {
@@ -1169,10 +1826,28 @@ document.getElementById('btnNext2').addEventListener('click', async () => {
       document.getElementById('procNote').textContent =
         `${rate.toFixed(1)} rows/sec - ${etaTxt}`;
 
-      if (data.done) break;
+      if (data.done) {
+        // Remember the AI run stats for the completion status line.
+        const totalElapsed = (Date.now() - t0) / 1000;
+        lastRunStats = {
+          rows: done,
+          seconds: totalElapsed,
+          rate: done / Math.max(totalElapsed, 0.001),
+        };
+        break;
+      }
       nextStart = data.next_start;
     }
-    document.getElementById('procNote').textContent = 'Done. Loading review console...';
+    // Final status on the Map Columns page: rows processed, elapsed time, speed.
+    if (lastRunStats) {
+      const secs = Math.round(lastRunStats.seconds);
+      const timeTxt = secs >= 60 ? Math.floor(secs / 60) + 'm ' + (secs % 60) + 's' : secs + 's';
+      document.getElementById('procNote').innerHTML =
+        '✓ Done — ' + lastRunStats.rows.toLocaleString() + ' rows in ' + timeTxt +
+        ' · ' + lastRunStats.rate.toFixed(1) + ' rows/sec. Loading review console…';
+    } else {
+      document.getElementById('procNote').textContent = 'Done. Loading review console…';
+    }
 
     await loadReviewConsole();
     goToStep(3);
@@ -1185,6 +1860,7 @@ document.getElementById('btnNext2').addEventListener('click', async () => {
 });
 
 document.getElementById('btnBack2').addEventListener('click', () => goToStep(1));
+document.getElementById('btnBack3').addEventListener('click', () => goToStep(2));
 
 // ========== Screen 3: AI Review ==========
 function renderColumnChanges(changes, rowNum) {
@@ -1196,7 +1872,7 @@ function renderColumnChanges(changes, rowNum) {
       <span class="ccol">${escapeHtml(c.column)}</span>
       <span class="cval">
         <span class="from">${escapeHtml(c.from || '(empty)')}</span>
-        <span class="arrow">-></span>
+        <span class="arrow">→</span>
         <span class="to">${escapeHtml(c.to || '')}</span>
       </span>
     </div>`).join('');
@@ -1224,7 +1900,7 @@ function renderMergedCorrections(inputFields, fieldChanges) {
     const ch = byCol[f.column];
     const body = ch
       ? `<span class="from">${escapeHtml(ch.from || '(empty)')}</span>
-         <span class="arrow">-></span>
+         <span class="arrow">→</span>
          <span class="to">${escapeHtml(ch.to || '')}</span>`
       : `<span class="same">${escapeHtml(f.value || '(empty)')}</span>`;
     return `
@@ -1311,10 +1987,12 @@ function renderReviewKpis() {
 }
 
 function renderHistogram() {
+  const histEl = document.getElementById('confHistogram');
+  if (!histEl) return;
   const hist = (reviewSummary && reviewSummary.histogram) || [];
   const max = Math.max(...hist, 1);
   const thBin = Math.floor(reviewThreshold / 10);
-  document.getElementById('confHistogram').innerHTML = hist.map((c, i) => {
+  histEl.innerHTML = hist.map((c, i) => {
     const h = Math.round((c / max) * 100);
     const cls = i >= thBin ? 'above' : 'below';
     return `<div class="hbar ${cls}" style="height:${Math.max(2,h)}%" title="${i*10}-${i*10+10}%: ${c} rows"></div>`;
@@ -1329,12 +2007,12 @@ function renderFilterChips() {
   let html = order.map(key => {
     const m = BUCKET_META[key];
     const count = key === 'all' ? total : (b[key] || 0);
-    return `<span class="chip-f ${activeBucket===key?'on':''}" onclick="setBucket('${key}')">
-      <span class="dot ${m.dot}"></span>${m.label} <span class="cnt">${count.toLocaleString()}</span></span>`;
+    const zero = (key !== 'all' && count === 0) ? ' zero' : '';
+    return `<span class="chip-f ${activeBucket===key?'on':''}${zero}" onclick="setBucket('${key}')">${m.label} <span class="cnt">${count.toLocaleString()}</span></span>`;
   }).join('');
-  // Orthogonal anomaly filter - separated, red-accented.
-  html += `<span class="chip-f anom ${activeBucket==='anomalies'?'on':''}" onclick="setBucket('anomalies')"
-            style="margin-left:auto;">! Anomalies <span class="cnt">${anomCount.toLocaleString()}</span></span>`;
+  // Anomaly filter sits inline right after "No match".
+  const anomZero = anomCount === 0 ? ' zero' : '';
+  html += `<span class="chip-f anom ${activeBucket==='anomalies'?'on':''}${anomZero}" onclick="setBucket('anomalies')">! Anomalies <span class="cnt">${anomCount.toLocaleString()}</span></span>`;
   document.getElementById('filterBar').innerHTML = html;
 }
 
@@ -1348,15 +2026,29 @@ async function setBucket(key) {
 let onThreshTimer = null;
 function onThresholdInput(val) {
   reviewThreshold = parseInt(val);
-  document.getElementById('threshVal').textContent = reviewThreshold;
-  renderHistogram();
-  // Debounce the server re-bucket so dragging stays smooth.
-  clearTimeout(onThreshTimer);
-  onThreshTimer = setTimeout(async () => {
-    await refreshSummary();
-    reviewPage = 0;
-    await loadReviewPage();
-  }, 250);
+  
+  // Sync displays
+  const disp2 = document.getElementById('threshVal');
+  if (disp2) disp2.textContent = reviewThreshold;
+  const disp3 = document.getElementById('threshValStep3');
+  if (disp3) disp3.textContent = reviewThreshold;
+  
+  // Sync inputs
+  const slider2 = document.getElementById('approveThreshold');
+  if (slider2 && slider2.value != val) slider2.value = val;
+  const slider3 = document.getElementById('approveThresholdStep3');
+  if (slider3 && slider3.value != val) slider3.value = val;
+  
+  if (sessionId) {
+    renderHistogram();
+    // Debounce the server re-bucket so dragging stays smooth.
+    clearTimeout(onThreshTimer);
+    onThreshTimer = setTimeout(async () => {
+      await refreshSummary();
+      reviewPage = 0;
+      await loadReviewPage();
+    }, 250);
+  }
 }
 
 async function loadReviewPage() {
@@ -1374,19 +2066,325 @@ async function loadReviewPage() {
   renderPager(data);
   const startN = data.total_matched ? reviewPage * reviewPageSize + 1 : 0;
   const endN = Math.min((reviewPage + 1) * reviewPageSize, data.total_matched);
-  document.getElementById('pageInfo').textContent = `${startN}-${endN} of ${data.total_matched.toLocaleString()}`;
-  document.getElementById('bucketLabel').textContent = BUCKET_META[activeBucket].label;
+  const pageInfoEl = document.getElementById('pageInfo');
+  if (pageInfoEl) pageInfoEl.textContent = `${startN}-${endN} of ${data.total_matched.toLocaleString()}`;
+  const bucketLabelEl = document.getElementById('bucketLabel');
+  if (bucketLabelEl) bucketLabelEl.textContent = BUCKET_META[activeBucket].label;
   const flb = document.getElementById('focusLaunchBtn');
   if (flb) flb.textContent = ` Focus review${data.total_matched ? ` (${data.total_matched.toLocaleString()})` : ''}`;
+}
+
+function toggleCellPopover(cellEl, event) {
+  event.stopPropagation();
+  const wasActive = cellEl.classList.contains('active-popover');
+  closeAllPopovers();
+  if (!wasActive) {
+    cellEl.classList.add('active-popover');
+  }
+}
+
+function closeAllPopovers(event) {
+  if (event) event.stopPropagation();
+  document.querySelectorAll('.active-popover').forEach(el => {
+    el.classList.remove('active-popover');
+  });
+}
+
+// Close popovers on document body click
+document.addEventListener('click', function() {
+  closeAllPopovers();
+});
+
+function updateTableCellValue(inputEl) {
+  const cellEl = inputEl.closest('td');
+  if (!cellEl) return;
+  const previewTxt = cellEl.querySelector('.cell-val-txt');
+  if (previewTxt) {
+    previewTxt.textContent = inputEl.value;
+  }
 }
 
 function renderReviewTable(rows) {
   const container = document.getElementById('reviewTableBody');
   if (!rows.length) {
-    container.innerHTML = '<div class="review-empty">No rows in this filter.</div>';
+    container.innerHTML = '<div class="review-empty">No exception rows to review.</div>';
     return;
   }
-  container.innerHTML = rows.map(function(r) { return renderCardHtml(r); }).join('');
+  
+  // Build colgroup: narrow Row#, then address columns, then Actions last
+  const tableCols = addressColumns || [];
+  const colGroupHtml = '<colgroup>' +
+    '<col style="width: 46px;">' +
+    tableCols.map(function() { return '<col>'; }).join('') +
+    '<col style="width: 112px;">' +
+  '</colgroup>';
+
+  // Build table headers dynamically based on the user-selected columns
+  const headerHtml = '<thead><tr>' +
+    '<th>Row #</th>' +
+    tableCols.map(function(h) { return '<th>' + escapeHtml(h) + '</th>'; }).join('') +
+    '<th style="text-align: center;">Actions</th>' +
+  '</tr></thead>';
+  
+  const bodyHtml = '<tbody>' + rows.map(function(r) { return renderTableRowHtml(r); }).join('') + '</tbody>';
+  
+  container.innerHTML = '<div class="review-table-container">' +
+    '<table class="review-table-el">' +
+      colGroupHtml +
+      headerHtml +
+      bodyHtml +
+    '</table>' +
+  '</div>';
+}
+
+function getColumnAnomalyHtml(r, colName) {
+  if (!r.anomalies || r.anomalies.length === 0) return '';
+  const colNameLower = colName.toLowerCase();
+  let html = '';
+  r.anomalies.forEach(function(a) {
+    if (a.indexOf('city_mismatch:') === 0 && (colNameLower === 'city' || colName === (roles['city'] || ''))) {
+      const resolvedCity = a.split(':')[1];
+      html = '<div style="margin-top: 8px; padding: 6px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 4px; font-size: 11px; color: var(--red); display: flex; align-items: center; justify-content: space-between; gap: 8px;">' +
+        '<span>⚠️ City differs (resolved as ' + escapeHtml(resolvedCity) + ')</span>' +
+        '<button type="button" class="btn-resolve-city" style="font-size: 10px; padding: 2px 6px;" onclick="resolveCityTo(' + r.row_number + ', \'' + escapeHtmlJs(resolvedCity) + '\', \'' + r.bucket + '\'); closeAllPopovers(event)">Resolve</button>' +
+      '</div>';
+    }
+    if (a.indexOf('state_mismatch:') === 0 && (colNameLower === 'state' || colName === (roles['state'] || ''))) {
+      const resolvedState = a.split(':')[1];
+      html = '<div style="margin-top: 8px; padding: 6px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 4px; font-size: 11px; color: var(--red); display: flex; align-items: center; justify-content: space-between; gap: 8px;">' +
+        '<span>⚠️ State differs (resolved as ' + escapeHtml(resolvedState) + ')</span>' +
+        '<button type="button" class="btn-resolve-city" style="font-size: 10px; padding: 2px 6px;" onclick="resolveStateTo(' + r.row_number + ', \'' + escapeHtmlJs(resolvedState) + '\', \'' + r.bucket + '\'); closeAllPopovers(event)">Resolve</button>' +
+      '</div>';
+    }
+  });
+  return html;
+}
+
+function renderTableRowHtml(r) {
+  const changes = getRowChangesUnion(r);
+  
+  // Resolve row decision class
+  const inheritedDecision = bucketDecisions[activeBucket] || bucketDecisions[r.bucket] || bucketDecisions.all;
+  const decision = rowDecisions[r.row_number] || inheritedDecision || 'pending';
+  
+  let rowClass = '';
+  if (decision === 'approve') rowClass = 'approved';
+  else if (decision === 'reject') rowClass = 'rejected';
+  
+  // Build actions cell — a single "Apply" toggle. Active (green) = the AI value
+  // will be written; inactive (grey) = the original is kept. Default follows the
+  // bucket: auto-fixable is active, exception rows are inactive (kept) by default.
+  const hasChanges = changes.length > 0;
+  let actionsHtml = '';
+  if (hasChanges) {
+    let applyBtnHtml = '';
+    if (r.bucket === 'needs_review') {
+      // Review rows toggle amber ⇄ green: the default green "✓ Apply" applies
+      // the AI value (cells turn green); once applied it becomes "↩ Keep
+      // original", which reverts the row to its amber suggestion. "Applied" means
+      // every column is explicitly approved (or the bucket is approved) — matching
+      // the cell colours — so a single-column approve in Focus review doesn't flip
+      // the whole-row button.
+      const reviewApproved =
+        bucketDecisions[activeBucket] === 'approve' ||
+        bucketDecisions[r.bucket] === 'approve' ||
+        bucketDecisions.all === 'approve' ||
+        (changes.length > 0 && changes.every(function(ch) {
+          return (fieldDecisions[r.row_number] || {})[ch.column] === 'approve';
+        }));
+      applyBtnHtml =
+        '<button class="apply-btn ' + (reviewApproved ? 'kept' : 'active') + '" ' +
+          'onclick="setRowDecision(' + r.row_number + ', \'' + (reviewApproved ? 'reject' : 'approve') + '\')" ' +
+          'title="' + (reviewApproved ? 'Applied — click to keep the original' : 'Suggested — click to apply the AI value') + '">' +
+          (reviewApproved ? '↩ Keep' : '✓ Apply') + '</button>';
+    } else {
+      let applying = true;
+      changes.forEach(function(ch) {
+        if (getColumnDecision(r.row_number, ch.column, r.bucket) === 'keep') applying = false;
+      });
+      applyBtnHtml =
+        '<button class="apply-btn ' + (applying ? 'active' : 'kept') + '" ' +
+          'onclick="setRowDecision(' + r.row_number + ', \'' + (applying ? 'reject' : 'approve') + '\')" ' +
+          'title="' + (applying ? 'Applying the AI value — click to keep the original' : 'Keeping the original — click to apply the AI value') + '">' +
+          (applying ? '✓ Apply' : '↩ Keep') + '</button>';
+    }
+    // The row itself is no longer click-to-open, so cells can be clicked/selected
+    // without launching Focus. This dedicated button is the way into Focus review.
+    const editBtnHtml =
+      '<button class="edit-btn" onclick="rowOpenFocus(' + r.row_number + ')" ' +
+        'title="Open this row in Focus review to edit or decide each field">✎ Edit</button>';
+    actionsHtml = '<div class="row-actions-cell">' + applyBtnHtml + editBtnHtml + '</div>';
+  }
+  
+  const changeMap = {};
+  changes.forEach(function(ch) {
+    changeMap[ch.column] = ch;
+  });
+  
+  // Build an input_fields lookup for unchanged cell values
+  const inputFieldMap = {};
+  (r.input_fields || []).forEach(function(f) {
+    inputFieldMap[f.column] = f.value || '';
+  });
+  
+  const cellsHtml = (addressColumns || []).map(function(h) {
+    const ch = changeMap[h];
+    if (ch) {
+      // Resolve a single visual state. rawExplicit is the reviewer's explicit
+      // choice (undefined when still on the default). We show the AI-CLEANED
+      // value prominently while a suggestion is pending; the full old -> new
+      // detail and editing happen in Focus Review (opened by clicking the row).
+      const rawExplicit = (fieldDecisions[r.row_number] || {})[h];
+      const colDec = getColumnDecision(r.row_number, ch.column, r.bucket);
+      // Needs-review rows go amber → green: the cleaned value stays amber until
+      // THIS column is explicitly applied (its Apply/approve or a bucket approve),
+      // then turns green. Row-level rowDecisions is intentionally excluded — it
+      // gets set as a side-effect when a single column is approved in Focus
+      // review, which would otherwise green every column. The row Apply button
+      // approves every column, so per-column rawExplicit still greens the row.
+      const reviewApproved =
+        rawExplicit === 'approve' ||
+        bucketDecisions[activeBucket] === 'approve' ||
+        bucketDecisions[r.bucket] === 'approve' ||
+        bucketDecisions.all === 'approve';
+      const greenOk = (r.bucket !== 'needs_review') || reviewApproved;
+
+      let state, primaryVal;
+      if (rawExplicit && rawExplicit !== 'approve' && rawExplicit !== 'keep') {
+        state = 'edited';    primaryVal = rawExplicit;          // custom value (blue)
+      } else if (colDec === 'approve' && greenOk) {
+        state = 'approved';  primaryVal = ch.to || '';          // applied (green)
+      } else {
+        // Not applied (needs-review default or kept) — show the AI suggestion
+        // in amber so review rows read as "suggested / review".
+        state = 'suggested'; primaryVal = ch.to || '';
+      }
+
+      const hasAnomaly = getColumnAnomalyHtml(r, h) !== '';
+
+      return '<td class="cell-changed state-' + state + '">' +
+        '<div class="cell-primary">' +
+          '<span class="cell-val-txt">' + escapeHtml(primaryVal) + '</span>' +
+          (hasAnomaly ? '<span class="cell-warn" title="Needs attention — use Edit to review">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>' +
+          '</span>' : '') +
+        '</div>' +
+      '</td>';
+    } else {
+      // Unchanged cell — calm styling so the changed cells stand out
+      const unchangedVal = inputFieldMap[h] || '';
+      return '<td class="cell-unchanged">' + escapeHtml(unchangedVal) + '</td>';
+    }
+  }).join('');
+
+  return '<tr id="row-' + r.row_number + '" class="review-row ' + rowClass + '">' +
+    '<td class="rownum-td">' + r.row_number + '</td>' +
+    cellsHtml +
+    '<td class="actions-td" style="text-align: center;">' + actionsHtml + '</td>' +
+  '</tr>';
+}
+
+function toggleRowDetails(rowEl) {
+  rowEl.classList.toggle('expanded');
+}
+
+// Auto-size a .cmp-new textarea to fit its content so long values wrap and
+// stay fully visible (like the original value box beside it) instead of scrolling.
+function autoGrow(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = (el.scrollHeight + 2) + 'px';
+}
+
+function updatePreviewValue(inputEl) {
+  const rowEl = inputEl.closest('.col-change-row');
+  if (!rowEl) return;
+  const previewEl = rowEl.querySelector('.preview-suggest');
+  if (previewEl) {
+    previewEl.textContent = inputEl.value;
+  }
+}
+
+function renderColChangesListHtml(r) {
+  const changes = getRowChangesUnion(r);
+  if (changes.length === 0 && (r.input_fields || []).length === 0) {
+    return '<div class="no-changes-msg">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:#35c46b;flex:none;"><polyline points="20 6 9 17 4 12"></polyline></svg>' +
+      'Address is already clean (no changes suggested)' +
+    '</div>';
+  }
+
+  const changeMap = {};
+  changes.forEach(function(ch) {
+    changeMap[ch.column] = ch;
+  });
+
+  return '<div class="col-changes-list">' +
+    (r.input_fields || []).map(function(f) {
+      const ch = changeMap[f.column];
+      if (ch) {
+        // Resolve decision state (consistent with the table): a fresh row is
+        // "suggested", not pre-kept. Both original and cleaned values are shown.
+        const rawExplicit = (fieldDecisions[r.row_number] || {})[ch.column];
+        const colDec = getColumnDecision(r.row_number, ch.column, r.bucket);
+        // Needs-review goes amber → green (same as the table): the cleaned value
+        // stays amber "suggested" until THIS column is explicitly applied (its ✓,
+        // Approve All, or a bucket approve), then turns green. We deliberately do
+        // NOT trust the row-level decision here — approving one column sets
+        // rowDecisions='approve' as a side-effect, which would otherwise turn
+        // every column green. Approve All sets each column's field decision, so
+        // per-column rawExplicit still greens the whole row.
+        const reviewApproved =
+          rawExplicit === 'approve' ||
+          bucketDecisions[activeBucket] === 'approve' ||
+          bucketDecisions[r.bucket] === 'approve' ||
+          bucketDecisions.all === 'approve';
+        const greenOk = (r.bucket !== 'needs_review') || reviewApproved;
+        let state, currentVal;
+        if (rawExplicit && rawExplicit !== 'approve' && rawExplicit !== 'keep') {
+          state = 'edited';    currentVal = rawExplicit;
+        } else if (colDec === 'approve' && greenOk) {
+          state = 'approve';   currentVal = ch.to || '';
+        } else if (rawExplicit === 'keep') {
+          state = 'keep';      currentVal = ch.to || '';
+        } else {
+          state = 'suggested'; currentVal = ch.to || '';
+        }
+        const isApproveActive = (state === 'approve' || state === 'edited');
+        const isKeepActive = (state === 'keep');
+
+        return '<div class="col-change-row dec-' + state + '">' +
+          '<div class="col-summary-line">' +
+            '<div class="col-name" title="' + escapeHtml(ch.column) + '">' + escapeHtml(ch.column) + '</div>' +
+            '<div class="col-oldnew">' +
+              '<span class="cmp-old" title="Original value">' + escapeHtml(ch.from || '(empty)') + '</span>' +
+              '<span class="cmp-arrow">&rarr;</span>' +
+              '<textarea class="cmp-new" rows="1" spellcheck="false" ' +
+                'onclick="event.stopPropagation()" ' +
+                'oninput="onColumnEdit(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', this.value, \'' + r.bucket + '\'); autoGrow(this)" ' +
+                'title="AI cleansed value — edit if needed">' + escapeHtml(currentVal) + '</textarea>' +
+            '</div>' +
+            '<div class="col-action-grp" onclick="event.stopPropagation()">' +
+              '<button class="col-btn-icon approve-btn ' + (isApproveActive ? 'active' : '') + '" onclick="setColumnDecision(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', \'approve\', \'' + r.bucket + '\')" title="Use cleaned value">✓</button>' +
+              '<button class="col-btn-icon reject-btn ' + (isKeepActive ? 'active' : '') + '" onclick="setColumnDecision(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', \'keep\', \'' + r.bucket + '\')" title="Keep">✗</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      } else {
+        return '<div class="col-change-row unchanged">' +
+          '<div class="col-summary-line">' +
+            '<div class="col-name" title="' + escapeHtml(f.column) + '">' + escapeHtml(f.column) + '</div>' +
+            '<div class="col-val-preview">' +
+              '<span class="val-unchanged" title="' + escapeHtml(f.value || '(empty)') + '">' + escapeHtml(f.value || '(empty)') + '</span>' +
+            '</div>' +
+            '<div class="col-action-grp" style="visibility: hidden;">' +
+              '<button class="col-btn-icon">✓</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }
+    }).join('') +
+  '</div>';
 }
 
 function renderCardHtml(r) {
@@ -1431,54 +2429,7 @@ function renderCardHtml(r) {
   }
   
   // Build body changes list
-  let bodyHtml = '';
-  if (changes.length === 0 && (r.input_fields || []).length === 0) {
-    bodyHtml = '<div class="no-changes-msg">' +
-      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:#35c46b;flex:none;"><polyline points="20 6 9 17 4 12"></polyline></svg>' +
-      'Address is already clean (no changes suggested)' +
-    '</div>';
-  } else {
-    const changeMap = {};
-    changes.forEach(function(ch) {
-      changeMap[ch.column] = ch;
-    });
-    
-    bodyHtml = '<div class="col-changes-list">' +
-      (r.input_fields || []).map(function(f) {
-        const ch = changeMap[f.column];
-        if (ch) {
-          const colDec = getColumnDecision(r.row_number, ch.column, r.bucket);
-          const approveBtnClass = colDec === 'approve' || (colDec !== 'keep' && colDec !== 'approve') ? 'col-btn approve active' : 'col-btn approve';
-          const keepBtnClass = colDec === 'keep' ? 'col-btn keep active' : 'col-btn keep';
-          const currentVal = (colDec !== 'keep' && colDec !== 'approve') ? colDec : (ch.to || '');
-          
-          return '<div class="col-change-row">' +
-            '<div class="col-name" title="' + escapeHtml(ch.column) + '">' + escapeHtml(ch.column) + '</div>' +
-            '<div class="col-diff">' +
-              '<span class="diff-val-old" title="' + escapeHtml(ch.from || '(empty)') + '">' + escapeHtml(ch.from || '(empty)') + '</span>' +
-              '<span class="diff-val-arrow">&rarr;</span>' +
-              '<input type="text" class="col-edit-input" placeholder="Enter value..." value="' + escapeHtml(currentVal) + '" ' +
-                'oninput="onColumnEdit(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', this.value, \'' + r.bucket + '\')">' +
-            '</div>' +
-            '<div class="col-action-grp">' +
-              '<button class="' + approveBtnClass + '" onclick="setColumnDecision(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', \'approve\', \'' + r.bucket + '\')">Approve</button>' +
-              '<button class="' + keepBtnClass + '" onclick="setColumnDecision(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', \'keep\', \'' + r.bucket + '\')">Keep Original</button>' +
-            '</div>' +
-          '</div>';
-        } else {
-          return '<div class="col-change-row unchanged">' +
-            '<div class="col-name" title="' + escapeHtml(f.column) + '">' + escapeHtml(f.column) + '</div>' +
-            '<div class="col-diff">' +
-              '<span class="val-unchanged" title="' + escapeHtml(f.value || '(empty)') + '">' + escapeHtml(f.value || '(empty)') + '</span>' +
-            '</div>' +
-            '<div class="col-action-grp" style="visibility: hidden;">' +
-              '<button class="col-btn">Approve</button>' +
-            '</div>' +
-          '</div>';
-        }
-      }).join('') +
-    '</div>';
-  }
+  const bodyHtml = renderColChangesListHtml(r);
   
   // Build issues & anomalies footer
   const anoms = (r.anomalies || []).map(function(a) {
@@ -1521,7 +2472,7 @@ function renderCardHtml(r) {
 function renderCardInline(rowNum, r) {
   const card = document.getElementById('row-' + rowNum);
   if (card) {
-    card.outerHTML = renderCardHtml(r);
+    card.outerHTML = renderTableRowHtml(r);
   }
 }
 
@@ -1603,8 +2554,10 @@ function getColumnDecision(rowNum, colName, bucket) {
   const inheritedDecision = bucketDecisions[activeBucket] || bucketDecisions[bucket] || bucketDecisions.all;
   if (inheritedDecision === 'approve') return 'approve';
   if (inheritedDecision === 'reject') return 'keep';
-  
-  return bucket === 'auto_fixable' ? 'approve' : 'keep';
+
+  // Default = Apply for every bucket (the Google-verified value is applied
+  // unless the reviewer explicitly clicks "Keep").
+  return 'approve';
 }
 
 function setColumnDecision(rowNum, colName, decision, bucket) {
@@ -1675,17 +2628,23 @@ function resolveStateTo(rowNum, resolvedState, bucket) {
 function setRowDecision(rowNum, decision) {
   const rowObj = findRowObject(rowNum);
   if (!rowObj) return;
-  
+
   if (!fieldDecisions[rowNum]) fieldDecisions[rowNum] = {};
-  
+
   (rowObj.field_changes || []).forEach(function(ch) {
+    const existing = fieldDecisions[rowNum][ch.column];
+    // A custom-resolved value (e.g. "Resolve to Galloway") is neither 'approve'
+    // nor 'keep' — preserve it through Approve All so it isn't reverted to the
+    // AI suggestion. Only touch columns still on approve/keep/default.
+    const isCustom = existing && existing !== 'approve' && existing !== 'keep';
+    if (isCustom) return;
     if (decision === 'approve') {
       fieldDecisions[rowNum][ch.column] = 'approve';
     } else if (decision === 'reject') {
       fieldDecisions[rowNum][ch.column] = 'keep';
     }
   });
-  
+
   syncRowDecisionFromFields(rowNum, rowObj.field_changes, rowObj.bucket);
   
   const fm = document.getElementById('focusMode');
@@ -1759,27 +2718,39 @@ function renderSmartDashboard() {
   let bodyClass = 'db-body';
   let titleText = '';
   let descText = '';
+  let skipNote = '';
   let actionsHtml = '';
-  
+
   if (exceptionCount > 0) {
     bodyClass += ' has-exceptions';
     titleText = exceptionCount.toLocaleString() + ' exception' + (exceptionCount === 1 ? '' : 's') + ' require human review';
-    descText = 'AI is highly confident in ' + auto.toLocaleString() + ' corrections (' + Math.round(auto/total*100) + '% of file).';
+    // Show how the exception total splits across buckets (non-zero parts only).
+    const parts = [];
+    if (review) parts.push(review.toLocaleString() + ' needs review');
+    if (nomatch) parts.push(nomatch.toLocaleString() + ' no match');
+    if (anomalies) parts.push(anomalies.toLocaleString() + ' ' + (anomalies === 1 ? 'anomaly' : 'anomalies'));
+    const breakdown = parts.length > 1
+      ? ' &middot; ' + exceptionCount.toLocaleString() + ' = ' + parts.join(' + ')
+      : '';
+    descText = 'AI is highly confident in ' + auto.toLocaleString() + ' corrections (' + Math.round(auto/total*100) + '% of file).' + breakdown;
+    // Spell out exactly what gets applied vs. left alone if the user skips review.
+    skipNote = '<div class="db-skip-note">' +
+        '<div class="dn-line"><span class="dn-acc">✓ Accept:</span> the <b>' + auto.toLocaleString() + '</b> confident AI corrections are applied to your file.</div>' +
+        '<div class="dn-line"><span class="dn-skip">⤼ Skip:</span> the <b>' + exceptionCount.toLocaleString() + '</b> flagged rows are left <b>unchanged</b> (original values kept). To decide any of them yourself, use <b>Focus review</b> below first.</div>' +
+      '</div>';
     actionsHtml = '<div class="db-actions">' +
-      '<span class="time-est">' +
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:2px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' +
-        'Est. review time: ~' + Math.max(1, Math.round(exceptionCount * 3 / 60)) + ' min' +
-      '</span>' +
-      '<button class="btn-primary" onclick="acceptAllAndSkip()">Accept All & Skip</button>' +
+      '<button class="btn-secondary" onclick="acceptAllAndSkip()" title="Apply the ' + auto.toLocaleString() + ' AI corrections and leave the ' + exceptionCount.toLocaleString() + ' flagged rows unchanged">' +
+        'Apply ' + auto.toLocaleString() + ' &amp; skip ' + exceptionCount.toLocaleString() +
+      '</button>' +
     '</div>';
   } else {
     titleText = 'Ready to compile: 0 exceptions found';
     descText = 'All ' + total.toLocaleString() + ' addresses are auto-resolved or already clean. No manual review needed.';
     actionsHtml = '<div class="db-actions">' +
-      '<button class="btn-primary" onclick="acceptAllAndSkip()">Proceed to Export</button>' +
+      '<button class="btn-primary" onclick="acceptAllAndSkip()">Proceed to Export →</button>' +
     '</div>';
   }
-  
+
   document.getElementById('smartDashboard').innerHTML =
     '<div class="db-head">' +
       '<div class="db-title">' +
@@ -1791,12 +2762,28 @@ function renderSmartDashboard() {
       '<div class="db-info">' +
         '<div class="db-info-t">' + titleText + '</div>' +
         '<div class="db-info-d">' + descText + '</div>' +
+        skipNote +
       '</div>' +
       actionsHtml +
     '</div>';
 }
 
 async function acceptAllAndSkip() {
+  // Skipping accepts every AI correction without reviewing the exceptions —
+  // confirm first so it isn't a one-click bypass of the safety net.
+  const s = reviewSummary || {};
+  const b = s.buckets || {};
+  const auto = b.auto_fixable || 0;
+  const exceptions = (b.needs_review || 0) + (b.no_match || 0) + (s.anomaly_count || 0);
+  if (exceptions > 0) {
+    const ok = window.confirm(
+      'Apply the ' + auto.toLocaleString() + ' confident AI corrections and skip the ' +
+      exceptions.toLocaleString() + ' flagged row' + (exceptions === 1 ? '' : 's') + '?\n\n' +
+      'The flagged rows will keep their ORIGINAL values — no AI change is applied to them. ' +
+      'Use Focus review instead if you want to decide them individually.'
+    );
+    if (!ok) return;
+  }
   const btn = document.getElementById('btnNext3');
   if (btn) btn.click();
 }
@@ -1878,7 +2865,7 @@ function updateDecisionSummary() {
 let focusRows = [];
 let focusIdx = 0;
 
-async function openFocus(bucket) {
+async function openFocus(bucket, startRowNum) {
   const target = bucket || activeBucket;
   const launch = document.getElementById('focusLaunchBtn');
   if (launch) launch.disabled = true;
@@ -1897,6 +2884,11 @@ async function openFocus(bucket) {
     // Keep chips/table in sync with whatever bucket we're focusing.
     if (target !== activeBucket) { activeBucket = target; renderFilterChips(); }
     focusIdx = 0;
+    // If a specific row was clicked, jump Focus Review straight to it.
+    if (startRowNum != null) {
+      const idx = focusRows.findIndex(function(x) { return x.row_number === startRowNum; });
+      if (idx >= 0) focusIdx = idx;
+    }
     const fm = document.getElementById('focusMode');
     fm.classList.add('open');
     fm.setAttribute('aria-hidden', 'false');
@@ -1905,6 +2897,11 @@ async function openFocus(bucket) {
   } finally {
     if (launch) launch.disabled = false;
   }
+}
+
+// The row's "✎ Edit" button opens Focus Review positioned at that row.
+function rowOpenFocus(rowNum) {
+  openFocus(activeBucket, rowNum);
 }
 
 function closeFocus() {
@@ -1957,58 +2954,17 @@ function renderFocusCard() {
 
   const changes = getRowChangesUnion(r);
   
-  let bodyHtml = '';
-  if (changes.length === 0 && (r.input_fields || []).length === 0) {
-    bodyHtml = '<div class="no-changes-msg">' +
-      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:#35c46b;flex:none;"><polyline points="20 6 9 17 4 12"></polyline></svg>' +
-      'Address is already clean (no changes suggested)' +
-    '</div>';
-  } else {
-    const changeMap = {};
-    changes.forEach(function(ch) {
-      changeMap[ch.column] = ch;
-    });
-    
-    bodyHtml = '<div class="col-changes-list">' +
-      (r.input_fields || []).map(function(f) {
-        const ch = changeMap[f.column];
-        if (ch) {
-          const colDec = getColumnDecision(r.row_number, ch.column, r.bucket);
-          const approveBtnClass = colDec === 'approve' || (colDec !== 'keep' && colDec !== 'approve') ? 'col-btn approve active' : 'col-btn approve';
-          const keepBtnClass = colDec === 'keep' ? 'col-btn keep active' : 'col-btn keep';
-          const currentVal = (colDec !== 'keep' && colDec !== 'approve') ? colDec : (ch.to || '');
-          
-          return '<div class="col-change-row">' +
-            '<div class="col-name" title="' + escapeHtml(ch.column) + '">' + escapeHtml(ch.column) + '</div>' +
-            '<div class="col-diff">' +
-              '<span class="diff-val-old" title="' + escapeHtml(ch.from || '(empty)') + '">' + escapeHtml(ch.from || '(empty)') + '</span>' +
-              '<span class="diff-val-arrow">&rarr;</span>' +
-              '<input type="text" class="col-edit-input" placeholder="Enter value..." value="' + escapeHtml(currentVal) + '" ' +
-                'oninput="onColumnEdit(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', this.value, \'' + r.bucket + '\')">' +
-            '</div>' +
-            '<div class="col-action-grp">' +
-              '<button class="' + approveBtnClass + '" onclick="setColumnDecision(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', \'approve\', \'' + r.bucket + '\')">Approve</button>' +
-              '<button class="' + keepBtnClass + '" onclick="setColumnDecision(' + r.row_number + ', \'' + escapeHtmlJs(ch.column) + '\', \'keep\', \'' + r.bucket + '\')">Keep Original</button>' +
-            '</div>' +
-          '</div>';
-        } else {
-          return '<div class="col-change-row unchanged">' +
-            '<div class="col-name" title="' + escapeHtml(f.column) + '">' + escapeHtml(f.column) + '</div>' +
-            '<div class="col-diff">' +
-              '<span class="val-unchanged" title="' + escapeHtml(f.value || '(empty)') + '">' + escapeHtml(f.value || '(empty)') + '</span>' +
-            '</div>' +
-            '<div class="col-action-grp" style="visibility: hidden;">' +
-              '<button class="col-btn">Approve</button>' +
-            '</div>' +
-          '</div>';
-        }
-      }).join('') +
-    '</div>';
-  }
+  const bodyHtml = renderColChangesListHtml(r);
 
   document.getElementById('focusContent').innerHTML =
     '<div class="focus-body">' +
       '<div class="focus-rownum">Original row #' + r.row_number + '</div>' +
+      '<div class="focus-legend">' +
+        '<span class="rl-item"><span class="rl-dot" style="background:#ffb454;"></span>Suggested — review</span>' +
+        '<span class="rl-item"><span class="rl-dot" style="background:#35c46b;"></span>Approved</span>' +
+        '<span class="rl-item"><span class="rl-dot" style="background:var(--text-3);"></span>Kept original</span>' +
+        '<span class="rl-item"><span class="rl-dot" style="background:#4f8cff;"></span>Edited</span>' +
+      '</div>' +
       bodyHtml +
       '<div class="focus-meta">' +
         '<div class="conf-ring" style="--p:' + conf + ';--ring-c:' + ringC + '"><b>' + conf + '%</b></div>' +
@@ -2024,9 +2980,12 @@ function renderFocusCard() {
       '<button class="fbtn approve" onclick="focusDecide(\'approve\')">Approve All <span class="kbd">A</span></button>' +
     '</div>' +
     '<div class="focus-nav">' +
-      '<button onclick="focusNav(-1)" ' + (focusIdx === 0 ? 'disabled' : '') + '><- Prev</button>' +
-      '<button onclick="focusNav(1)">Skip / Next -></button>' +
+      '<button onclick="focusNav(-1)" ' + (focusIdx === 0 ? 'disabled' : '') + '>← Prev</button>' +
+      '<button onclick="focusNav(1)">Skip / Next →</button>' +
     '</div>';
+
+  // Size every editable value box to its content so nothing is cut off.
+  document.querySelectorAll('#focusContent .cmp-new').forEach(autoGrow);
 }
 
 function renderFocusDone(decided) {
@@ -2047,7 +3006,7 @@ function renderFocusDone(decided) {
       '</div>' +
     '</div>' +
     '<div class="focus-foot">' +
-      '<button class="fbtn" style="color:var(--text);background:var(--surface);" onclick="focusNav(-1)"><- Back to last row</button>' +
+      '<button class="fbtn" style="color:var(--text);background:var(--surface);" onclick="focusNav(-1)">← Back to last row</button>' +
       '<button class="fbtn approve" onclick="closeFocus()">Done</button>' +
     '</div>';
 }
@@ -2055,7 +3014,22 @@ function renderFocusDone(decided) {
 function focusDecide(decision) {
   const r = focusRows[focusIdx];
   if (!r) return;
-  rowDecisions[r.row_number] = decision;
+  
+  if (!fieldDecisions[r.row_number]) fieldDecisions[r.row_number] = {};
+  (r.field_changes || []).forEach(function(ch) {
+    const existing = fieldDecisions[r.row_number][ch.column];
+    // Preserve a custom-resolved value (e.g. "Resolve to Galloway") — don't let
+    // Approve/Keep All revert it to the AI suggestion.
+    const isCustom = existing && existing !== 'approve' && existing !== 'keep';
+    if (isCustom) return;
+    if (decision === 'approve') {
+      fieldDecisions[r.row_number][ch.column] = 'approve';
+    } else if (decision === 'reject') {
+      fieldDecisions[r.row_number][ch.column] = 'keep';
+    }
+  });
+  syncRowDecisionFromFields(r.row_number, r.field_changes, r.bucket);
+
   const card = document.getElementById('focusCard');
   card.classList.remove('flash-ok', 'flash-no');
   void card.offsetWidth;               // reflow so the flash animation restarts
@@ -2179,16 +3153,24 @@ function renderStatistics(s) {
   }
 
   // -- KPI cards --
+  // Two even rows of four. Row 1 = throughput/counts (neutral). Row 2 = review
+  // outcome + data quality (green = good, red only for rejected/anomalies>0).
+  // Color rule: 'info' (neutral/white) for raw counts, 'ok' (green) for
+  // good-outcome metrics, 'err' (red) only when a bad-signal count is non-zero.
+  const rejected = s.rejected || 0;
+  const keptOriginal = s.unchanged || 0;       // processed rows left on their original value
+  const anomalies = s.rows_with_anomaly || 0;
   const kpis = [
+    // Row 1 — throughput & counts
     { cls: 'info', val: fileTotal.toLocaleString(), label: 'Rows in File' },
     { cls: 'info', val: processed.toLocaleString(), label: 'AI Processed', sub: passthrough > 0 ? `${passthrough.toLocaleString()} passed through` : 'whole file' },
-    { cls: 'ok',   val: (s.auto_corrected||0).toLocaleString(), label: 'Auto-Corrected', sub: `${pctProc(s.auto_corrected||0)}% of processed` },
-    { cls: 'ok',   val: (s.approved||0).toLocaleString(), label: 'Manually Approved' },
-    { cls: 'err',  val: (s.rejected||0).toLocaleString(), label: 'Rejected' },
     { cls: 'info', val: (s.fields_corrected||0).toLocaleString(), label: 'Fields Corrected' },
-    { cls: 'info', val: (s.geocoded||0).toLocaleString(), label: 'Geocoded (lat/lon)', sub: `${pctProc(s.geocoded||0)}% of processed` },
+    { cls: 'ok',   val: (s.auto_corrected||0).toLocaleString(), label: 'Auto-Corrected', sub: `${pctProc(s.auto_corrected||0)}% of processed` },
+    // Row 2 — review outcome & quality
+    { cls: 'ok',   val: (s.approved||0).toLocaleString(), label: 'Manually Approved' },
+    { cls: 'info', val: keptOriginal.toLocaleString(), label: 'Kept Original' },
+    { cls: rejected ? 'err' : 'info', val: rejected.toLocaleString(), label: 'Rejected' },
     { cls: 'ok',   val: (s.avg_confidence || 0) + '%', label: 'Avg Confidence' },
-    { cls: (s.rows_with_anomaly||0) ? 'err' : 'ok', val: (s.rows_with_anomaly||0).toLocaleString(), label: 'Flagged (anomalies)', sub: 'likely wrong match' },
   ];
   document.getElementById('kpiGrid').innerHTML = kpis.map(k => `
     <div class="kpi-card ${k.cls}">
@@ -2198,9 +3180,9 @@ function renderStatistics(s) {
       ${k.sub ? `<div class="ksub">${k.sub}</div>` : ''}
     </div>`).join('');
 
-  // -- Corrections by column --
+  // -- Corrections by column (with % of processed rows so near-equal bars read) --
   renderBars('colBreakdown', s.changes_by_column || [], 'ok',
-    'No corrections were applied.');
+    'No corrections were applied.', processed);
 
   // -- AI action breakdown --
   const actions = (s.action_breakdown || []).map(([k, v]) => [ACTION_LABELS[k] || k, v]);
@@ -2227,16 +3209,19 @@ function renderStatistics(s) {
     <div class="meta-row"><span class="ml">Total field-level corrections</span><span class="mv">${(s.fields_corrected||0).toLocaleString()}</span></div>`;
 }
 
-function renderBars(containerId, pairs, cls, emptyMsg) {
+function renderBars(containerId, pairs, cls, emptyMsg, pctBase) {
   const el = document.getElementById(containerId);
   if (!pairs.length) { el.innerHTML = `<div class="bar-empty">${emptyMsg}</div>`; return; }
   const max = Math.max(...pairs.map(p => p[1]), 1);
-  el.innerHTML = pairs.map(([label, count]) => `
+  el.innerHTML = pairs.map(([label, count]) => {
+    const pct = pctBase ? Math.round((count / pctBase) * 100) + '%' : '';
+    return `
     <div class="bar-row">
       <span class="bl" title="${escapeHtml(String(label))}">${escapeHtml(String(label))}</span>
       <div class="bar-track"><div class="bar-fill ${cls}" data-w="${Math.round((count / max) * 100)}"></div></div>
-      <span class="bv">${count}</span>
-    </div>`).join('');
+      <span class="bv">${count}${pct ? ` <span class="bpct">${pct}</span>` : ''}</span>
+    </div>`;
+  }).join('');
   // Animate the fills in after layout.
   requestAnimationFrame(() => {
     el.querySelectorAll('.bar-fill').forEach(f => { f.style.width = f.dataset.w + '%'; });
