@@ -24,6 +24,8 @@ COPY . .
 # Disable SQL and T5 (tokenizer compatibility issue) — use static index + dictionary speller only
 ENV V2_USE_SQL_DB=0
 ENV V2_USE_T5=0
+ENV V2_LAZY_LOAD=1
+
 
 # HF Spaces uses port 7860
 EXPOSE 7860

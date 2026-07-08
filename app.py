@@ -17,10 +17,12 @@ os.environ.setdefault("PORT", "7860")
 os.environ.setdefault("HOST", "0.0.0.0")
 
 # ── Pre-load pipeline at import-time (available before first request) ──
-print("[HF Spaces] Pre-loading v2 pipeline...")
-from __8_api import _maybe_load_v2  # type: ignore[import-not-found]
-
-_maybe_load_v2()
+if os.getenv("V2_LAZY_LOAD", "0").lower() not in ("1", "true", "yes", "on"):
+    print("[HF Spaces] Pre-loading v2 pipeline...")
+    from __8_api import _maybe_load_v2  # type: ignore[import-not-found]
+    _maybe_load_v2()
+else:
+    print("[HF Spaces] Lazy-loading pipeline on first request.")
 
 # ── Import and expose the Flask app ──
 from __8_api import app  # type: ignore[import-not-found]

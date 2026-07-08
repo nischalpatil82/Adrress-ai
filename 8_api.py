@@ -2311,14 +2311,16 @@ def health():
 if __name__ == "__main__":
     # Pre-load v2 pipeline in the main thread to avoid worker-thread
     # deadlock / EINVAL issues on Windows with FAISS / torch / SQLite.
-    print("Pre-loading v2 pipeline in main thread...")
-    _maybe_load_v2()
-
-    if v2_pipeline is None:
-        print("  [!] v2 pipeline failed to pre-load (see error above).")
-        print("  [!] Running with legacy / SQL pipeline only.")
+    if os.getenv("V2_LAZY_LOAD", "0").lower() not in ("1", "true", "yes", "on"):
+        print("Pre-loading v2 pipeline in main thread...")
+        _maybe_load_v2()
+        if v2_pipeline is None:
+            print("  [!] v2 pipeline failed to pre-load (see error above).")
+            print("  [!] Running with legacy / SQL pipeline only.")
+        else:
+            print("  [+] v2 pipeline ready.")
     else:
-        print("  [+] v2 pipeline ready.")
+        print("Lazy-load mode: v2 pipeline will be initialized on the first request.")
 
     eager_engine = os.getenv("LOAD_V1_ON_START", "0").lower() in (
         "1", "true", "yes", "on",

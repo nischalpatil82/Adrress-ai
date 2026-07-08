@@ -45,3 +45,5 @@ templates/v2_address_clean
 # Large runtime-generated indexes (regenerated locally; not shipped)
 models/embeddings.npy
 models/faiss.index
+models/v2/prefix_trie.pkl
+
