@@ -845,6 +845,11 @@
 
   /* Unchanged — calm so the changes pop */
   .cell-unchanged { color: var(--text-2); }
+  .cell-unchanged.has-anomaly {
+    background: rgba(239,68,68,.06) !important;
+    color: var(--text);
+  }
+  .cell-unchanged.has-anomaly:hover { background: rgba(239,68,68,.11) !important; }
 
   .cell-edit-trigger {
     font-size: 10px;
@@ -913,6 +918,13 @@
     color: var(--text-3); transition: all .15s ease;
   }
   .edit-btn:hover { color: #4f8cff; border-color: #4f8cff; }
+  .edit-btn.edited {
+    color: #dbe8ff;
+    background: rgba(79,140,255,.16);
+    border-color: rgba(79,140,255,.65);
+    box-shadow: 0 0 0 2px rgba(79,140,255,.08);
+  }
+  .edit-btn.edited:hover { color: #fff; background: rgba(79,140,255,.24); }
   .review-empty { text-align: center; color: var(--text-2); padding: 28px; border: 1px dashed var(--border); border-radius: 8px; background: var(--surface-2); }
   .review-card { border: 1px solid var(--border); border-radius: 8px; background: rgba(18,18,20,.92); overflow: hidden; }
   .review-card.approved { border-color: rgba(53,196,107,.42); background: rgba(20,38,28,.55); }
@@ -2175,6 +2187,51 @@ function getColumnAnomalyHtml(r, colName) {
   return html;
 }
 
+function hasRowManualDecision(rowNum) {
+  return !!(fieldDecisions[rowNum] && Object.keys(fieldDecisions[rowNum]).length > 0);
+}
+
+function hasRowCustomEdit(rowNum) {
+  const decs = fieldDecisions[rowNum] || {};
+  return Object.keys(decs).some(function(colName) {
+    const v = decs[colName];
+    return v && v !== 'approve' && v !== 'keep';
+  });
+}
+
+function keepRowOriginal(rowNum) {
+  const rowObj = findRowObject(rowNum);
+  if (!rowObj) return;
+  if (!fieldDecisions[rowNum]) fieldDecisions[rowNum] = {};
+
+  const changedCols = new Set((rowObj.field_changes || []).map(function(ch) { return ch.column; }));
+  (rowObj.field_changes || []).forEach(function(ch) {
+    fieldDecisions[rowNum][ch.column] = 'keep';
+  });
+
+  // Remove custom edits made on fields that were not AI field changes.
+  Object.keys(fieldDecisions[rowNum]).forEach(function(colName) {
+    const v = fieldDecisions[rowNum][colName];
+    if (!changedCols.has(colName) && v !== 'approve' && v !== 'keep') {
+      delete fieldDecisions[rowNum][colName];
+    }
+  });
+
+  if (Object.keys(fieldDecisions[rowNum]).length === 0) {
+    delete fieldDecisions[rowNum];
+    delete rowDecisions[rowNum];
+    updateDecisionSummary();
+  } else {
+    syncRowDecisionFromFields(rowNum, rowObj.field_changes || [], rowObj.bucket);
+  }
+
+  const fm = document.getElementById('focusMode');
+  if (fm && fm.classList.contains('open')) {
+    renderFocusCard();
+  } else {
+    renderCardInline(rowNum, rowObj);
+  }
+}
 function renderTableRowHtml(r) {
   const changes = getRowChangesUnion(r);
   
@@ -2190,45 +2247,57 @@ function renderTableRowHtml(r) {
   // will be written; inactive (grey) = the original is kept. Default follows the
   // bucket: auto-fixable is active, exception rows are inactive (kept) by default.
   const hasChanges = changes.length > 0;
+  const hasAnomalies = !!(r.anomalies && r.anomalies.length);
   let actionsHtml = '';
-  if (hasChanges) {
+  if (hasChanges || hasAnomalies) {
     let applyBtnHtml = '';
-    if (r.bucket === 'needs_review') {
-      // Review rows toggle amber ⇄ green: the default green "✓ Apply" applies
-      // the AI value (cells turn green); once applied it becomes "↩ Keep
-      // original", which reverts the row to its amber suggestion. "Applied" means
-      // every column is explicitly approved (or the bucket is approved) — matching
-      // the cell colours — so a single-column approve in Focus review doesn't flip
-      // the whole-row button.
-      const reviewApproved =
-        bucketDecisions[activeBucket] === 'approve' ||
-        bucketDecisions[r.bucket] === 'approve' ||
-        bucketDecisions.all === 'approve' ||
-        (changes.length > 0 && changes.every(function(ch) {
-          return (fieldDecisions[r.row_number] || {})[ch.column] === 'approve';
-        }));
+    const rowTouched = hasRowManualDecision(r.row_number);
+    const rowEdited = hasRowCustomEdit(r.row_number);
+
+    // Classify the row's current per-field decisions so the button behaves as a
+    // real toggle. A row is "mixed" when some fields apply while others keep;
+    // together with a custom edit (a user-typed value) these are the field-level
+    // nuances set in Focus review that the row button must NOT bulk-overwrite.
+    let allApprove = true, allKeep = true;
+    changes.forEach(function(ch) {
+      if (getColumnDecision(r.row_number, ch.column, r.bucket) === 'keep') allApprove = false;
+      else allKeep = false;
+    });
+    const rowMixed = rowTouched && !allApprove && !allKeep;
+
+    if (rowEdited || rowMixed) {
+      // Reviewer set field-level nuance in Focus review. Don't let the row
+      // button bulk-approve over it; offer a revert-to-original Keep instead.
       applyBtnHtml =
-        '<button class="apply-btn ' + (reviewApproved ? 'kept' : 'active') + '" ' +
-          'onclick="setRowDecision(' + r.row_number + ', \'' + (reviewApproved ? 'reject' : 'approve') + '\')" ' +
-          'title="' + (reviewApproved ? 'Applied — click to keep the original' : 'Suggested — click to apply the AI value') + '">' +
-          (reviewApproved ? '↩ Keep' : '✓ Apply') + '</button>';
+        '<button class="apply-btn kept" ' +
+          'onclick="keepRowOriginal(' + r.row_number + ')" ' +
+          'title="Revert this row to the original uploaded values">' +
+          '&larr; Keep</button>';
+    } else if (r.bucket === 'needs_review' && !rowTouched) {
+      // Untouched review rows start as suggestions; clicking Apply explicitly
+      // approves every suggested field in the row.
+      applyBtnHtml =
+        '<button class="apply-btn active" ' +
+          'onclick="setRowDecision(' + r.row_number + ', \'approve\')" ' +
+          'title="Suggested - click to apply every AI value in this row">' +
+          '&#10003; Apply</button>';
     } else {
-      let applying = true;
-      changes.forEach(function(ch) {
-        if (getColumnDecision(r.row_number, ch.column, r.bucket) === 'keep') applying = false;
-      });
+      // Uniform row (every field applied, or every field kept): a plain
+      // Apply <-> Keep toggle that always flips back. Covers auto-fixable rows
+      // and review rows that were toggled as a whole (Apply -> Keep -> Apply).
+      const applying = allApprove;
       applyBtnHtml =
         '<button class="apply-btn ' + (applying ? 'kept' : 'active') + '" ' +
           'onclick="setRowDecision(' + r.row_number + ', \'' + (applying ? 'reject' : 'approve') + '\')" ' +
-          'title="' + (applying ? 'Applying the AI value — click to keep the original' : 'Keeping the original — click to apply the AI value') + '">' +
-          (applying ? '↩ Keep' : '✓ Apply') + '</button>';
+          'title="' + (applying ? 'Applying the AI value - click to keep the original' : 'Keeping the original - click to apply the AI value') + '">' +
+          (applying ? '&larr; Keep' : '&#10003; Apply') + '</button>';
     }
     // The row itself is no longer click-to-open, so cells can be clicked/selected
     // without launching Focus. This dedicated button is the way into Focus review.
     const editBtnHtml =
-      '<button class="edit-btn" onclick="rowOpenFocus(' + r.row_number + ')" ' +
-        'title="Open this row in Focus review to edit or decide each field">✎ Edit</button>';
-    actionsHtml = '<div class="row-actions-cell">' + applyBtnHtml + editBtnHtml + '</div>';
+      '<button class="edit-btn ' + (rowEdited ? 'edited' : '') + '" onclick="rowOpenFocus(' + r.row_number + ')" ' +
+        'title="' + (rowEdited ? 'This row has a manual edit' : 'Open this row in Focus review to edit or decide each field') + '">&#9998; Edit</button>';
+    actionsHtml = '<div class="row-actions-cell">' + (hasChanges ? applyBtnHtml : '') + editBtnHtml + '</div>';
   }
   
   const changeMap = {};
@@ -2288,9 +2357,17 @@ function renderTableRowHtml(r) {
         '</div>' +
       '</td>';
     } else {
-      // Unchanged cell — calm styling so the changed cells stand out
+      // Unchanged cell - calm styling unless an anomaly belongs to this column.
       const unchangedVal = inputFieldMap[h] || '';
-      return '<td class="cell-unchanged">' + escapeHtml(unchangedVal) + '</td>';
+      const hasAnomaly = getColumnAnomalyHtml(r, h) !== '';
+      return '<td class="cell-unchanged ' + (hasAnomaly ? 'has-anomaly' : '') + '">' +
+        '<div class="cell-primary">' +
+          '<span class="cell-val-txt">' + escapeHtml(unchangedVal) + '</span>' +
+          (hasAnomaly ? '<span class="cell-warn" title="Needs attention - use Edit to review">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>' +
+          '</span>' : '') +
+        '</div>' +
+      '</td>';
     }
   }).join('');
 
@@ -2388,16 +2465,18 @@ function renderColChangesListHtml(r) {
           '</div>' +
         '</div>';
       } else {
-        return '<div class="col-change-row unchanged">' +
+        const anomalyHtml = getColumnAnomalyHtml(r, f.column);
+        return '<div class="col-change-row unchanged ' + (anomalyHtml ? 'has-anomaly' : '') + '">' +
           '<div class="col-summary-line">' +
             '<div class="col-name" title="' + escapeHtml(f.column) + '">' + escapeHtml(f.column) + '</div>' +
             '<div class="col-val-preview">' +
               '<span class="val-unchanged" title="' + escapeHtml(f.value || '(empty)') + '">' + escapeHtml(f.value || '(empty)') + '</span>' +
             '</div>' +
             '<div class="col-action-grp" style="visibility: hidden;">' +
-              '<button class="col-btn-icon">✓</button>' +
+              '<button class="col-btn-icon">&#10003;</button>' +
             '</div>' +
           '</div>' +
+          anomalyHtml +
         '</div>';
       }
     }).join('') +
@@ -2881,7 +2960,7 @@ function updateDecisionSummary() {
     .map(function(entry) { return (BUCKET_META[entry[0]] && BUCKET_META[entry[0]].label) || entry[0]; });
   const auto = (reviewSummary && reviewSummary.buckets && reviewSummary.buckets.auto_fixable) || 0;
   document.getElementById('decisionSummary').innerHTML =
-    '<b>' + auto.toLocaleString() + '</b> safe rows auto-applied · <b>' + approved + '</b> row approvals · <b>' + rejected + '</b> row rejects' +
+    '<b>' + auto.toLocaleString() + '</b> safe rows auto-applied · <b>' + approved + '</b> row approvals · <b>' + rejected + '</b> rows kept original' +
     (ruleApproved.length ? ' · approve buckets: <b>' + ruleApproved.join(', ') + '</b>' : '') +
     (ruleRejected.length ? ' · reject buckets: <b>' + ruleRejected.join(', ') + '</b>' : '');
 }
@@ -3184,10 +3263,9 @@ function renderStatistics(s) {
 
   // -- KPI cards --
   // Two even rows of four. Row 1 = throughput/counts (neutral). Row 2 = review
-  // outcome + data quality (green = good, red only for rejected/anomalies>0).
+  // outcome + data quality (green = good, red only for anomalies>0).
   // Color rule: 'info' (neutral/white) for raw counts, 'ok' (green) for
   // good-outcome metrics, 'err' (red) only when a bad-signal count is non-zero.
-  const rejected = s.rejected || 0;
   const keptOriginal = s.unchanged || 0;       // processed rows left on their original value
   const anomalies = s.rows_with_anomaly || 0;
   const kpis = [
@@ -3199,7 +3277,7 @@ function renderStatistics(s) {
     // Row 2 — review outcome & quality
     { cls: 'ok',   val: (s.approved||0).toLocaleString(), label: 'Manually Approved' },
     { cls: 'info', val: keptOriginal.toLocaleString(), label: 'Kept Original' },
-    { cls: rejected ? 'err' : 'info', val: rejected.toLocaleString(), label: 'Rejected' },
+    { cls: anomalies ? 'err' : 'info', val: anomalies.toLocaleString(), label: 'Rows With Anomalies' },
     { cls: 'ok',   val: (s.avg_confidence || 0) + '%', label: 'Avg Confidence' },
   ];
   document.getElementById('kpiGrid').innerHTML = kpis.map(k => `

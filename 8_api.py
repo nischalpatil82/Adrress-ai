@@ -939,10 +939,9 @@ def _summarize_result(row: dict, result, roles: dict[str, str],
         role = col_to_role.get(col)
         if not role:
             # Unknown column (e.g. "Organization Name"): never rewrite its
-            # meaning, but still normalize ALL-CAPS / all-lowercase casing so
-            # "STAMFORD HOSPITAL" -> "Stamford Hospital".
+            # meaning. Case-only differences are treated as already clean.
             cased = _title_if_caps(old_val)
-            if cased and cased.strip() != old_val.strip():
+            if cased and not _values_equivalent(old_val, cased):
                 field_changes.append({
                     "column": col, "from": old_val, "to": cased, "role": "casing",
                 })
@@ -952,7 +951,7 @@ def _summarize_result(row: dict, result, roles: dict[str, str],
         # to change value (e.g. ZIP 08046 -> 06902, CT -> Connecticut) and must
         # NOT be blocked by a number/word-loss check.
         new_val = _corrected_field(role, structured, old_val, country_hint)
-        if new_val and new_val.strip() != old_val.strip():
+        if new_val and not _values_equivalent(old_val, new_val):
             field_changes.append({
                 "column": col, "from": old_val, "to": new_val, "role": role,
             })
@@ -1044,6 +1043,12 @@ def _bucket_of(summary: dict, threshold: float) -> str:
         return "no_match"
     if hard_review:
         return "needs_review"
+    # No actual field changes and no hard anomaly means there is nothing for the
+    # reviewer to decide. Some verifier paths set action=review_required because
+    # raw provider confidence was below threshold before our graded confidence is
+    # calculated; do not let those clean rows pollute the Needs review queue.
+    if not has_changes and conf_pct > 0:
+        return "already_clean"
     if action == "already_clean":
         return "already_clean"
     if has_changes and conf_pct >= thresh_pct:
@@ -1679,6 +1684,7 @@ def address_cleanse_final_v2():
             bucket_decision = bucket_decisions.get("all")
         applied_changes = []
         row_field_decisions = field_decisions.get(str(idx), {})
+        changed_columns = {change["column"] for change in summary["field_changes"]}
         
         for change in summary["field_changes"]:
             col_decision = row_field_decisions.get(change["column"])
@@ -1686,9 +1692,9 @@ def address_cleanse_final_v2():
             should_apply = False
             # Check if user made custom edit, approve, keep, or fallback to row/bucket decisions
             if col_decision not in (None, "approve", "keep"):
-                # Custom edit! Apply it
+                # Custom edit! Apply the reviewer value and count that exact correction.
                 corrected_row[change["column"]] = col_decision
-                applied_changes.append(change)
+                applied_changes.append({**change, "to": col_decision, "role": change.get("role") or "manual_edit"})
             elif col_decision == "approve":
                 should_apply = True
             elif col_decision == "keep":
@@ -1706,7 +1712,22 @@ def address_cleanse_final_v2():
                 corrected_row[change["column"]] = change["to"]
                 applied_changes.append(change)
 
-        if not summary["field_changes"]:
+        for col_name, col_decision in row_field_decisions.items():
+            if col_name in changed_columns or col_decision in (None, "approve", "keep"):
+                continue
+            original_value = _safe_text(row.get(col_name))
+            custom_value = _safe_text(col_decision)
+            if _values_equivalent(original_value, custom_value):
+                continue
+            corrected_row[col_name] = custom_value
+            applied_changes.append({
+                "column": col_name,
+                "from": original_value,
+                "to": custom_value,
+                "role": "manual_edit",
+            })
+
+        if not summary["field_changes"] and not applied_changes:
             if bucket == "auto_fixable":
                 corrected_row["Cleanse Action"] = "auto_corrected"
                 stats["auto_corrected"] += 1
