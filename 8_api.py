@@ -50,6 +50,7 @@ FEEDBACK_PATH = ROOT / "data" / "active_learning_feedback.jsonl"
 # Persisted bulk-cleanse jobs (history + re-download). One folder per job:
 #   <job_id>/meta.json  +  <job_id>/output.csv
 CLEANSE_HISTORY_DIR = ROOT / "data" / "cleanse_history"
+CLEANSE_ENGINE_VERSION = "address-ai-v2"
 
 app = Flask(__name__)
 # Re-read templates from disk when they change so UI edits show up on a plain
@@ -922,6 +923,53 @@ def _detect_anomalies(row: dict, structured: dict, roles: dict,
     return anomalies
 
 
+def _field_evidence(role: str, structured: dict, geocoded: bool) -> tuple[str, str]:
+    """Return a short, auditable explanation for one proposed field value."""
+    source = "Verified address match" if geocoded else "Normalization policy"
+    if role == "postal":
+        return source, ("Postal code taken from the resolved address" if structured.get("pincode") else "Postal code format standardized")
+    if role == "state":
+        return source, ("State standardized from the resolved address" if structured.get("state") else "State format standardized")
+    if role == "city":
+        return source, ("City taken from the resolved address" if structured.get("city") else "City capitalization standardized")
+    if role in {"address1", "address2"}:
+        return source, ("Address component standardized from the resolved address" if geocoded else "Address formatting standardized")
+    return "Normalization policy", "Capitalization standardized"
+
+
+def _review_reasons(issues: list[str], anomalies: list[str]) -> list[str]:
+    """Translate technical flags into the exact reason a reviewer sees a row."""
+    reasons: list[str] = []
+    for anomaly in anomalies:
+        if anomaly.startswith("city_mismatch:"):
+            reasons.append("Resolved city differs from the uploaded city")
+        elif anomaly.startswith("state_mismatch:"):
+            reasons.append("Resolved state differs from the uploaded state")
+        else:
+            reasons.append({
+                "country_mismatch": "Resolved country differs from the selected country",
+                "approximate_location": "Resolved location is approximate",
+                "not_geocoded": "No verified map location was returned",
+                "processing_error": "This row could not be processed",
+            }.get(anomaly, anomaly.replace("_", " ").capitalize()))
+    for issue in issues:
+        label = {
+            "below_approval_threshold": "Confidence is below the auto-apply policy",
+            "generic_geocode_result": "The resolved address is too generic to apply",
+            "suggestion_differs_from_input": "Resolved address differs materially from the uploaded address",
+            "pipeline_returned_no_result": "No usable address result was returned",
+            "missing_address_line_1": "Address line 1 is missing",
+            "missing_city": "City is missing",
+            "missing_state": "State is missing",
+            "missing_postal_code": "Postal code is missing",
+            "postal_code_unusual_length": "Postal code has an unusual length",
+            "processing_error": "This row could not be processed",
+        }.get(issue)
+        if label and label not in reasons:
+            reasons.append(label)
+    # Preserve the original order while duplicate provider flags do not clutter the reviewer explanation.
+    return list(dict.fromkeys(reasons))
+
 def _summarize_result(row: dict, result, roles: dict[str, str],
                       address_cols: list[str], min_confidence: float,
                       query: str = "") -> dict:
@@ -942,8 +990,10 @@ def _summarize_result(row: dict, result, roles: dict[str, str],
             # meaning. Case-only differences are treated as already clean.
             cased = _title_if_caps(old_val)
             if cased and not _values_equivalent(old_val, cased):
+                source, evidence = _field_evidence("casing", structured, False)
                 field_changes.append({
                     "column": col, "from": old_val, "to": cased, "role": "casing",
+                    "source": source, "evidence": evidence,
                 })
             continue
         # _corrected_field already guards the destructive text roles
@@ -952,8 +1002,13 @@ def _summarize_result(row: dict, result, roles: dict[str, str],
         # NOT be blocked by a number/word-loss check.
         new_val = _corrected_field(role, structured, old_val, country_hint)
         if new_val and not _values_equivalent(old_val, new_val):
+            source, evidence = _field_evidence(
+                role, structured,
+                structured.get("lat") is not None and structured.get("lon") is not None,
+            )
             field_changes.append({
                 "column": col, "from": old_val, "to": new_val, "role": role,
+                "source": source, "evidence": evidence,
             })
     issues = _quality_issues(row, roles) + trust_issues
     full_address = _full_verified_address(structured)
@@ -992,6 +1047,8 @@ def _summarize_result(row: dict, result, roles: dict[str, str],
         action = "suggested_fix"
     else:
         action = "review_required"
+    review_reasons = _review_reasons(issues, anomalies)
+    verification_source = "Verified address match" if geocoded else "Normalization policy"
     return {
         "status": getattr(result, "status", "no_match") if result else "no_match",
         "confidence": round(confidence, 4),
@@ -1001,6 +1058,9 @@ def _summarize_result(row: dict, result, roles: dict[str, str],
         "action": action,
         "issues": issues,
         "anomalies": anomalies,
+        "review_reasons": review_reasons,
+        "verification_source": verification_source,
+        "engine_version": CLEANSE_ENGINE_VERSION,
         "field_changes": field_changes,
         "input_fields": input_fields,
         "changed_columns": [c["column"] for c in field_changes],
@@ -1065,6 +1125,9 @@ def _lean_record(summary: dict) -> dict:
         "action": summary["action"],
         "issues": summary["issues"],
         "anomalies": summary.get("anomalies", []),
+        "review_reasons": summary.get("review_reasons", []),
+        "verification_source": summary.get("verification_source", "Normalization policy"),
+        "engine_version": summary.get("engine_version", CLEANSE_ENGINE_VERSION),
         "field_changes": summary["field_changes"],
         "input_fields": summary["input_fields"],
         "changed_columns": summary["changed_columns"],
@@ -1179,6 +1242,30 @@ def _cleanse_rows(rows: list[dict], headers: list[str], address_cols: list[str],
             output_action = "unchanged"
 
         corrected_row["Cleanse Action"] = output_action
+        # In the batch/auto path there are no per-field reviewer decisions: either
+        # the whole row was auto-applied (should_apply) or nothing was. Derive the
+        # applied set from that flag so the field audit is consistent with the
+        # interactive path without referencing decisions that don't exist here.
+        applied_by_column = (
+            {change["column"]: change for change in summary["field_changes"]}
+            if should_apply else {}
+        )
+        field_audit = []
+        for change in summary["field_changes"]:
+            applied = applied_by_column.get(change["column"])
+            field_audit.append({
+                "field": change["column"],
+                "from": change["from"],
+                "suggested": change["to"],
+                "final": corrected_row.get(change["column"], change["from"]),
+                "decision": "applied" if applied else "kept_original",
+                "source": change.get("source", summary.get("verification_source")),
+                "reason": change.get("evidence", "Address value normalized"),
+            })
+        corrected_row["Cleanse Review Reasons"] = "; ".join(summary.get("review_reasons") or [])
+        corrected_row["Cleanse Verification Source"] = summary.get("verification_source", "Normalization policy")
+        corrected_row["Cleanse Engine Version"] = summary.get("engine_version", CLEANSE_ENGINE_VERSION)
+        corrected_row["Cleanse Field Evidence"] = json.dumps(field_audit, ensure_ascii=False)
         corrected_row["Cleanse Status"] = summary["status"]
         corrected_row["Cleanse Confidence %"] = summary["accuracy_percent"]
         corrected_row["Input Similarity %"] = summary["input_similarity_percent"]
@@ -1612,7 +1699,16 @@ def address_cleanse_final_v2():
     cache = sess.setdefault("_result_cache", {})
 
     output_rows = []
-    stats = {"processed": 0, "auto_corrected": 0, "unchanged": 0, "approved": 0, "rejected": 0, "passthrough": 0}
+    # Final outcomes, not UI button labels. These make the output defensible in an audit.
+    stats = {
+        "processed": 0, "auto_corrected": 0, "unchanged": 0,
+        "approved": 0, "rejected": 0, "passthrough": 0,
+        "manually_edited": 0, "kept_original": 0,
+        # Split of the "unchanged" total so the UI can explain it honestly:
+        #   already_clean  — no AI suggestion existed; the row was already correct
+        #   suggestion_kept — a suggestion existed but the original was retained
+        "already_clean": 0, "suggestion_kept": 0,
+    }
 
     # ── Enterprise statistics accumulators ──
     changes_by_column = Counter()
@@ -1683,6 +1779,7 @@ def address_cleanse_final_v2():
             bucket_decision_scope = "all"
             bucket_decision = bucket_decisions.get("all")
         applied_changes = []
+        manually_edited = False
         row_field_decisions = field_decisions.get(str(idx), {})
         changed_columns = {change["column"] for change in summary["field_changes"]}
         
@@ -1695,18 +1792,23 @@ def address_cleanse_final_v2():
                 # Custom edit! Apply the reviewer value and count that exact correction.
                 corrected_row[change["column"]] = col_decision
                 applied_changes.append({**change, "to": col_decision, "role": change.get("role") or "manual_edit"})
+                manually_edited = True
             elif col_decision == "approve":
                 should_apply = True
             elif col_decision == "keep":
                 should_apply = False
             else:
-                # Fallback to row/bucket decision. Default = APPLY the
-                # Google-verified value for every bucket (matches the UI's
-                # "Apply" default); only an explicit reject/keep prevents it.
+                # Default policy: only high-confidence, anomaly-free suggestions
+                # are applied without a human decision. Everything else retains the
+                # uploaded value until a reviewer explicitly approves it.
                 if idx in rejected_rows or bucket_decision == "reject":
                     should_apply = False
-                else:
+                elif idx in approved_rows or bucket_decision == "approve":
                     should_apply = True
+                elif bucket == "auto_fixable":
+                    should_apply = True
+                else:
+                    should_apply = False
             
             if should_apply:
                 corrected_row[change["column"]] = change["to"]
@@ -1726,43 +1828,77 @@ def address_cleanse_final_v2():
                 "to": custom_value,
                 "role": "manual_edit",
             })
+            manually_edited = True
 
         if not summary["field_changes"] and not applied_changes:
-            if bucket == "auto_fixable":
-                corrected_row["Cleanse Action"] = "auto_corrected"
-                stats["auto_corrected"] += 1
-            else:
-                corrected_row["Cleanse Action"] = "needs_review_unchanged"
-                stats["unchanged"] += 1
+            corrected_row["Cleanse Action"] = "original_retained"
+            corrected_row["Cleanse Decision"] = "already_clean" if bucket == "already_clean" else "original_retained"
+            corrected_row["Cleanse Evidence"] = "; ".join(
+                summary.get("anomalies") or summary.get("issues") or ["no meaningful change"]
+            )
+            stats["unchanged"] += 1
+            stats["kept_original"] += 1
+            stats["already_clean"] += 1
         else:
             if applied_changes:
                 _count_applied(applied_changes)
-                if idx in approved_rows or str(idx) in field_decisions:
+                if manually_edited:
+                    corrected_row["Cleanse Action"] = "user_edited"
+                    corrected_row["Cleanse Decision"] = "manual_edit"
+                    stats["manually_edited"] += 1
+                elif idx in approved_rows or str(idx) in field_decisions or bucket_decision == "approve":
                     corrected_row["Cleanse Action"] = "user_approved"
-                    stats["approved"] += 1
-                elif bucket_decision == "approve":
-                    corrected_row["Cleanse Action"] = f"bucket_approved:{bucket_decision_scope}"
+                    corrected_row["Cleanse Decision"] = "human_approved"
                     stats["approved"] += 1
                 else:
                     corrected_row["Cleanse Action"] = "auto_corrected"
+                    corrected_row["Cleanse Decision"] = "policy_auto_applied"
                     stats["auto_corrected"] += 1
             else:
-                if idx in rejected_rows or str(idx) in field_decisions:
-                    corrected_row["Cleanse Action"] = "user_rejected"
+                corrected_row["Cleanse Action"] = "original_retained"
+                corrected_row["Cleanse Decision"] = (
+                    "kept_original" if idx in rejected_rows or str(idx) in field_decisions
+                    or bucket_decision == "reject" else "review_not_approved"
+                )
+                if idx in rejected_rows or str(idx) in field_decisions or bucket_decision == "reject":
                     stats["rejected"] += 1
-                elif bucket_decision == "reject":
-                    corrected_row["Cleanse Action"] = f"bucket_rejected:{bucket_decision_scope}"
-                    stats["rejected"] += 1
-                else:
-                    corrected_row["Cleanse Action"] = "needs_review_unchanged"
-                    stats["unchanged"] += 1
+                stats["unchanged"] += 1
+                stats["kept_original"] += 1
+                stats["suggestion_kept"] += 1
+            corrected_row["Cleanse Evidence"] = "; ".join(
+                summary.get("anomalies") or summary.get("issues") or ["verified address match"]
+            )
 
+        applied_by_column = {change["column"]: change for change in applied_changes}
+        field_audit = []
+        for change in summary["field_changes"]:
+            applied = applied_by_column.get(change["column"])
+            field_audit.append({
+                "field": change["column"],
+                "from": change["from"],
+                "suggested": change["to"],
+                "final": corrected_row.get(change["column"], change["from"]),
+                "decision": "applied" if applied else "kept_original",
+                "source": change.get("source", summary.get("verification_source")),
+                "reason": change.get("evidence", "Address value normalized"),
+            })
+        for change in applied_changes:
+            if change["column"] not in {item["field"] for item in field_audit}:
+                field_audit.append({
+                    "field": change["column"], "from": change.get("from", ""),
+                    "suggested": change.get("to", ""), "final": change.get("to", ""),
+                    "decision": "user_edited", "source": "User review",
+                    "reason": "Reviewer supplied a custom value",
+                })
+        corrected_row["Cleanse Review Reasons"] = "; ".join(summary.get("review_reasons") or [])
+        corrected_row["Cleanse Verification Source"] = summary.get("verification_source", "Normalization policy")
+        corrected_row["Cleanse Engine Version"] = summary.get("engine_version", CLEANSE_ENGINE_VERSION)
+        corrected_row["Cleanse Field Evidence"] = json.dumps(field_audit, ensure_ascii=False)
         corrected_row["Cleanse Status"] = summary["status"]
         corrected_row["Cleanse Confidence %"] = summary["accuracy_percent"]
         corrected_row["Input Similarity %"] = summary["input_similarity_percent"]
         corrected_row["Latitude"] = structured.get("lat") if structured.get("lat") is not None else ""
         corrected_row["Longitude"] = structured.get("lon") if structured.get("lon") is not None else ""
-        corrected_row["Resolved Pincode"] = structured.get("pincode") or ""
         corrected_row["Full Verified Address"] = summary["full_verified_address"]
         corrected_row["Original Address Query"] = query
         corrected_row["Row Number"] = idx
@@ -1772,15 +1908,16 @@ def address_cleanse_final_v2():
     out_stream = io.StringIO()
     # All enrichment columns we can append, in display order.
     ALL_EXTRA_COLUMNS = [
-        "Cleanse Action", "Cleanse Status", "Cleanse Confidence %",
-        "Input Similarity %", "Latitude", "Longitude", "Resolved Pincode", "Full Verified Address",
+        "Cleanse Action", "Cleanse Evidence", "Cleanse Confidence %",
+        "Input Similarity %", "Latitude", "Longitude", "Full Verified Address",
         "Original Address Query", "Row Number",
     ]
-    # Default selection when the client doesn't specify: Status / Original Query
-    # / Row Number are OFF by default (the rest on).
+    # Default selection used only if the client sends no include_columns at all
+    # (e.g. the History re-download path). The download step's picker now starts
+    # with nothing checked, so an interactive download sends an explicit list.
     DEFAULT_EXTRA_COLUMNS = [
-        "Cleanse Action", "Cleanse Confidence %", "Input Similarity %",
-        "Latitude", "Longitude", "Resolved Pincode", "Full Verified Address",
+        "Cleanse Action", "Cleanse Evidence", "Cleanse Confidence %", "Input Similarity %",
+        "Latitude", "Longitude", "Full Verified Address",
     ]
     if isinstance(requested_cols, list):
         chosen = [c for c in ALL_EXTRA_COLUMNS if c in set(requested_cols)]
@@ -1801,7 +1938,11 @@ def address_cleanse_final_v2():
         "approved": stats["approved"],
         "rejected": stats["rejected"],
         "auto_corrected": stats["auto_corrected"],
+        "manually_edited": stats["manually_edited"],
+        "kept_original": stats["kept_original"],
         "unchanged": stats["unchanged"],
+        "already_clean": stats["already_clean"],
+        "suggestion_kept": stats["suggestion_kept"],
         "rows_corrected": rows_corrected,
         "fields_corrected": fields_corrected,
         "geocoded": geocoded_count,
@@ -1862,6 +2003,8 @@ def _save_cleanse_job(filename: str, csv_text: str, stats: dict, columns: list) 
         "passthrough": stats.get("passthrough", 0),
         "auto_corrected": stats.get("auto_corrected", 0),
         "approved": stats.get("approved", 0),
+        "manually_edited": stats.get("manually_edited", 0),
+        "kept_original": stats.get("kept_original", 0),
         "rejected": stats.get("rejected", 0),
         "fields_corrected": stats.get("fields_corrected", 0),
         "rows_with_anomaly": stats.get("rows_with_anomaly", 0),

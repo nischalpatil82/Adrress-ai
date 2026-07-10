@@ -953,6 +953,10 @@
     transition: background 0.2s ease;
     border-radius: 4px;
   }
+  .field-evidence { margin: 5px 0 0 152px; color: var(--text-3); font-size: 11px; line-height: 1.4; }
+  .field-evidence b { color: var(--text-2); font-weight: 650; }
+  .review-reasons { margin-top: 7px; max-width: 430px; }
+  .review-reason { display: block; color: var(--text-2); font-size: 11px; line-height: 1.45; }
   .col-change-row:last-child { border-bottom: none; }
   .col-change-row:hover { background: rgba(255,255,255,0.02); }
   
@@ -1559,8 +1563,15 @@
 
     <!-- Column picker -->
     <div class="card" style="margin-top:12px;">
-      <div class="card-head"><div class="card-title">Columns to add to the file</div></div>
+      <div class="card-head" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <div class="card-title">Columns to add to the file</div>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn-secondary" style="font-size:11px; padding:3px 10px;" onclick="setAllDownloadCols(true)">Select all</button>
+          <button type="button" class="btn-secondary" style="font-size:11px; padding:3px 10px;" onclick="setAllDownloadCols(false)">Clear</button>
+        </div>
+      </div>
       <div class="card-body">
+        <div style="font-size:11.5px;color:var(--text-3);margin-bottom:10px;">None are selected by default — your original columns are always kept. Tick any extra columns you want appended.</div>
         <div class="dlcol-grid" id="dlColGrid"></div>
       </div>
     </div>
@@ -1633,6 +1644,23 @@ function goToStep(n) {
   });
   document.getElementById('step' + n).classList.add('active');
   currentStep = n;
+
+  // Each step is a full screen swap — start the new one at the top rather than
+  // inheriting the previous screen's scroll position (e.g. View Statistics used
+  // to open half-way down where the review table had been scrolled).
+  const newScreen = document.getElementById('screen' + n);
+  requestAnimationFrame(function() {
+    window.scrollTo(0, 0);
+    if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
+    // Reset any scrolled ancestor of the active screen (the app uses an inner
+    // scroll region, so window.scrollTo alone may not be enough).
+    let el = newScreen ? newScreen.parentElement : null;
+    while (el) {
+      if (el.scrollTop > 0) el.scrollTop = 0;
+      el = el.parentElement;
+    }
+    if (newScreen) newScreen.scrollTop = 0;
+  });
 }
 
 // ========== Screen 1: Upload ==========
@@ -1961,10 +1989,12 @@ const ANOMALY_LABELS = {
 
 // Load summary + first page after processing completes or threshold changes.
 function defaultReviewBucket() {
+  // Open on Needs review by default — anomaly rows are a subset of it, so the
+  // reviewer sees the full review queue first rather than only the anomalies.
   const s = reviewSummary || {};
-  if ((s.anomaly_count || 0) > 0) return 'anomalies';
   const b = s.buckets || {};
   if ((b.needs_review || 0) > 0) return 'needs_review';
+  if ((s.anomaly_count || 0) > 0) return 'anomalies';
   if ((b.no_match || 0) > 0) return 'no_match';
   return 'all';
 }
@@ -2166,21 +2196,26 @@ function renderReviewTable(rows) {
 
 function getColumnAnomalyHtml(r, colName) {
   if (!r.anomalies || r.anomalies.length === 0) return '';
+  // Once the reviewer has explicitly decided this column (Resolve sets a custom
+  // value, or an Apply/Keep decision), the mismatch is settled — hide the
+  // warning and its Resolve box so the row reads as handled.
+  const decided = (fieldDecisions[r.row_number] || {})[colName];
+  if (decided) return '';
   const colNameLower = colName.toLowerCase();
   let html = '';
   r.anomalies.forEach(function(a) {
     if (a.indexOf('city_mismatch:') === 0 && (colNameLower === 'city' || colName === (roles['city'] || ''))) {
       const resolvedCity = a.split(':')[1];
-      html = '<div style="margin-top: 8px; padding: 6px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 4px; font-size: 11px; color: var(--red); display: flex; align-items: center; justify-content: space-between; gap: 8px;">' +
-        '<span>⚠️ City differs (resolved as ' + escapeHtml(resolvedCity) + ')</span>' +
-        '<button type="button" class="btn-resolve-city" style="font-size: 10px; padding: 2px 6px;" onclick="resolveCityTo(' + r.row_number + ', \'' + escapeHtmlJs(resolvedCity) + '\', \'' + r.bucket + '\'); closeAllPopovers(event)">Resolve</button>' +
+      html = '<div style="font-size: 10px; line-height: 1.3; color: var(--red); display: flex; flex-direction: column; align-items: flex-end; gap: 4px; text-align: right;">' +
+        '<span>⚠️ City differs (resolve as ' + escapeHtml(resolvedCity) + ')</span>' +
+        '<button type="button" class="btn-resolve-city" style="font-size: 9.5px; padding: 1px 6px; flex-shrink: 0;" onclick="resolveCityTo(' + r.row_number + ', \'' + escapeHtmlJs(resolvedCity) + '\', \'' + r.bucket + '\'); closeAllPopovers(event)">Resolve</button>' +
       '</div>';
     }
     if (a.indexOf('state_mismatch:') === 0 && (colNameLower === 'state' || colName === (roles['state'] || ''))) {
       const resolvedState = a.split(':')[1];
-      html = '<div style="margin-top: 8px; padding: 6px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 4px; font-size: 11px; color: var(--red); display: flex; align-items: center; justify-content: space-between; gap: 8px;">' +
-        '<span>⚠️ State differs (resolved as ' + escapeHtml(resolvedState) + ')</span>' +
-        '<button type="button" class="btn-resolve-city" style="font-size: 10px; padding: 2px 6px;" onclick="resolveStateTo(' + r.row_number + ', \'' + escapeHtmlJs(resolvedState) + '\', \'' + r.bucket + '\'); closeAllPopovers(event)">Resolve</button>' +
+      html = '<div style="font-size: 10px; line-height: 1.3; color: var(--red); display: flex; flex-direction: column; align-items: flex-end; gap: 4px; text-align: right;">' +
+        '<span>⚠️ State differs (resolve as ' + escapeHtml(resolvedState) + ')</span>' +
+        '<button type="button" class="btn-resolve-city" style="font-size: 9.5px; padding: 1px 6px; flex-shrink: 0;" onclick="resolveStateTo(' + r.row_number + ', \'' + escapeHtmlJs(resolvedState) + '\', \'' + r.bucket + '\'); closeAllPopovers(event)">Resolve</button>' +
       '</div>';
     }
   });
@@ -2444,10 +2479,14 @@ function renderColChangesListHtml(r) {
         } else {
           state = 'suggested'; currentVal = ch.to || '';
         }
+        const evidenceText = ch.evidence || (ch.role === 'manual_edit' ? 'Reviewer supplied a custom value' : 'Address value normalized');
+        const sourceText = ch.source || 'Normalization policy';
+        const evidenceHtml = '<div class="field-evidence"><b>' + escapeHtml(sourceText) + '</b> · ' + escapeHtml(evidenceText) + '</div>';
         const isApproveActive = (state === 'approve' || state === 'edited');
         const isKeepActive = (state === 'keep');
 
         return '<div class="col-change-row dec-' + state + '">' +
+          evidenceHtml +
           '<div class="col-summary-line">' +
             '<div class="col-name" title="' + escapeHtml(ch.column) + '">' + escapeHtml(ch.column) + '</div>' +
             '<div class="col-oldnew">' +
@@ -2466,17 +2505,21 @@ function renderColChangesListHtml(r) {
         '</div>';
       } else {
         const anomalyHtml = getColumnAnomalyHtml(r, f.column);
+        // When a column has an anomaly, show its warning + Resolve on the right
+        // (in place of the ✓/✗ action icons) instead of as a line below the row.
+        const rightSide = anomalyHtml
+          ? anomalyHtml
+          : '<div class="col-action-grp" style="visibility: hidden;">' +
+              '<button class="col-btn-icon">&#10003;</button>' +
+            '</div>';
         return '<div class="col-change-row unchanged ' + (anomalyHtml ? 'has-anomaly' : '') + '">' +
           '<div class="col-summary-line">' +
             '<div class="col-name" title="' + escapeHtml(f.column) + '">' + escapeHtml(f.column) + '</div>' +
             '<div class="col-val-preview">' +
               '<span class="val-unchanged" title="' + escapeHtml(f.value || '(empty)') + '">' + escapeHtml(f.value || '(empty)') + '</span>' +
             '</div>' +
-            '<div class="col-action-grp" style="visibility: hidden;">' +
-              '<button class="col-btn-icon">&#10003;</button>' +
-            '</div>' +
+            rightSide +
           '</div>' +
-          anomalyHtml +
         '</div>';
       }
     }).join('') +
@@ -2817,7 +2860,10 @@ function renderSmartDashboard() {
   const anomalies = s.anomaly_count || 0;
   const total = s.total || 0;
   
-  const exceptionCount = review + nomatch + anomalies;
+  // Anomaly rows are always bucketed as needs_review on the backend (a hard
+  // review flag), so they are already counted inside `review`. Adding
+  // `anomalies` here would double-count them. Exceptions = review + no match.
+  const exceptionCount = review + nomatch;
   
   let bodyClass = 'db-body';
   let titleText = '';
@@ -2829,13 +2875,18 @@ function renderSmartDashboard() {
     bodyClass += ' has-exceptions';
     titleText = exceptionCount.toLocaleString() + ' exception' + (exceptionCount === 1 ? '' : 's') + ' require human review';
     // Show how the exception total splits across buckets (non-zero parts only).
+    // Anomalies are NOT a separate addend — they live inside needs_review — so
+    // they're shown as an "incl. N anomalies" note, not summed into the total.
     const parts = [];
     if (review) parts.push(review.toLocaleString() + ' needs review');
     if (nomatch) parts.push(nomatch.toLocaleString() + ' no match');
-    if (anomalies) parts.push(anomalies.toLocaleString() + ' ' + (anomalies === 1 ? 'anomaly' : 'anomalies'));
-    const breakdown = parts.length > 1
+    let breakdown = parts.length > 1
       ? ' &middot; ' + exceptionCount.toLocaleString() + ' = ' + parts.join(' + ')
       : '';
+    if (anomalies) {
+      breakdown += ' &middot; incl. ' + anomalies.toLocaleString() + ' ' +
+        (anomalies === 1 ? 'anomaly' : 'anomalies');
+    }
     descText = 'AI is highly confident in ' + auto.toLocaleString() + ' corrections (' + Math.round(auto/total*100) + '% of file).' + breakdown;
     // Spell out exactly what gets applied vs. left alone if the user skips review.
     skipNote = '<div class="db-skip-note">' +
@@ -2881,7 +2932,8 @@ async function acceptAllAndSkip() {
   const s = reviewSummary || {};
   const b = s.buckets || {};
   const auto = b.auto_fixable || 0;
-  const exceptions = (b.needs_review || 0) + (b.no_match || 0) + (s.anomaly_count || 0);
+  // Anomalies are bucketed inside needs_review already; don't add them again.
+  const exceptions = (b.needs_review || 0) + (b.no_match || 0);
   if (exceptions > 0) {
     const ok = window.confirm(
       'Apply the ' + auto.toLocaleString() + ' confident AI corrections and skip the ' +
@@ -3055,6 +3107,9 @@ function renderFocusCard() {
   const issues = (r.issues || [])
     .filter(function(i) { return i !== 'suggestion_differs_from_input'; })
     .map(function(i) { return '<span class="fissue">- ' + escapeHtml(prettyIssue(i)) + '</span>'; }).join('');
+  const reviewReasons = (r.review_reasons || []).map(function(reason) {
+    return '<span class="review-reason">• ' + escapeHtml(reason) + '</span>';
+  }).join('');
   const dec = rowDecisions[r.row_number];
   const decPill = dec === 'approve' ? '<span class="focus-decided a">Approved</span>'
                 : dec === 'reject'  ? '<span class="focus-decided r">Rejected</span>' : '';
@@ -3074,6 +3129,7 @@ function renderFocusCard() {
       '</div>' +
       bodyHtml +
       '<div class="focus-meta">' +
+      (reviewReasons ? '<div class="review-reasons">' + reviewReasons + '</div>' : '') +
         '<div class="conf-ring" style="--p:' + conf + ';--ring-c:' + ringC + '"><b>' + conf + '%</b></div>' +
         '<div>' +
           '<div class="conf-lbl">Confidence</div>' +
@@ -3267,6 +3323,17 @@ function renderStatistics(s) {
   // Color rule: 'info' (neutral/white) for raw counts, 'ok' (green) for
   // good-outcome metrics, 'err' (red) only when a bad-signal count is non-zero.
   const keptOriginal = s.unchanged || 0;       // processed rows left on their original value
+  // "Kept Original" mixes two outcomes: rows that were already correct (no AI
+  // suggestion) and rows where a suggestion existed but wasn't applied. Show the
+  // split so the number isn't mistaken for "127 rows a human chose to keep".
+  const alreadyClean = s.already_clean || 0;
+  const suggestionKept = (s.suggestion_kept != null)
+    ? s.suggestion_kept
+    : Math.max(0, keptOriginal - alreadyClean);
+  const keptSub = alreadyClean > 0
+    ? `${alreadyClean.toLocaleString()} already correct` +
+      (suggestionKept > 0 ? ` · ${suggestionKept.toLocaleString()} suggestion kept` : '')
+    : (suggestionKept > 0 ? `${suggestionKept.toLocaleString()} suggestion kept` : 'no change needed');
   const anomalies = s.rows_with_anomaly || 0;
   const kpis = [
     // Row 1 — throughput & counts
@@ -3276,7 +3343,7 @@ function renderStatistics(s) {
     { cls: 'ok',   val: (s.auto_corrected||0).toLocaleString(), label: 'Auto-Corrected', sub: `${pctProc(s.auto_corrected||0)}% of processed` },
     // Row 2 — review outcome & quality
     { cls: 'ok',   val: (s.approved||0).toLocaleString(), label: 'Manually Approved' },
-    { cls: 'info', val: keptOriginal.toLocaleString(), label: 'Kept Original' },
+    { cls: 'info', val: keptOriginal.toLocaleString(), label: 'Unchanged Rows', sub: keptSub },
     { cls: anomalies ? 'err' : 'info', val: anomalies.toLocaleString(), label: 'Rows With Anomalies' },
     { cls: 'ok',   val: (s.avg_confidence || 0) + '%', label: 'Avg Confidence' },
   ];
@@ -3347,19 +3414,23 @@ document.getElementById('btnNext4').addEventListener('click', () => { renderDown
 document.getElementById('btnBackDownload').addEventListener('click', () => goToStep(4));
 
 // ========== Screen 5: Download column picker ==========
-// Extra columns the cleanse can append. `on` = checked by default.
-// Per request: Cleanse Status, Original Address Query, Row Number default OFF.
+// Extra columns the cleanse can append. Nothing is pre-selected — the user
+// chooses exactly what to add. `name` must match a backend ALL_EXTRA_COLUMNS
+// entry or the column is silently dropped server-side.
 const DOWNLOAD_COLUMNS = [
-  { name: 'Cleanse Action',         on: true,  desc: 'auto/approved/rejected' },
-  { name: 'Cleanse Confidence %',   on: true,  desc: 'match confidence' },
-  { name: 'Full Verified Address',  on: true,  desc: 'standardized address' },
-  { name: 'Latitude',               on: true,  desc: 'geocoded lat' },
-  { name: 'Longitude',              on: true,  desc: 'geocoded lon' },
-  { name: 'Resolved Pincode',       on: true,  desc: 'resolved zip / pincode' },
-  { name: 'Input Similarity %',     on: true,  desc: 'input vs result' },
-  { name: 'Cleanse Status',         on: false, desc: 'engine status' },
-  { name: 'Original Address Query', on: false, desc: 'what was sent to AI' },
-  { name: 'Row Number',             on: false, desc: 'source row index' },
+  // Outcome
+  { name: 'Cleanse Action',             on: false, desc: 'auto-corrected / approved / kept original' },
+  { name: 'Cleanse Evidence',           on: false, desc: 'why this row was left or changed' },
+  // Confidence & match quality
+  { name: 'Cleanse Confidence %',       on: false, desc: 'match confidence' },
+  { name: 'Input Similarity %',         on: false, desc: 'uploaded vs resolved address' },
+  // Enriched address data
+  { name: 'Full Verified Address',      on: false, desc: 'standardized single-line address' },
+  { name: 'Latitude',                   on: false, desc: 'geocoded latitude' },
+  { name: 'Longitude',                  on: false, desc: 'geocoded longitude' },
+  // Reference
+  { name: 'Original Address Query',     on: false, desc: 'exact text sent to the AI' },
+  { name: 'Row Number',                 on: false, desc: 'source row index' },
 ];
 
 function renderDownloadColumns() {
@@ -3372,6 +3443,13 @@ function renderDownloadColumns() {
       <span><b>${escapeHtml(c.name)}</b><br><span style="font-size:10.5px;color:var(--text-3);">${escapeHtml(c.desc)}</span></span>
     </label>`).join('');
   grid.dataset.rendered = '1';
+}
+
+function setAllDownloadCols(on) {
+  document.querySelectorAll('#dlColGrid .dlcol-cb').forEach(function(cb) {
+    cb.checked = on;
+    cb.closest('.dlcol-item').classList.toggle('on', on);
+  });
 }
 
 document.getElementById('btnDownload').addEventListener('click', async () => {
