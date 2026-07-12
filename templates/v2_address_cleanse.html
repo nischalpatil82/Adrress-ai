@@ -612,6 +612,44 @@
   .ring-wrap { display: flex; align-items: center; gap: 16px; }
   .ring-wrap .ring-cap { font-size: 11.5px; color: var(--text-2); }
 
+  /* Reconciliation strip under the KPI grid — proves the outcome counts sum to
+     the processed total (auditable at a glance). */
+  .kpi-reconcile {
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    margin-top: 10px; padding: 11px 16px; border-radius: 11px;
+    background: var(--glass); backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-border);
+    font-size: 12px; color: var(--text-2);
+  }
+  .kpi-reconcile .rc-term { color: var(--text); font-weight: 600; }
+  .kpi-reconcile .rc-op { color: var(--text-3); }
+  .kpi-reconcile .rc-eq { margin-left: 4px; padding: 2px 8px; border-radius: 6px; font-weight: 700; }
+  .kpi-reconcile .rc-eq.ok  { color: #35c46b; background: rgba(53,196,107,.12); }
+  .kpi-reconcile .rc-eq.bad { color: var(--red);  background: rgba(239,68,68,.12); }
+
+  /* Clickable stat bars (drill back into the matching review rows). */
+  .bar-row.clickable { cursor: pointer; border-radius: 7px; padding: 3px 6px; margin: 0 -6px; transition: background .15s; }
+  .bar-row.clickable:hover { background: var(--surface-2); }
+  .bar-row.clickable:hover .bl { color: var(--text); }
+  .bar-row .bl .drill-hint { opacity: 0; font-size: 9px; margin-left: 5px; color: var(--red); text-transform: none; letter-spacing: 0; }
+  .bar-row.clickable:hover .bl .drill-hint { opacity: 1; }
+
+  /* Outcome donut (auto / approved / edited / kept). */
+  .donut-wrap { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .donut { width: 128px; height: 128px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center; }
+  .donut .donut-hole {
+    width: 82px; height: 82px; border-radius: 50%; background: var(--surface-2);
+    display: grid; place-items: center; text-align: center;
+  }
+  .donut .donut-hole .dh-num { font-size: 19px; font-weight: 700; color: var(--text); line-height: 1; }
+  .donut .donut-hole .dh-lbl { font-size: 9.5px; color: var(--text-3); text-transform: uppercase; letter-spacing: .3px; margin-top: 3px; }
+  .donut-legend { display: flex; flex-direction: column; gap: 9px; min-width: 170px; }
+  .dleg-row { display: flex; align-items: center; gap: 9px; font-size: 12px; }
+  .dleg-dot { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+  .dleg-row .dleg-lbl { color: var(--text-2); flex: 1; }
+  .dleg-row .dleg-val { color: var(--text); font-weight: 600; }
+  .dleg-row .dleg-pct { color: var(--text-3); font-size: 10.5px; margin-left: 4px; }
+
   /* -- Buttons -- */
   .btn-primary {
     display: inline-flex; align-items: center; gap: 8px;
@@ -1517,6 +1555,23 @@
 
     <!-- KPI cards -->
     <div class="kpi-grid" id="kpiGrid"></div>
+    <!-- Outcome reconciliation: auto + reviewed + unchanged = processed -->
+    <div class="kpi-reconcile" id="kpiReconcile"></div>
+
+    <!-- Confidence distribution + outcome donut -->
+    <div class="stats-cols">
+      <div class="card">
+        <div class="card-head"><div class="card-title">Confidence Distribution</div></div>
+        <div class="card-body">
+          <div id="statHistogram" class="histogram"></div>
+          <div class="histo-axis"><span>0%</span><span>50%</span><span>100%</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">Outcome Breakdown</div></div>
+        <div class="card-body"><div id="outcomeDonut" class="donut-wrap"></div></div>
+      </div>
+    </div>
 
     <!-- Detail panels -->
     <div class="stats-cols">
@@ -1622,6 +1677,7 @@ let rowCount = 0;
 // Enterprise review-console state
 let reviewThreshold = 80;        // percent
 let activeBucket = 'all';
+let columnFilter = null;         // when set, review shows only rows that changed this column (drill-down)
 let reviewPage = 0;
 let reviewPageSize = 50;
 let reviewSummary = null;        // last /review_summary payload
@@ -2070,11 +2126,16 @@ function renderFilterChips() {
   // Anomaly filter sits inline right after "No match".
   const anomZero = anomCount === 0 ? ' zero' : '';
   html += `<span class="chip-f anom ${activeBucket==='anomalies'?'on':''}${anomZero}" onclick="setBucket('anomalies')">! Anomalies <span class="cnt">${anomCount.toLocaleString()}</span></span>`;
+  // Column drill-down from the statistics page shows as a clearable pill.
+  if (columnFilter) {
+    html += `<span class="chip-f on" style="background:rgba(53,196,107,.12);border-color:rgba(53,196,107,.4);color:#35c46b;" onclick="clearColumnFilter()" title="Showing only rows that changed this column — click to clear">Column: ${escapeHtml(columnFilter)} ✕</span>`;
+  }
   document.getElementById('filterBar').innerHTML = html;
 }
 
 async function setBucket(key) {
   activeBucket = key;
+  columnFilter = null;   // switching buckets clears any column drill-down
   reviewPage = 0;
   renderFilterChips();
   await loadReviewPage();
@@ -2114,6 +2175,7 @@ async function loadReviewPage() {
     body: JSON.stringify({
       session_id: sessionId, threshold: reviewThreshold / 100,
       bucket: activeBucket, page: reviewPage, page_size: reviewPageSize,
+      changed_column: columnFilter || null,
     }),
   });
   const data = await resp.json();
@@ -3334,6 +3396,17 @@ function renderStatistics(s) {
     ? `${alreadyClean.toLocaleString()} already correct` +
       (suggestionKept > 0 ? ` · ${suggestionKept.toLocaleString()} suggestion kept` : '')
     : (suggestionKept > 0 ? `${suggestionKept.toLocaleString()} suggestion kept` : 'no change needed');
+  // Every row a human touched — Apply/approve, Resolve, or a free-form edit —
+  // is a manual review. Resolve and Edit both store a custom value, so the
+  // backend counts them as manually_edited, not approved. Report the COMBINED
+  // total as the headline so approving then editing/resolving a row does not
+  // make the number drop (it just moves between the sub-line's two parts).
+  const approvedRows = s.approved || 0;
+  const editedRows = s.manually_edited || 0;
+  const humanReviewed = approvedRows + editedRows;
+  const reviewedSub = (approvedRows || editedRows)
+    ? `${approvedRows.toLocaleString()} approved · ${editedRows.toLocaleString()} edited/resolved`
+    : 'no manual review yet';
   const anomalies = s.rows_with_anomaly || 0;
   const kpis = [
     // Row 1 — throughput & counts
@@ -3342,7 +3415,7 @@ function renderStatistics(s) {
     { cls: 'info', val: (s.fields_corrected||0).toLocaleString(), label: 'Fields Corrected' },
     { cls: 'ok',   val: (s.auto_corrected||0).toLocaleString(), label: 'Auto-Corrected', sub: `${pctProc(s.auto_corrected||0)}% of processed` },
     // Row 2 — review outcome & quality
-    { cls: 'ok',   val: (s.approved||0).toLocaleString(), label: 'Manually Approved' },
+    { cls: 'ok',   val: humanReviewed.toLocaleString(), label: 'Manually Reviewed', sub: reviewedSub },
     { cls: 'info', val: keptOriginal.toLocaleString(), label: 'Unchanged Rows', sub: keptSub },
     { cls: anomalies ? 'err' : 'info', val: anomalies.toLocaleString(), label: 'Rows With Anomalies' },
     { cls: 'ok',   val: (s.avg_confidence || 0) + '%', label: 'Avg Confidence' },
@@ -3355,17 +3428,92 @@ function renderStatistics(s) {
       ${k.sub ? `<div class="ksub">${k.sub}</div>` : ''}
     </div>`).join('');
 
-  // -- Corrections by column (with % of processed rows so near-equal bars read) --
-  renderBars('colBreakdown', s.changes_by_column || [], 'ok',
-    'No corrections were applied.', processed);
+  // -- Reconciliation strip: every processed row is exactly one outcome, so
+  //    Auto-Corrected + Manually Reviewed + Unchanged must equal AI Processed. --
+  const autoC = s.auto_corrected || 0;
+  const rcSum = autoC + humanReviewed + keptOriginal;
+  const rcOk = rcSum === processed;
+  const rcEl = document.getElementById('kpiReconcile');
+  if (rcEl) {
+    rcEl.innerHTML =
+      `<span class="rc-term">${autoC.toLocaleString()}</span> Auto-Corrected ` +
+      `<span class="rc-op">+</span> <span class="rc-term">${humanReviewed.toLocaleString()}</span> Manually Reviewed ` +
+      `<span class="rc-op">+</span> <span class="rc-term">${keptOriginal.toLocaleString()}</span> Unchanged ` +
+      `<span class="rc-op">=</span> <span class="rc-term">${rcSum.toLocaleString()}</span>` +
+      `<span class="rc-eq ${rcOk ? 'ok' : 'bad'}">${rcOk ? '✓' : '≠'} ${processed.toLocaleString()} processed</span>`;
+  }
 
-  // -- AI action breakdown --
-  const actions = (s.action_breakdown || []).map(([k, v]) => [ACTION_LABELS[k] || k, v]);
-  renderBars('actionBreakdown', actions, 'info', 'No actions recorded.');
+  // -- Confidence distribution histogram (10 bins, split at the threshold). --
+  const hist = s.histogram || (reviewSummary && reviewSummary.histogram) || [];
+  const histEl = document.getElementById('statHistogram');
+  if (histEl) {
+    if (hist.length) {
+      const hmax = Math.max(...hist, 1);
+      const thBin = Math.floor((reviewThreshold || 80) / 10);
+      histEl.innerHTML = hist.map((c, i) => {
+        const h = Math.round((c / hmax) * 100);
+        const cls = i >= thBin ? 'above' : 'below';
+        return `<div class="hbar ${cls}" style="height:${Math.max(2, h)}%" title="${i*10}-${i*10+10}% confidence: ${c.toLocaleString()} rows"></div>`;
+      }).join('');
+    } else {
+      histEl.innerHTML = '<div class="bar-empty">No confidence data.</div>';
+    }
+  }
 
-  // -- Data-quality issues --
-  const issues = (s.issues_breakdown || []).map(([k, v]) => [prettyIssue(k), v]);
-  renderBars('issuesBreakdown', issues, 'warn', 'No data-quality issues detected. ');
+  // -- Outcome donut: what actually happened to each processed row. --
+  const donutParts = [
+    { label: 'Auto-corrected',  val: autoC,        color: '#35c46b' },
+    { label: 'Approved',        val: approvedRows, color: '#4f8cff' },
+    { label: 'Edited / resolved',val: editedRows,  color: '#a879ff' },
+    { label: 'Unchanged',       val: keptOriginal, color: '#8b93a1' },
+  ].filter(p => p.val > 0);
+  const donutTotal = donutParts.reduce((a, p) => a + p.val, 0) || 1;
+  const donutEl = document.getElementById('outcomeDonut');
+  if (donutEl) {
+    if (donutParts.length) {
+      let accPct = 0;
+      const stops = donutParts.map(p => {
+        const start = (accPct / donutTotal) * 100;
+        accPct += p.val;
+        return `${p.color} ${start}% ${(accPct / donutTotal) * 100}%`;
+      }).join(', ');
+      donutEl.innerHTML =
+        `<div class="donut" style="background: conic-gradient(${stops});">` +
+          `<div class="donut-hole"><div class="dh-num">${donutTotal.toLocaleString()}</div><div class="dh-lbl">Processed</div></div>` +
+        `</div>` +
+        `<div class="donut-legend">` +
+          donutParts.map(p => {
+            const pc = Math.round((p.val / donutTotal) * 100);
+            return `<div class="dleg-row"><span class="dleg-dot" style="background:${p.color}"></span>` +
+              `<span class="dleg-lbl">${p.label}</span>` +
+              `<span class="dleg-val">${p.val.toLocaleString()}<span class="dleg-pct">${pc}%</span></span></div>`;
+          }).join('') +
+        `</div>`;
+    } else {
+      donutEl.innerHTML = '<div class="bar-empty">No outcomes to show.</div>';
+    }
+  }
+
+  // -- Corrections by column — click a bar to open those exact rows in review;
+  //    hover for a few example before -> after values. --
+  const colPairs = s.changes_by_column || [];
+  renderBars('colBreakdown', colPairs, 'ok', 'No corrections were applied.', processed, {
+    keys: colPairs.map(p => p[0]), drill: 'column', samples: s.column_samples || {},
+  });
+
+  // -- Breakdown by bucket — click to open that bucket in review. --
+  const actionPairs = s.action_breakdown || [];
+  renderBars('actionBreakdown', actionPairs.map(([k, v]) => [ACTION_LABELS[k] || k, v]), 'info',
+    'No actions recorded.', null, {
+      keys: actionPairs.map(p => p[0]), drill: 'bucket', samples: s.bucket_samples || {},
+    });
+
+  // -- Data-quality issues — tooltip shows example rows (no drill target). --
+  const issuePairs = s.issues_breakdown || [];
+  renderBars('issuesBreakdown', issuePairs.map(([k, v]) => [prettyIssue(k), v]), 'warn',
+    'No data-quality issues detected. ', null, {
+      keys: issuePairs.map(p => p[0]), samples: s.issue_samples || {},
+    });
 
   // -- Geocoding & confidence meta --
   const geoPct = pctProc(s.geocoded || 0);
@@ -3384,23 +3532,63 @@ function renderStatistics(s) {
     <div class="meta-row"><span class="ml">Total field-level corrections</span><span class="mv">${(s.fields_corrected||0).toLocaleString()}</span></div>`;
 }
 
-function renderBars(containerId, pairs, cls, emptyMsg, pctBase) {
+function renderBars(containerId, pairs, cls, emptyMsg, pctBase, opts) {
+  opts = opts || {};
+  const keys = opts.keys || null;        // raw key per bar (drill target + sample lookup)
+  const drill = opts.drill || null;      // 'bucket' | 'column' | null
+  const samples = opts.samples || null;  // { key: ["sample", ...] }
   const el = document.getElementById(containerId);
   if (!pairs.length) { el.innerHTML = `<div class="bar-empty">${emptyMsg}</div>`; return; }
   const max = Math.max(...pairs.map(p => p[1]), 1);
-  el.innerHTML = pairs.map(([label, count]) => {
+  el.innerHTML = pairs.map(([label, count], i) => {
     const pct = pctBase ? Math.round((count / pctBase) * 100) + '%' : '';
+    const key = keys ? keys[i] : label;
+    const sampleArr = (samples && samples[key]) || [];
+    const tip = sampleArr.length
+      ? 'Examples:\n• ' + sampleArr.join('\n• ')
+      : `${count.toLocaleString()} ${count === 1 ? 'row' : 'rows'}`;
+    const clickable = !!(drill && key != null);
+    const hint = clickable ? '<span class="drill-hint">view rows →</span>' : '';
     return `
-    <div class="bar-row">
-      <span class="bl" title="${escapeHtml(String(label))}">${escapeHtml(String(label))}</span>
+    <div class="bar-row${clickable ? ' clickable' : ''}"${clickable ? ` data-drill="${drill}" data-key="${escapeHtml(String(key))}"` : ''} title="${escapeHtml(tip)}">
+      <span class="bl" title="${escapeHtml(String(label))}">${escapeHtml(String(label))}${hint}</span>
       <div class="bar-track"><div class="bar-fill ${cls}" data-w="${Math.round((count / max) * 100)}"></div></div>
       <span class="bv">${count}${pct ? ` <span class="bpct">${pct}</span>` : ''}</span>
     </div>`;
   }).join('');
+  // Wire drill-back clicks (data-attributes avoid inline-onclick escaping issues).
+  el.querySelectorAll('.bar-row.clickable').forEach(rowEl => {
+    rowEl.addEventListener('click', () => {
+      const d = rowEl.dataset.drill, k = rowEl.dataset.key;
+      if (d === 'bucket') drillToBucket(k);
+      else if (d === 'column') drillToColumn(k);
+    });
+  });
   // Animate the fills in after layout.
   requestAnimationFrame(() => {
     el.querySelectorAll('.bar-fill').forEach(f => { f.style.width = f.dataset.w + '%'; });
   });
+}
+
+// Drill from a stats chart back into the matching review rows.
+function drillToBucket(key) {
+  columnFilter = null;
+  goToStep(3);
+  setBucket(key);
+}
+function drillToColumn(col) {
+  columnFilter = col;
+  activeBucket = 'all';
+  reviewPage = 0;
+  goToStep(3);
+  renderFilterChips();
+  loadReviewPage();
+}
+async function clearColumnFilter() {
+  columnFilter = null;
+  reviewPage = 0;
+  renderFilterChips();
+  await loadReviewPage();
 }
 
 function prettyIssue(key) {

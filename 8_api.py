@@ -1636,6 +1636,7 @@ def address_cleanse_review_page_v2():
     all_results = sess.get("_all_results", {})
     threshold = max(0.0, min(1.0, float(data.get("threshold", sess.get("min_confidence", 0.80)))))
     bucket = data.get("bucket", "all")
+    changed_column = (data.get("changed_column") or "").strip()
     page = max(0, int(data.get("page", 0)))
     page_size = max(1, min(200, int(data.get("page_size", 50))))
 
@@ -1647,6 +1648,10 @@ def address_cleanse_review_page_v2():
         records = [r for r in records if r.get("anomalies")]
     elif bucket and bucket != "all":
         records = [r for r in records if _bucket_of(r, threshold) == bucket]
+    # Drill-down from the "Corrections by Column" chart: only rows that actually
+    # changed the given column.
+    if changed_column:
+        records = [r for r in records if changed_column in (r.get("changed_columns") or [])]
     total_matched = len(records)
     start = page * page_size
     page_rows = records[start:start + page_size]
@@ -1723,6 +1728,27 @@ def address_cleanse_final_v2():
     confidence_sum = 0.0
     confidence_n = 0
 
+    # Confidence distribution (10 bins: 0-9%, ..., 90-100%) + a few example rows
+    # per column / bucket / issue so the stats page can show tooltips and a chart.
+    conf_histogram = [0] * 10
+    column_samples: dict[str, list] = {}
+    bucket_samples: dict[str, list] = {}
+    issue_samples: dict[str, list] = {}
+
+    def _row_label(row_dict: dict, i: int) -> str:
+        for c in address_cols:
+            v = _safe_text(row_dict.get(c))
+            if v:
+                return v
+        return f"Row {i}"
+
+    def _add_sample(store: dict, key: str, value: str, cap: int = 3) -> None:
+        if not value:
+            return
+        bucket_list = store.setdefault(key, [])
+        if len(bucket_list) < cap and value not in bucket_list:
+            bucket_list.append(value)
+
     def _count_applied(field_changes):
         nonlocal fields_corrected, rows_corrected
         if field_changes:
@@ -1770,6 +1796,19 @@ def address_cleanse_final_v2():
             confidence_n += 1
 
         bucket = _bucket_of(summary, threshold)
+
+        # Distribution + samples for the statistics dashboard.
+        conf_histogram[min(9, max(0, int(summary["accuracy_percent"] // 10)))] += 1
+        _row_lbl = _row_label(row, idx)
+        _add_sample(bucket_samples, bucket, _row_lbl)
+        for _ch in summary["field_changes"]:
+            _add_sample(
+                column_samples, _ch["column"],
+                f'{_ch.get("from", "") or "(empty)"} → {_ch.get("to", "") or "(empty)"}',
+            )
+        for _iss in summary["issues"]:
+            _add_sample(issue_samples, _iss, _row_lbl)
+
         bucket_decision_scope = bucket
         bucket_decision = bucket_decisions.get(bucket)
         if summary.get("anomalies") and bucket_decisions.get("anomalies"):
@@ -1954,6 +1993,11 @@ def address_cleanse_final_v2():
         "action_breakdown": action_counts.most_common(),
         "issues_breakdown": issue_counts.most_common(8),
         "anomaly_breakdown": anomaly_counts.most_common(),
+        # Confidence distribution + example rows for the interactive stats page.
+        "histogram": conf_histogram,
+        "column_samples": column_samples,
+        "bucket_samples": bucket_samples,
+        "issue_samples": issue_samples,
     }
 
     csv_text = out_stream.getvalue()
@@ -1980,7 +2024,10 @@ def address_cleanse_final_v2():
             "X-Approved": str(stats["approved"]),
             "X-Rejected": str(stats["rejected"]),
             "X-Auto-Corrected": str(stats["auto_corrected"]),
-            "X-Cleanse-Stats": json.dumps(cleanse_stats, ensure_ascii=False),
+            # HTTP headers must be latin-1. Keep ensure_ascii=True so any non-ASCII
+            # in the stats (sample "from → to" arrows, accented address text)
+            # is \u-escaped; the browser's JSON.parse restores it faithfully.
+            "X-Cleanse-Stats": json.dumps(cleanse_stats, ensure_ascii=True),
             "X-Job-Id": job_id,
             "Access-Control-Expose-Headers": "X-Rows-Processed, X-Approved, X-Rejected, X-Auto-Corrected, X-Cleanse-Stats, X-Job-Id",
         },
