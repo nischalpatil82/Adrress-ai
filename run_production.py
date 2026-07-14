@@ -7,6 +7,12 @@ import importlib.util
 import os
 import sys
 
+# Ensure the working directory is the project root so relative paths (e.g. "8_api.py")
+# resolve correctly regardless of how the process is launched. IIS HttpPlatformHandler
+# starts the process from an arbitrary directory (often System32), so without this the
+# dynamic import of "8_api.py" below would fail.
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
 # Configure environment variables before importing
 os.environ.setdefault("PORT", "5000")
 os.environ.setdefault("HOST", "127.0.0.1")
